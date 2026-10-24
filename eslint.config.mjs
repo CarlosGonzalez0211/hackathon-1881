@@ -16,6 +16,7 @@ export default tseslint.config(
       "frontend/engine3d/src/extracted/**",
       "frontend/engine3d/src/vendor/**",
       "frontend/engine3d/src/workers/**",
+      "frontend/engine3d/athena-assets/**",
       "tools/reverse-engineering/output/**",
     ],
   },
