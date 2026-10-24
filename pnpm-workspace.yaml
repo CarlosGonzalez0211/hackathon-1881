@@ -1,6 +1,7 @@
 packages:
   - "frontend/*"
   - "backend/api"
+  - "backend/modules/world"
   - "ai"
   - "shared"
   - "tools/reverse-engineering"

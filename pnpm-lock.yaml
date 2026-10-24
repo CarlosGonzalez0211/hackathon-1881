@@ -50,6 +50,9 @@ importers:
       '@athena/shared':
         specifier: workspace:*
         version: link:../../shared
+      '@athena/world':
+        specifier: workspace:*
+        version: link:../modules/world
       '@fastify/cors':
         specifier: ^10.0.2
         version: 10.1.0
@@ -72,6 +75,19 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.23.15
+
+  backend/modules/world:
+    dependencies:
+      '@athena/shared':
+        specifier: workspace:*
+        version: link:../../../shared
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.2.0
+        version: 5.12.7
 
   frontend/brand:
     devDependencies:

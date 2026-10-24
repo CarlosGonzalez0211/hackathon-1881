@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import type { HealthResponse } from "@athena/shared";
 import { env } from "./env.js";
 import { aiRoutes } from "./routes/ai.js";
+import { worldRoutes } from "@athena/world";
 
 /** Isolated app for injection tests, standalone Node and Vercel. */
 export async function createApp(options: { logger?: boolean } = {}) {
@@ -21,6 +22,7 @@ export async function createApp(options: { logger?: boolean } = {}) {
         time: new Date().toISOString(),
       }));
       await api.register(aiRoutes);
+      await api.register(worldRoutes);
     },
     { prefix: "/api" },
   );
