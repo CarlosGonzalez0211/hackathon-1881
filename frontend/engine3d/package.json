@@ -10,10 +10,16 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:assets": "node scripts/build-athena-assets.mjs"
   },
   "dependencies": {
-    "@athena/shared": "workspace:*"
+    "@athena/shared": "workspace:*",
+    "meshoptimizer": "^1.3.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1"
+  }
 }
