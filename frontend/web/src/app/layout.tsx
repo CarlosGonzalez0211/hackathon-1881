@@ -20,6 +20,9 @@ const body = Atkinson_Hyperlegible_Next({
   weight: ["400", "600", "700"],
   display: "swap",
   variable: "--font-athena-body",
+  // next/font has no fallback metrics for this family (build warning); use explicit fallbacks.
+  adjustFontFallback: false,
+  fallback: ["Atkinson Hyperlegible", "system-ui", "sans-serif"],
 });
 
 const mono = IBM_Plex_Mono({

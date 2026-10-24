@@ -107,9 +107,10 @@ export type HouseState = keyof typeof houseStateVisuals;
 
 /** Resolves a house GLB filename; `variant` wraps into 0…houseModelVariantCount-1. */
 export function houseModelFile(state: HouseState, variant: number): string {
+  // Non-finite variants (NaN, ±Infinity) fall back to variant 0 instead of "vNaN".
+  const whole = Number.isFinite(variant) ? Math.trunc(variant) : 0;
   const index =
-    ((Math.trunc(variant) % houseModelVariantCount) + houseModelVariantCount) %
-    houseModelVariantCount;
+    ((whole % houseModelVariantCount) + houseModelVariantCount) % houseModelVariantCount;
   return houseStateVisuals[state].modelPattern.replace("{variant}", String(index));
 }
 
