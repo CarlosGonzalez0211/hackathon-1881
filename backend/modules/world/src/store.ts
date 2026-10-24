@@ -34,10 +34,13 @@ export class InMemoryWorldStore {
   readonly accessibility = new Map<string, WorldAccessibilitySettings>();
   readonly celebrations = new Map<string, string[]>();
   readonly ruleContexts = new Map<string, RuleContext>();
+  /** Keyed `${studentId}:${eventId}`: event ids are only unique per student. */
   readonly processedEventIds = new Set<string>();
   readonly interactions: (WorldInteraction & { id: string })[] = [];
   readonly teams = new Map<string, Team>();
   readonly challenges = new Map<string, TeamChallenge>();
+  /** challengeId -> successful evidenceId -> the member who contributed it. */
+  readonly challengeContributors = new Map<string, Map<string, string>>();
   private sequence = 0;
 
   static seeded(): InMemoryWorldStore {

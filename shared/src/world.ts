@@ -7,7 +7,8 @@ import { planetStateSchema, type HouseState, type PlanetState } from "./learning
  * mastery, never changes house status from game activity, and Easter eggs never grant mastery.
  */
 
-const idSchema = z.string().min(1);
+/** Opaque ids; bounded so request bodies cannot carry arbitrarily large keys. */
+const idSchema = z.string().min(1).max(200);
 const isoDateSchema = z.string().datetime();
 const unitIntervalSchema = z.number().min(0).max(1);
 
@@ -341,7 +342,10 @@ export const teamChallengeSchema = z.object({
   title: z.string().min(1),
   memberIds: z.array(idSchema),
   status: teamChallengeStatusSchema,
-  /** Game progress: successful attempts / requiredSuccesses. Not academic mastery. */
+  /**
+   * Game progress, the lower of successful attempts / requiredSuccesses and contributing
+   * members / min(requiredSuccesses, memberCount). Not academic mastery.
+   */
   sharedProgress: unitIntervalSchema,
   requiredSuccesses: z.number().int().positive(),
   successfulAttemptIds: z.array(idSchema),

@@ -138,8 +138,9 @@ export class WorldService {
 
   private applyEvent(event: WorldEvent): Achievement[] {
     this.assertStudent(event.studentId);
-    if (this.store.processedEventIds.has(event.id)) return [];
-    this.store.processedEventIds.add(event.id);
+    const eventKey = `${event.studentId}:${event.id}`;
+    if (this.store.processedEventIds.has(eventKey)) return [];
+    this.store.processedEventIds.add(eventKey);
     const codes = achievementCodesFor(event, this.store.ruleContext(event.studentId));
     const evidenceIds = event.evidenceIds.length > 0 ? event.evidenceIds : [event.id];
     return codes.flatMap((code) => {
@@ -258,6 +259,9 @@ export class WorldService {
   /**
    * Counts a member's attempt. `success` comes from Learning's evaluation (port pending
    * Person 2). Repeated evidence ids are not double-counted; completed challenges are final.
+   * Completion needs `requiredSuccesses` successes from at least
+   * min(requiredSuccesses, memberCount) distinct members, so one member cannot carry the
+   * team; `team-spark` unlocks only for members who contributed a successful attempt.
    */
   attemptChallenge(teamId: string, challengeId: string, body: unknown): TeamChallengeAttemptResult {
     const team = this.store.teams.get(teamId);
@@ -271,25 +275,40 @@ export class WorldService {
       return { challenge: clone(challenge), unlockedAchievements: [] };
 
     challenge.status = "active";
-    if (attempt.success && !challenge.successfulAttemptIds.includes(attempt.evidenceId))
+    const contributors =
+      this.store.challengeContributors.get(challenge.id) ?? new Map<string, string>();
+    this.store.challengeContributors.set(challenge.id, contributors);
+    if (attempt.success && !challenge.successfulAttemptIds.includes(attempt.evidenceId)) {
       challenge.successfulAttemptIds.push(attempt.evidenceId);
+      contributors.set(attempt.evidenceId, attempt.studentId);
+    }
+    const contributorIds = challenge.memberIds.filter((id) =>
+      [...contributors.values()].includes(id),
+    );
+    const requiredMembers = Math.min(challenge.requiredSuccesses, challenge.memberIds.length);
     challenge.sharedProgress = Math.min(
       1,
       challenge.successfulAttemptIds.length / challenge.requiredSuccesses,
+      contributorIds.length / requiredMembers,
     );
     const unlockedAchievements: Achievement[] = [];
-    if (challenge.successfulAttemptIds.length >= challenge.requiredSuccesses) {
+    if (
+      challenge.successfulAttemptIds.length >= challenge.requiredSuccesses &&
+      contributorIds.length >= requiredMembers
+    ) {
       challenge.status = "completed";
       challenge.completedAt = attempt.at;
-      for (const studentId of challenge.memberIds)
+      for (const studentId of contributorIds)
         unlockedAchievements.push(
           ...this.applyEvent({
             type: "TeamChallengeCompleted",
-            id: `team-complete-${challenge.id}-${studentId}`,
+            id: `team-complete-${challenge.id}`,
             studentId,
             teamId,
             challengeId: challenge.id,
-            evidenceIds: [...challenge.successfulAttemptIds],
+            evidenceIds: challenge.successfulAttemptIds.filter(
+              (evidenceId) => contributors.get(evidenceId) === studentId,
+            ),
             occurredAt: attempt.at,
           }),
         );
