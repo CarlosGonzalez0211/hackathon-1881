@@ -55,6 +55,10 @@ test("normalizeLegacyKey maps loader-relative and mount paths to manifest keys",
     ["libs/basis/basis_transcoder.js", undefined, "libs/basis/basis_transcoder.js"],
     ["slot:house/0/done", undefined, "slot:house/0/done"],
     ["new:npc.cat", undefined, "new:npc.cat"],
+    // Bare Messenger layout (references/messenger/asset-paths.json).
+    ["/assets/geometries/birds/curve-1.drc", undefined, "geometries/birds/curve-1"],
+    ["/assets/audio/ui/click2.ogg", undefined, "audio/ui/click2"],
+    ["assets/images/lut.ktx2", undefined, "images/lut"],
   ];
   for (const [input, family, expected] of cases)
     assert.equal(normalizeLegacyKey(input, family as never), expected, input);
@@ -147,6 +151,29 @@ test("kit patterns expand to concrete slots", () => {
   assert.ok(expanded.notes.some((note) => note.key === "brand/logo"));
 });
 
+test("every Messenger asset path resolves to a manifest key", () => {
+  const messengerPaths: string[] = JSON.parse(
+    readFileSync(path.join(engine, "../../references/messenger/asset-paths.json"), "utf8"),
+  );
+  assert.equal(messengerPaths.length, 190);
+  // The runtime manifest is gitignored (built), so assert against the kit expansion it is
+  // generated from: every slot key, plus the prose-only font entries.
+  const keys = new Set([
+    ...expanded.slots.map((entry) => entry.key),
+    ...expanded.fonts.map((entry) => entry.key),
+  ]);
+  const workers = messengerPaths.filter((entry) => /^\/assets\/[^/]*worker[^/]*\.js$/.test(entry));
+  assert.equal(workers.length, 8);
+  const unresolved = messengerPaths
+    .filter((entry) => !workers.includes(entry))
+    .filter((entry) => !keys.has(normalizeLegacyKey(entry)));
+  assert.deepEqual(unresolved, []);
+  // The one NPC curve without a kit counterpart reuses the matching bird curve.
+  const curve = slot("geometries/npcs/present/factory-worker-b/curve-1");
+  assert.equal(curve?.source, "models/nature/athena-bird-curve-1.glb");
+  assert.equal(curve?.role, "curve");
+});
+
 const fakeManifest = (): AthenaRuntimeManifest => ({
   version: 1,
   kit: "test",
@@ -194,7 +221,29 @@ test("assetUrl resolves through the Athena manifest and falls back to legacy", (
   assert.equal(assetUrl("audio.ui.click2.ogg"), "/assets/athena/audio/ui/click2.ogg");
   setAthenaManifest(fakeManifest());
   assert.equal(assetUrl("audio.ui.click2.ogg"), "/athena/audio/ui/click-a.abc.ogg");
-  assert.equal(assetUrl("geometries.npcs.present.fox.fox.drc"), "/athena/models/npcs/hare.abc.glb");
+  // `.drc` geometry ids stay legacy (the Draco consumer cannot read GLB) unless opted in.
+  assert.equal(
+    assetUrl("geometries.npcs.present.fox.fox.drc"),
+    "/assets/athena/geometries/npcs/present/fox/fox.drc",
+  );
+  assert.equal(
+    assetUrl("geometries.npcs.present.fox.fox.drc", "/cdn/legacy"),
+    "/cdn/legacy/geometries/npcs/present/fox/fox.drc",
+  );
+  assert.equal(
+    assetUrl("geometries.npcs.present.fox.fox.drc", undefined, { accept: ["glb-meshopt"] }),
+    "/athena/models/npcs/hare.abc.glb",
+  );
+  assert.equal(
+    assetUrl("geometries.npcs.present.fox.fox.drc", undefined, { accept: "any" }),
+    "/athena/models/npcs/hare.abc.glb",
+  );
+  // Deferred textures (3D LUT) stay legacy by default, honouring a custom base.
+  assert.equal(assetUrl("images.lut.ktx2", "/cdn/"), "/cdn/images/lut.ktx2");
+  assert.equal(
+    assetUrl("images.lut.ktx2", undefined, { accept: "any" }),
+    "/athena/textures/lut.abc.png",
+  );
   // Not in the manifest, or a prose-only font: legacy path.
   assert.equal(assetUrl("audio.ui.hover2.ogg"), "/assets/athena/audio/ui/hover2.ogg");
   assert.equal(assetUrl("fonts.heading.font"), "/assets/athena/fonts/heading.font");

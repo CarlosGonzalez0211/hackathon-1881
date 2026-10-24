@@ -228,6 +228,51 @@ export function resolveForLoader(
 }
 
 /**
+ * Which Athena formats `assetUrl` may return, on top of what the category's legacy
+ * consumer reads. `"any"` returns whatever the manifest maps (no format/deferral checks).
+ */
+export type AthenaAcceptFormats = readonly AthenaAssetFormat[] | "any";
+const CATEGORY_LOADER: Readonly<Record<string, LegacyLoaderName>> = {
+  geometry: "geometry",
+  texture: "texture",
+  audio: "audio",
+};
+/** Catalog categories whose legacy consumer reads a bespoke format no Athena build emits. */
+const LEGACY_ONLY_CATEGORIES = new Set<string>(["icon"]);
+
+/**
+ * Resolve a catalog asset (`asset.path` relative to `/assets/athena/`, plus its catalog
+ * `category`) to an Athena file only when the legacy consumer of that category can read
+ * the Athena format: geometry/texture/audio go through the {@link resolveForLoader} format
+ * table and deferral list (so `.drc` geometry ids stay legacy until `accept` includes
+ * `"glb-meshopt"`), `.icon` stays legacy unless `accept` lists the Athena format, and other
+ * categories (codec libs) resolve as-is. `accept` widens the allowed formats.
+ */
+export function resolveForCategory(
+  category: string,
+  path: string,
+  accept?: AthenaAcceptFormats,
+): AthenaResolved | undefined {
+  if (accept === "any") return resolveAthena(path);
+  const extra = new Set<AthenaAssetFormat>(accept ?? []);
+  const loader = CATEGORY_LOADER[category];
+  if (!loader) {
+    const resolved = resolveAthena(path);
+    if (!resolved) return undefined;
+    return !LEGACY_ONLY_CATEGORIES.has(category) || extra.has(resolved.format)
+      ? resolved
+      : undefined;
+  }
+  const family = LOADER_FAMILY[loader];
+  const key = normalizeLegacyKey(path, family);
+  if (deferredLegacyKeys.has(key)) return undefined;
+  const resolved = resolveAthena(key, family);
+  return resolved && (loaderFormats[loader].has(resolved.format) || extra.has(resolved.format))
+    ? resolved
+    : undefined;
+}
+
+/**
  * Express an absolute Athena URL relative to a legacy loader root
  * (`<absolutePath>/assets/athena/<family>/`), because those loaders prepend their path to
  * every request. `/athena/x.ogg` → `../../../athena/x.ogg`.

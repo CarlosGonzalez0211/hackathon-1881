@@ -41,35 +41,70 @@ export interface FitResult {
  */
 export const athenaPlacementOverrides: Record<string, AthenaPlacementOverride> = {};
 
+/** Smallest scale an override may produce (negative/zero overrides would mirror or vanish). */
+export const MIN_OVERRIDE_SCALE = 1e-6;
+
+const finite = (point: PointLike) =>
+  Number.isFinite(point.x) && Number.isFinite(point.y) && Number.isFinite(point.z);
+/** A box with finite corners and `min <= max` on every axis (zero-size boxes are valid). */
+export function isUsableBox(box: BoxLike) {
+  return (
+    finite(box.min) &&
+    finite(box.max) &&
+    box.min.x <= box.max.x &&
+    box.min.y <= box.max.y &&
+    box.min.z <= box.max.z
+  );
+}
+const finiteOr = (value: number | undefined, fallback: number) =>
+  value !== undefined && Number.isFinite(value) ? value : fallback;
+
 /**
  * Uniformly scale the Athena box to the legacy box's height and place its base centre
- * (x/z centre, min y) on the legacy base centre. Degenerate heights fall back to scale 1.
+ * (x/z centre, min y) on the legacy base centre, accounting for `rotationY` about the
+ * object origin (the kit's base-centre pivot), so `applyFit` lands the base exactly.
+ * Degenerate heights fall back to scale 1. When either box is empty or non-finite the fit
+ * is scale 1 at the legacy base centre if that is finite, else at the origin. Override
+ * scales are made positive (`abs`, at least {@link MIN_OVERRIDE_SCALE}).
  */
 export function fitToBounds(
   legacyBox: BoxLike,
   athenaBox: BoxLike,
   override: AthenaPlacementOverride = {},
 ): FitResult {
+  const overrideScale = Math.max(Math.abs(finiteOr(override.scale, 1)), MIN_OVERRIDE_SCALE);
+  const rotationY = finiteOr(override.rotationY, 0);
+  const extra = (override.offset ?? [0, 0, 0]).map((value) => finiteOr(value, 0));
+  const legacyBase = baseCentre(legacyBox);
+  if (!isUsableBox(legacyBox) || !isUsableBox(athenaBox)) {
+    const anchor = legacyBase.every(Number.isFinite) ? legacyBase : [0, 0, 0];
+    return {
+      scale: overrideScale,
+      offset: [anchor[0]! + extra[0]!, anchor[1]! + extra[1]!, anchor[2]! + extra[2]!],
+      rotationY,
+    };
+  }
   const legacyHeight = legacyBox.max.y - legacyBox.min.y;
   const athenaHeight = athenaBox.max.y - athenaBox.min.y;
-  const fitted =
-    Number.isFinite(legacyHeight) && Number.isFinite(athenaHeight) && athenaHeight > 1e-9
-      ? legacyHeight > 1e-9
-        ? legacyHeight / athenaHeight
-        : 1
-      : 1;
-  const scale = fitted * (override.scale ?? 1);
-  const legacyBase = baseCentre(legacyBox);
-  const athenaBase = baseCentre(athenaBox);
-  const extra = override.offset ?? [0, 0, 0];
+  const fitted = athenaHeight > 1e-9 && legacyHeight > 1e-9 ? legacyHeight / athenaHeight : 1;
+  const scale = fitted * overrideScale;
+  // Where the Athena base centre ends up relative to the origin after scale + rotation.
+  const [bx, by, bz] = baseCentre(athenaBox).map((value) => value * scale) as [
+    number,
+    number,
+    number,
+  ];
+  const cos = Math.cos(rotationY);
+  const sin = Math.sin(rotationY);
+  const rotated = [bx * cos + bz * sin, by, -bx * sin + bz * cos];
   return {
     scale,
     offset: [
-      legacyBase[0] - athenaBase[0] * scale + extra[0],
-      legacyBase[1] - athenaBase[1] * scale + extra[1],
-      legacyBase[2] - athenaBase[2] * scale + extra[2],
+      legacyBase[0] - rotated[0]! + extra[0]!,
+      legacyBase[1] - rotated[1]! + extra[1]!,
+      legacyBase[2] - rotated[2]! + extra[2]!,
     ],
-    rotationY: override.rotationY ?? 0,
+    rotationY,
   };
 }
 
@@ -77,11 +112,14 @@ export function baseCentre(box: BoxLike): Vec3Tuple {
   return [(box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2];
 }
 
-/** Apply a {@link FitResult} to a `scope.Object3D`. */
+/**
+ * Apply a {@link FitResult} to a `scope.Object3D`. Absolute (idempotent): scale, position
+ * and the Y rotation are set, not accumulated; X/Z rotation is left as is.
+ */
 export function applyFit(object: LegacyContext, fit: FitResult) {
   object.scale.setScalar(fit.scale);
   object.position.set(...fit.offset);
-  if (fit.rotationY) object.rotation.y += fit.rotationY;
+  object.rotation.y = fit.rotationY;
   object.updateMatrixWorld(true);
 }
 

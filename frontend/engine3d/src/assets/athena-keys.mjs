@@ -48,7 +48,8 @@ const STRIP_EXTENSIONS = new Set([...Object.keys(EXTENSION_FAMILY), "svg"]);
  *
  * Result shape: `<family>/<path without extension>`, e.g.
  * `geometries/npcs/present/fox/fox-idle`, `audio/ui/click2`, `images/ui/emojis/3`.
- * - Origins, query strings, leading `./` or `/` and the `assets/athena/` mount are removed.
+ * - Origins, query strings, leading `./` or `/` and the `assets/athena/` mount (or the bare
+ *   Messenger `assets/` root) are removed.
  * - `family` is the loader family the path is relative to (`geometryLoader` paths omit
  *   `geometries/`). Without it the family is inferred from the extension, then from the
  *   first segment.
@@ -61,7 +62,8 @@ export function normalizeLegacyKey(path, family) {
   key = key.replace(/[?#].*$/, "");
   if (/^[a-z]+:/i.test(key)) return key; // slot:…, new:…
   key = key.replace(/\\/g, "/").replace(/^(\.\/|\/)+/, "");
-  key = key.replace(/^assets\/athena\//, "");
+  // Both the Athena mount (`/assets/athena/…`) and the bare Messenger layout (`/assets/…`).
+  key = key.replace(/^assets\/(athena\/)?/, "");
   const first = key.split("/")[0];
   if (ATHENA_SOURCE_ROOTS.includes(first)) return key;
   if (first === "audio" && key.endsWith(".wav")) return key;
@@ -210,6 +212,15 @@ export function expandLegacyMap(legacyToAthena, legacyKeys, athenaSources) {
           const suffix = stem.startsWith(npc) ? stem.slice(npc.length) : undefined;
           const meta = npcRole(suffix);
           if (meta) add(file, source, meta);
+          else if ((match = /^curve-(\d+)$/.exec(stem))) {
+            // NPC walk paths (factory-worker-b/curve-1): the kit has no NPC curves, so reuse
+            // the bird curve of the same index, as the kit does for `tall-man-curve`.
+            const curve = `models/nature/athena-bird-curve-${match[1]}.glb`;
+            add(file, sources.has(curve) ? curve : "models/nature/athena-bird-curve-2.glb", {
+              role: "curve",
+              note: "reuse bird curve as walk path (no kit NPC curve)",
+            });
+          }
         }
       } else {
         const role = key.includes("curve") ? "curve" : undefined;
