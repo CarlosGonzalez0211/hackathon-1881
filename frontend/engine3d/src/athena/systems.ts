@@ -6,6 +6,7 @@
  *   registerAthenaSystem("npcs", installAthenaNpcs);
  */
 import { registerAthenaSystem } from "./install";
+import { installAthenaAvatar } from "./avatar";
 import { installAthenaLook } from "./look";
 
 /** With any `?athenaDebug=…` flag, expose the install context as `globalThis.__athena`. */
@@ -27,3 +28,4 @@ registerAthenaSystem("debug", (ctx) => {
 });
 
 registerAthenaSystem("look", installAthenaLook);
+registerAthenaSystem("avatar", installAthenaAvatar);

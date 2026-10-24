@@ -68,3 +68,30 @@ export const actionDefinitions = {
     event: "character_emoji_display",
   },
 } as const;
+
+/**
+ * Athena avatar (task 5). Developer-owned outfit, not a student skin system: there is no
+ * appearance UI. Each part is `models/avatar/athena-avatar-<group>-<variant>.glb`.
+ */
+export const athenaAvatarOutfit = {
+  hair: "bob",
+  top: "poncho",
+  bottom: "shorts",
+  shoes: "boots",
+  accessories: ["scarf-satchel"],
+} as const;
+/**
+ * Legacy blend-weight index (`animationProps.weights`: DEFAULT_FILES.animationFiles order)
+ * → clip embedded in `athena-avatar-base.glb`.
+ */
+export const athenaAvatarClips = [
+  "idle",
+  "run",
+  "sprint",
+  "air",
+  "afk1_lookaround",
+  "afk2_stretch",
+  "afk3_sit",
+] as const;
+/** Crossfade between avatar/NPC clips (seconds). */
+export const athenaClipFade = 0.2;
