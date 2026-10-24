@@ -78,6 +78,12 @@ export function listAthenaSystems() {
   return [...systems.keys()];
 }
 
+/** Stand-in when the GLB loader cannot be created: every load rejects with the cause. */
+function unavailableGltfLoader(cause: unknown): AthenaGltfLoader {
+  const fail = () => Promise.reject(new Error("Athena GLB loader unavailable", { cause }));
+  return { load: fail, loadSceneFromGlb: fail, loadGeometryFromGlb: fail, clear() {} };
+}
+
 /**
  * Build the install context and run every registered system once for this scope.
  * Called from `createEngineContext` right after `configureRecoveredEngine`.
@@ -88,7 +94,16 @@ export async function installAthena(
 ): Promise<AthenaInstallation> {
   if (scope.athena) return scope.athena as AthenaInstallation;
   const disposers: (() => void)[] = [];
-  const gltf = createAthenaGltfLoader(scope);
+  let gltf: AthenaGltfLoader;
+  let gltfAvailable = true;
+  try {
+    gltf = createAthenaGltfLoader(scope);
+  } catch (error) {
+    // e.g. a recovered runtime without `scope.GLTFLoader`: keep the engine on legacy assets.
+    console.warn("[Athena] GLB loader unavailable; Athena assets disabled", error);
+    gltf = unavailableGltfLoader(error);
+    gltfAvailable = false;
+  }
   const installed: string[] = [];
   const installation: AthenaInstallation = {
     scope,
@@ -96,7 +111,7 @@ export async function installAthena(
     manifest: options.athenaAssets ? getAthenaManifest() : undefined,
     resolve: resolveAthena,
     resolveForLoader,
-    enabled: options.athenaAssets && isAthenaAssetsEnabled(),
+    enabled: gltfAvailable && options.athenaAssets && isAthenaAssetsEnabled(),
     lifecycle: options.lifecycle,
     placement: { overrides: athenaPlacementOverrides, fitToBounds, snapToGround, debugBounds },
     onDispose: (callback) => disposers.push(callback),

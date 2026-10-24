@@ -20,6 +20,7 @@ import {
   learningEventSchema,
   planetStateSchema,
   questStateSchema,
+  teamChallengeAttemptSchema,
   worldInteractionSchema,
   worldStateSchema,
 } from "../src/index.js";
@@ -114,6 +115,31 @@ test("world requests reject invalid shapes", () => {
   );
   assert.equal(
     learningEventSchema.safeParse({ ...demoCheckpointEvents[1], mastery: 1.5 }).success,
+    false,
+  );
+});
+
+test("body ids are capped at 200 characters", () => {
+  const attempt = (studentId: string) =>
+    teamChallengeAttemptSchema.safeParse({
+      studentId,
+      evidenceId: "ev-1",
+      success: true,
+      at: "2026-10-24T00:00:00.000Z",
+    }).success;
+  assert.equal(attempt("s".repeat(200)), true);
+  assert.equal(attempt("s".repeat(201)), false);
+  assert.equal(
+    createTeamRequestSchema.safeParse({
+      classId: "c".repeat(201),
+      name: "Equipo",
+      createdBy: "a",
+      memberIds: ["a", "b"],
+    }).success,
+    false,
+  );
+  assert.equal(
+    learningEventSchema.safeParse({ ...demoCheckpointEvents[1], id: "e".repeat(201) }).success,
     false,
   );
 });

@@ -15,7 +15,11 @@ type BufferGeometry = LegacyContext;
 type AnimationClip = LegacyContext;
 
 export interface AthenaGltfScene {
-  /** A fresh clone per call (skeleton-aware when the GLB has skinned meshes). */
+  /**
+   * A fresh clone per call (skeleton-aware when the GLB has skinned meshes). Materials are
+   * cloned per call, so tinting/fading one instance never leaks into others; textures and
+   * geometries stay shared with the loader cache and must be treated as read-only.
+   */
   readonly scene: Object3D;
   /** Shared, immutable clips (idle, walk, run, talk, …); bind them with an AnimationMixer. */
   readonly animations: readonly AnimationClip[];
@@ -31,7 +35,7 @@ export interface GeometryFromGlbOptions {
 export interface AthenaGltfLoader {
   /** Raw parsed glTF (cached per URL). Do not mutate `scene`; use `loadSceneFromGlb`. */
   load(url: string): Promise<{ scene: Object3D; animations: AnimationClip[] }>;
-  /** Clone of the GLB scene plus its clips. */
+  /** Clone of the GLB scene (own materials, shared read-only geometry/textures) + clips. */
   loadSceneFromGlb(url: string): Promise<AthenaGltfScene>;
   /**
    * All meshes merged into one indexed `scope.BufferGeometry`, node transforms baked, with
@@ -40,7 +44,11 @@ export interface AthenaGltfLoader {
    * (as `geometryLoader.batched` overrides do). Multi-material groups are not preserved.
    */
   loadGeometryFromGlb(url: string, options?: GeometryFromGlbOptions): Promise<BufferGeometry>;
-  /** Drop cached parses (does not dispose GPU resources of clones already handed out). */
+  /**
+   * Drop cached parses and dispose their geometries, materials and textures, plus the merged
+   * geometries. Scenes from `loadSceneFromGlb` share geometry/textures with the cache, so
+   * only call this once those clones are gone (engine dispose).
+   */
   clear(): void;
 }
 
@@ -79,6 +87,37 @@ export function cloneObject(scope: LegacyContext, root: Object3D): Object3D {
     object.bind(new scope.Skeleton(bones, skeleton.boneInverses), object.bindMatrix);
   });
   return copy;
+}
+
+/** Give every mesh of a cloned scene its own material(s); textures stay shared. */
+export function cloneMaterials(root: Object3D) {
+  root.traverse((object: Object3D) => {
+    if (!object.material) return;
+    object.material = Array.isArray(object.material)
+      ? object.material.map((material: LegacyContext) => material.clone())
+      : object.material.clone();
+  });
+  return root;
+}
+
+/** Dispose every geometry, material and texture reachable from a parsed glTF scene. */
+function disposeScene(root: Object3D) {
+  const disposed = new Set<LegacyContext>();
+  const dispose = (resource: LegacyContext) => {
+    if (!resource || disposed.has(resource) || typeof resource.dispose !== "function") return;
+    disposed.add(resource);
+    resource.dispose();
+  };
+  root.traverse((object: Object3D) => {
+    dispose(object.geometry);
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      if (!material) continue;
+      for (const value of Object.values<LegacyContext>(material))
+        if (value?.isTexture) dispose(value);
+      dispose(material);
+    }
+  });
 }
 
 /** Copy an attribute (possibly quantized/normalized/interleaved) into a float array. */
@@ -150,7 +189,10 @@ export function createAthenaGltfLoader(scope: LegacyContext): AthenaGltfLoader {
     load,
     async loadSceneFromGlb(url) {
       const gltf = await load(url);
-      return { scene: cloneObject(scope, gltf.scene), animations: gltf.animations };
+      return {
+        scene: cloneMaterials(cloneObject(scope, gltf.scene)),
+        animations: gltf.animations,
+      };
     },
     async loadGeometryFromGlb(url, options = {}) {
       const key = `${url}#${options.materialColors !== false}`;
@@ -182,6 +224,8 @@ export function createAthenaGltfLoader(scope: LegacyContext): AthenaGltfLoader {
       return (await merged).clone();
     },
     clear() {
+      for (const parse of parses.values())
+        parse.then((gltf) => disposeScene(gltf.scene)).catch(() => {});
       parses.clear();
       for (const geometry of geometries.values())
         geometry.then((g: BufferGeometry) => g.dispose()).catch(() => {});

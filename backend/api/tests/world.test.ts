@@ -248,6 +248,79 @@ test("teams, challenges and attempts unlock team-spark once per member", () =>
     );
   }));
 
+test("team challenges need distinct contributors and reward only them", () => {
+  const world = new WorldService({ now: () => AT });
+  const team = world.createTeam({
+    classId: "class-demo",
+    name: "Los Cubos",
+    createdBy: LUCIA,
+    memberIds: [LUCIA, "student-mateo", "student-sofia"],
+  });
+  const challenge = world.createChallenge(team.id, {
+    topicId: "topic-geometry",
+    title: "Volúmenes",
+    requiredSuccesses: 2,
+  });
+  const attempt = (studentId: string, evidenceId: string, success = true) =>
+    world.attemptChallenge(team.id, challenge.id, { studentId, evidenceId, success, at: AT });
+
+  // One member alone cannot complete a 2-success challenge.
+  attempt(LUCIA, "ev-1");
+  const solo = attempt(LUCIA, "ev-2");
+  assert.equal(solo.challenge.status, "active");
+  assert.equal(solo.challenge.sharedProgress, 0.5);
+  assert.deepEqual(solo.unlockedAchievements, []);
+  // A failed attempt is participation, not a contribution.
+  assert.equal(attempt("student-sofia", "ev-3", false).challenge.status, "active");
+  // Re-using another member's evidence id does not make Mateo a contributor.
+  assert.equal(attempt("student-mateo", "ev-1").challenge.status, "active");
+
+  const done = attempt("student-mateo", "ev-4");
+  assert.equal(done.challenge.status, "completed");
+  assert.equal(done.challenge.sharedProgress, 1);
+  assert.deepEqual(
+    done.unlockedAchievements.map((item) => [item.studentId, item.code, item.evidenceIds]).sort(),
+    [
+      [LUCIA, "team-spark", ["ev-1", "ev-2"]],
+      ["student-mateo", "team-spark", ["ev-4"]],
+    ],
+  );
+  assert.deepEqual(world.listAchievements("student-sofia"), []);
+
+  // requiredSuccesses above the team size needs every member, not more members than exist.
+  const big = world.createChallenge(team.id, {
+    topicId: "topic-geometry",
+    title: "Maratón",
+    requiredSuccesses: 5,
+  });
+  const go = (studentId: string, evidenceId: string) =>
+    world.attemptChallenge(team.id, big.id, { studentId, evidenceId, success: true, at: AT });
+  for (const [index, id] of [LUCIA, LUCIA, "student-mateo", "student-mateo"].entries())
+    assert.equal(go(id, `big-${index}`).challenge.status, "active");
+  assert.equal(go("student-sofia", "big-4").challenge.status, "completed");
+});
+
+test("learning event dedup is scoped per student", () => {
+  const world = new WorldService({ now: () => AT });
+  const event = (studentId: string) => ({
+    id: "evt-shared-id",
+    type: "RetentionCheckPassed",
+    studentId,
+    topicId: "topic-geometry",
+    evidenceIds: ["r-1"],
+    occurredAt: AT,
+  });
+  assert.deepEqual(
+    world.handleLearningEvent(event(LUCIA)).map((item) => item.code),
+    ["retention-star"],
+  );
+  assert.deepEqual(
+    world.handleLearningEvent(event("student-mateo")).map((item) => item.code),
+    ["retention-star"],
+  );
+  assert.deepEqual(world.handleLearningEvent(event(LUCIA)), []);
+});
+
 test("learning events map to idempotent unlocks without touching mastery", async () => {
   const world = new WorldService({ now: () => AT });
   const planetBefore = world.getPlanet(LUCIA);
