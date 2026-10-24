@@ -22,7 +22,10 @@ import { expandLegacyMap, normalizeLegacyKey } from "../src/assets/athena-keys.m
 
 const PIPELINE_VERSION = 1;
 const ENGINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const KIT = path.join(ENGINE, "athena-assets");
+// ATHENA_KIT_DIR points at another checkout of the kit (e.g. one with LFS objects fetched).
+const KIT = process.env.ATHENA_KIT_DIR
+  ? path.resolve(process.env.ATHENA_KIT_DIR)
+  : path.join(ENGINE, "athena-assets");
 const PUBLIC = path.resolve(ENGINE, "..", "web", "public");
 const LEGACY = path.join(PUBLIC, "assets", "athena");
 const OUT = path.join(PUBLIC, "athena");
