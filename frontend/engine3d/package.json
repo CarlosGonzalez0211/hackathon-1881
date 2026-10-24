@@ -1,0 +1,19 @@
+{
+  "name": "@athena/engine3d",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./config": "./src/config/index.ts",
+    "./assets": "./src/assets/catalog.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@athena/shared": "workspace:*"
+  },
+  "devDependencies": {}
+}

@@ -1,0 +1,12 @@
+/* Extracted from references/messenger/dist/assets/App3D-DwM1eiaC.js; 133416:134549.
+ * Original code by abeto and bundled library authors. See references/messenger. */
+export function step0485(scope) {
+scope.MeshBasicMaterial = class MeshBasicMaterial extends scope.Material {
+  constructor(e) {
+    super(), this.isMeshBasicMaterial = !0, this.type = "MeshBasicMaterial", this.color = new scope.Color(16777215), this.map = null, this.lightMap = null, this.lightMapIntensity = 1, this.aoMap = null, this.aoMapIntensity = 1, this.specularMap = null, this.alphaMap = null, this.envMap = null, this.envMapRotation = new scope.Euler(), this.combine = scope.MultiplyOperation, this.reflectivity = 1, this.refractionRatio = .98, this.wireframe = !1, this.wireframeLinewidth = 1, this.wireframeLinecap = "round", this.wireframeLinejoin = "round", this.fog = !0, this.setValues(e);
+  }
+  copy(e) {
+    return super.copy(e), this.color.copy(e.color), this.map = e.map, this.lightMap = e.lightMap, this.lightMapIntensity = e.lightMapIntensity, this.aoMap = e.aoMap, this.aoMapIntensity = e.aoMapIntensity, this.specularMap = e.specularMap, this.alphaMap = e.alphaMap, this.envMap = e.envMap, this.envMapRotation.copy(e.envMapRotation), this.combine = e.combine, this.reflectivity = e.reflectivity, this.refractionRatio = e.refractionRatio, this.wireframe = e.wireframe, this.wireframeLinewidth = e.wireframeLinewidth, this.wireframeLinecap = e.wireframeLinecap, this.wireframeLinejoin = e.wireframeLinejoin, this.fog = e.fog, this;
+  }
+};
+}

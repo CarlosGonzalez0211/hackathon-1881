@@ -1,0 +1,33 @@
+:root {
+  --athena-ink: #172d3b;
+  --athena-muted: #415a68;
+  --athena-paper: #fffdf5;
+  --athena-surface: #fff;
+  --athena-border: #768a91;
+  --athena-accent: #075f62;
+  --athena-accent-ink: #fff;
+  --athena-focus: #064bc1;
+  --athena-locked: #48565e;
+  --athena-available: #075f62;
+  --athena-in-progress: #775000;
+  --athena-done: #215c3b;
+  --athena-font-body: Arial, Helvetica, sans-serif;
+  --athena-font-mono: Consolas, "Courier New", monospace;
+  --athena-radius-small: 0.5rem;
+  --athena-radius-panel: 1rem;
+  --athena-radius-pill: 999px;
+  --athena-space-xs: 0.25rem;
+  --athena-space-small: 0.5rem;
+  --athena-space-medium: 1rem;
+  --athena-space-large: 1.5rem;
+  --athena-space-xl: 2rem;
+  --athena-motion-fast: 120ms;
+  --athena-motion-standard: 220ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --athena-motion-fast: 0ms;
+    --athena-motion-standard: 0ms;
+  }
+}

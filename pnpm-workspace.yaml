@@ -1,3 +1,10 @@
 packages:
-  - "apps/*"
-  - "packages/*"
+  - "frontend/*"
+  - "backend/api"
+  - "ai"
+  - "shared"
+  - "tools/reverse-engineering"
+allowBuilds:
+  "@google/genai": set this to true or false
+  esbuild: set this to true or false
+  protobufjs: set this to true or false

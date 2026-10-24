@@ -19,6 +19,10 @@
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(./apps/**/.env*)",
+      "Read(./frontend/**/.env*)",
+      "Read(./backend/**/.env*)",
+      "Read(./ai/**/.env*)",
+      "Read(./data/**/.env*)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(git reset --hard:*)"

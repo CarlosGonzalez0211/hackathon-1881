@@ -1,0 +1,43 @@
+/* Extracted from references/messenger/dist/assets/App3D-DwM1eiaC.js; 1198108:1199170.
+ * Original code by abeto and bundled library authors. See references/messenger. */
+export function step1693(scope) {
+scope.fit_default = `float efit(float x, float a1, float a2, float b1, float b2) {
+    return b1 + ((x - a1) * (b2 - b1)) / (a2 - a1);
+}
+
+float fit(float x, float a1, float a2, float b1, float b2) {
+    return clamp(efit(x, a1, a2, b1, b2), min(b1, b2), max(b1, b2));
+}
+
+float fit01(float x, float a1, float a2) {
+    return fit(x, 0.0, 1.0, a1, a2);
+}
+
+float fit10(float x, float a1, float a2) {
+    return fit(x, 1.0, 0.0, a1, a2);
+}
+
+float fit11(float x, float a1, float a2) {
+    return fit(x, -1.0, 1.0, a1, a2);
+}
+
+vec3 efit(vec3 x, vec3 a1, vec3 a2, vec3 b1, vec3 b2) {
+    return b1 + ((x - a1) * (b2 - b1)) / (a2 - a1);
+}
+
+vec3 fit(vec3 x, vec3 a1, vec3 a2, vec3 b1, vec3 b2) {
+    return clamp(efit(x, a1, a2, b1, b2), min(b1, b2), max(b1, b2));
+}
+
+vec3 fit01(vec3 x, vec3 a1, vec3 a2) {
+    return fit(x, vec3(0.0), vec3(1.0), a1, a2);
+}
+
+vec3 fit10(vec3 x, vec3 a1, vec3 a2) {
+    return fit(x, vec3(1.0), vec3(0.0), a1, a2);
+}
+
+vec3 fit11(vec3 x, vec3 a1, vec3 a2) {
+    return fit(x, vec3(-1.0), vec3(1.0), a1, a2);
+}`;
+}

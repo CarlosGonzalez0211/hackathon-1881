@@ -1,0 +1,5 @@
+/* Extracted from references/messenger/dist/assets/App3D-DwM1eiaC.js; 304411:305184.
+ * Original code by abeto and bundled library authors. See references/messenger. */
+export function step0798(scope) {
+scope.PropertyBinding.prototype.SetterByBindingTypeAndVersioning = [[scope.PropertyBinding.prototype._setValue_direct, scope.PropertyBinding.prototype._setValue_direct_setNeedsUpdate, scope.PropertyBinding.prototype._setValue_direct_setMatrixWorldNeedsUpdate], [scope.PropertyBinding.prototype._setValue_array, scope.PropertyBinding.prototype._setValue_array_setNeedsUpdate, scope.PropertyBinding.prototype._setValue_array_setMatrixWorldNeedsUpdate], [scope.PropertyBinding.prototype._setValue_arrayElement, scope.PropertyBinding.prototype._setValue_arrayElement_setNeedsUpdate, scope.PropertyBinding.prototype._setValue_arrayElement_setMatrixWorldNeedsUpdate], [scope.PropertyBinding.prototype._setValue_fromArray, scope.PropertyBinding.prototype._setValue_fromArray_setNeedsUpdate, scope.PropertyBinding.prototype._setValue_fromArray_setMatrixWorldNeedsUpdate]];
+}
