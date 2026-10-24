@@ -1,0 +1,12 @@
+/* Extracted from references/messenger/dist/assets/App3D-DwM1eiaC.js; 252029:252660.
+ * Original code by abeto and bundled library authors. See references/messenger. */
+export function step0694(scope) {
+scope.MeshDepthMaterial = class MeshDepthMaterial extends scope.Material {
+  constructor(e) {
+    super(), this.isMeshDepthMaterial = !0, this.type = "MeshDepthMaterial", this.depthPacking = scope.BasicDepthPacking, this.map = null, this.alphaMap = null, this.displacementMap = null, this.displacementScale = 1, this.displacementBias = 0, this.wireframe = !1, this.wireframeLinewidth = 1, this.setValues(e);
+  }
+  copy(e) {
+    return super.copy(e), this.depthPacking = e.depthPacking, this.map = e.map, this.alphaMap = e.alphaMap, this.displacementMap = e.displacementMap, this.displacementScale = e.displacementScale, this.displacementBias = e.displacementBias, this.wireframe = e.wireframe, this.wireframeLinewidth = e.wireframeLinewidth, this;
+  }
+};
+}

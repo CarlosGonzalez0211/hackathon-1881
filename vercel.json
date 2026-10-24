@@ -2,12 +2,15 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
     "api": {
-      "root": "apps/api",
-      "framework": "fastify"
+      "root": "backend/api",
+      "framework": "fastify",
+      "entrypoint": "src/index.ts",
+      "buildCommand": "pnpm --filter @athena/api... build"
     },
     "web": {
-      "root": "apps/web",
-      "framework": "nextjs"
+      "root": "frontend/web",
+      "framework": "nextjs",
+      "buildCommand": "pnpm --filter @athena/web... build"
     }
   },
   "rewrites": [

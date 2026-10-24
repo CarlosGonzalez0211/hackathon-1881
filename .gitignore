@@ -18,3 +18,8 @@ next-env.d.ts
 npm-debug.log*
 .claude/settings.local.json
 graphify-out
+
+# Preserved shipped reference, including its executable dist
+!references/messenger/dist/
+!references/messenger/dist/**
+.cache/

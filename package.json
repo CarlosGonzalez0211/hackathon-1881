@@ -1,21 +1,23 @@
 {
-  "name": "hackathon-1881",
+  "name": "athena",
   "private": true,
   "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "dev": "pnpm -r --parallel --filter @hackathon/web --filter @hackathon/api dev",
-    "dev:web": "pnpm --filter @hackathon/web dev",
-    "dev:api": "pnpm --filter @hackathon/api dev",
+    "dev": "pnpm build:platform && pnpm -r --parallel --filter @athena/web --filter @athena/api dev",
+    "dev:web": "pnpm build:platform && pnpm --filter @athena/web dev",
+    "dev:api": "pnpm build:platform && pnpm --filter @athena/api dev",
     "build": "pnpm -r build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm build:platform && pnpm -r typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:platform": "pnpm --filter @athena/shared build && pnpm --filter @athena/ai build",
+    "test": "pnpm build:platform && pnpm --filter @athena/api exec tsx --test ../../shared/tests/*.test.ts tests/*.test.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs}": [

@@ -3,3 +3,10 @@ node_modules
 dist
 pnpm-lock.yaml
 components/ui
+references
+frontend/web/public
+frontend/engine3d/src/extracted
+frontend/engine3d/src/vendor
+tools/reverse-engineering/output
+
+frontend/engine3d/src/workers

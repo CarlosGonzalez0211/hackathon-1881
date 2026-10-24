@@ -1,0 +1,1807 @@
+{
+  "source": "https://messenger.abeto.co/",
+  "kind": "local preservation with offline patches",
+  "files": [
+    {
+      "path": "assets/App3D-DwM1eiaC.js",
+      "bytes": 1938811,
+      "sha256": "31f33c91f1e85db06022a12a2ba406755abed92e53fc293cabcb9c4353701d82"
+    },
+    {
+      "path": "assets/audio/ambiances/base.ogg",
+      "bytes": 85309,
+      "sha256": "44f5796487911fffd6265cae1f2bbc5ea02f57471cf8b7ec6491322e85147229"
+    },
+    {
+      "path": "assets/audio/ambiances/beach.ogg",
+      "bytes": 85767,
+      "sha256": "3cc49fc4ff56c7d795a8485dbad71ce33f63e099a53cc96c06f94fb0a0a73a67"
+    },
+    {
+      "path": "assets/audio/ambiances/city.ogg",
+      "bytes": 86228,
+      "sha256": "2c563466f5766d20410ffaf49fef960dd0c183a96cb8076745dc4c91988e8c49"
+    },
+    {
+      "path": "assets/audio/ambiances/factory.ogg",
+      "bytes": 86163,
+      "sha256": "c8ea18a678367ce8871082e3711e742b8eafdc2a83dbb5c5276d03caa6252dbb"
+    },
+    {
+      "path": "assets/audio/ambiances/forest.ogg",
+      "bytes": 84350,
+      "sha256": "9a9f6d493d58fec98be843b70152689a4d16eb998ba920a6d96bb07ef13a9277"
+    },
+    {
+      "path": "assets/audio/ambiances/temple.ogg",
+      "bytes": 96209,
+      "sha256": "0bc0aa9dc22c56892ace13f21c7d6c4fa9532963549d449f6a0a8fb4b246b080"
+    },
+    {
+      "path": "assets/audio/ambiances/waterfalls.ogg",
+      "bytes": 85435,
+      "sha256": "32ea6eff50ff769356ce9002b9c472323db45e65a79ac7c365fa433b264f4294"
+    },
+    {
+      "path": "assets/audio/camera/whoosh2.ogg",
+      "bytes": 8166,
+      "sha256": "bce64f62fc45edf6121f913eb1cd3cb8befb48277e30e12d2cdbf76fd38f68d3"
+    },
+    {
+      "path": "assets/audio/camera/zoom-in-5.ogg",
+      "bytes": 6736,
+      "sha256": "f2e1942885fad2e455d6ee9bf13606735594901144001ea31e8752a33c7910cb"
+    },
+    {
+      "path": "assets/audio/camera/zoom-off-5.ogg",
+      "bytes": 6400,
+      "sha256": "e47d65d94611b1c04a0e7726035aa704de0a773e84981a266cc7347ba3bdd0f6"
+    },
+    {
+      "path": "assets/audio/character/bubble-ends.ogg",
+      "bytes": 2527,
+      "sha256": "3ebc72e4ff22310265ce2cccddd329bf9cdf779b87483333c52705f3c42dc710"
+    },
+    {
+      "path": "assets/audio/character/bubble-starts.ogg",
+      "bytes": 2551,
+      "sha256": "3ef70aa4d2f08edfb2e5f70bd7f6a9c983d7f7f844e497af85c376b30faac510"
+    },
+    {
+      "path": "assets/audio/character/clothes.ogg",
+      "bytes": 3008,
+      "sha256": "d6ffadd0d10d3e801dd5fade2fc787a2682023feb9535c66baea9ed7f3068598"
+    },
+    {
+      "path": "assets/audio/character/emoji-ends1.ogg",
+      "bytes": 2531,
+      "sha256": "7148b8505ef65e3e3d0d2563fa119850e2ac6c67ec50198daca4a7f09a8645c1"
+    },
+    {
+      "path": "assets/audio/character/emoji-ends2.ogg",
+      "bytes": 2563,
+      "sha256": "3610bcb7bacb09696498b975d1765b9708961e3c0f9ec4bc9a90164eca597490"
+    },
+    {
+      "path": "assets/audio/character/emoji-ends3.ogg",
+      "bytes": 2527,
+      "sha256": "f302e7e3fbcd18ea91d10e7adc857a177bf9e5ecb7f7aca5fc2ce9c67966c7b2"
+    },
+    {
+      "path": "assets/audio/character/emoji-starts1.ogg",
+      "bytes": 2541,
+      "sha256": "03fb24d7768d467043254bb5803a4a993342299a66e81f58b22e3aef0beaedd4"
+    },
+    {
+      "path": "assets/audio/character/emoji-starts2.ogg",
+      "bytes": 2604,
+      "sha256": "052701b930bbe09d2bdb1a53cdeb2491dcd684541678a86cf13ff99eb51594ba"
+    },
+    {
+      "path": "assets/audio/character/emoji-starts3.ogg",
+      "bytes": 2551,
+      "sha256": "32b1d0bdb4be34c684a2e041821e91ffbe30e190f2d967dcb02def669dcedc6a"
+    },
+    {
+      "path": "assets/audio/character/footsteps-water.ogg",
+      "bytes": 39370,
+      "sha256": "a501db02411d9e5ba66eb88093df3f6d1800283cc4db60a8edc7fe52b5a277e3"
+    },
+    {
+      "path": "assets/audio/character/footsteps4.ogg",
+      "bytes": 40929,
+      "sha256": "0b8e37a1cfadfb4616916b9626e3612c940a480016b5c3c145145729222a530d"
+    },
+    {
+      "path": "assets/audio/character/jump-land.ogg",
+      "bytes": 1942,
+      "sha256": "464a135a9f043f06d1eb324c3303e011f5129bcdbad02c8d9e596489dda97448"
+    },
+    {
+      "path": "assets/audio/character/jump-start.ogg",
+      "bytes": 1492,
+      "sha256": "0138ab72f193a725ef19128258029feb84985440bb3b110c06e09a8781c2757a"
+    },
+    {
+      "path": "assets/audio/dialogues/female1.ogg",
+      "bytes": 42154,
+      "sha256": "63644afeb76787fb513e726285a5381e71be0fb61693245f1da047cd9c0bb47d"
+    },
+    {
+      "path": "assets/audio/dialogues/female2.ogg",
+      "bytes": 42223,
+      "sha256": "1d51448fb295b394d1f271fd3206f9892e1cf8bccd3e64bcde9ad4987b95c5b8"
+    },
+    {
+      "path": "assets/audio/dialogues/female3.ogg",
+      "bytes": 43148,
+      "sha256": "f88968265e5ef34a570a76f4fd184e4427851a22eedfc9a6ad44e3996b330730"
+    },
+    {
+      "path": "assets/audio/dialogues/male1.ogg",
+      "bytes": 39246,
+      "sha256": "5a0f91fa5606c0c4aaa59f8c006e4ce187b0fa16b329e6f66915d784216b57dc"
+    },
+    {
+      "path": "assets/audio/dialogues/male2.ogg",
+      "bytes": 34948,
+      "sha256": "1f7e9b12d69c42069293c68401f8eeba3c8f5edc6a19442cc05f1a1b82e96490"
+    },
+    {
+      "path": "assets/audio/dialogues/male3.ogg",
+      "bytes": 39643,
+      "sha256": "df35835a3963828c60e3b74f139ca912ed214095726dce4e3be877cf4eb17b5f"
+    },
+    {
+      "path": "assets/audio/dialogues/quest.ogg",
+      "bytes": 31572,
+      "sha256": "0337c319627caa6db5d8d3ff243ce7fa9a9d7097b44c4e8750073b51933784cd"
+    },
+    {
+      "path": "assets/audio/dialogues/wtf.ogg",
+      "bytes": 27012,
+      "sha256": "cbb5eae87d77e3f4285157396dfb6269c41ba7d18a1f3db1765ab51ad80bf79e"
+    },
+    {
+      "path": "assets/audio/intro/button-out.ogg",
+      "bytes": 5896,
+      "sha256": "74b9db50da50b42d66458b9e81ce13a1fbbaff6d1407e99c4ddf81eb74504f68"
+    },
+    {
+      "path": "assets/audio/intro/button-turn.ogg",
+      "bytes": 2300,
+      "sha256": "e4aca75dc348d4fa3ca7e4b52838dff4781eeafb9ba36046b6872dd54554e71c"
+    },
+    {
+      "path": "assets/audio/intro/letters.ogg",
+      "bytes": 8335,
+      "sha256": "3ccdcf8554e621d8e60b7fd6678989e47e1f4679fe6afedf18bdfaec6dbafe12"
+    },
+    {
+      "path": "assets/audio/intro/rune1.ogg",
+      "bytes": 1777,
+      "sha256": "50653074fe2b8d0676011ad37f2e6a64eea7d3c96ff093086469162d5f74d83e"
+    },
+    {
+      "path": "assets/audio/intro/rune2.ogg",
+      "bytes": 1863,
+      "sha256": "77a1c7a8091afae66ebb18d62caa7df7f415d59babfa12be159b7d20d6ddb296"
+    },
+    {
+      "path": "assets/audio/intro/rune3.ogg",
+      "bytes": 1801,
+      "sha256": "935faf1b7fc21424f77833f0c8a8468e0ff706298e9a9b5e657f2713503b3515"
+    },
+    {
+      "path": "assets/audio/intro/rune4.ogg",
+      "bytes": 1718,
+      "sha256": "67dcecb661c5a2f89ef964bf82da8999031e86d2c4171e51a3ce245bc33af4b2"
+    },
+    {
+      "path": "assets/audio/music/bgmusic-highq.ogg",
+      "bytes": 2310818,
+      "sha256": "863e8dbed9938b491ea4f3aa1275ec644428ac3788e51561c81ff6b7086ceab7"
+    },
+    {
+      "path": "assets/audio/music/bgmusic-mobile.ogg",
+      "bytes": 1144759,
+      "sha256": "5a7e5c6f0be18083fd9b29b1386bb5a13dd6ffcc838718aa4bae07c26dc97267"
+    },
+    {
+      "path": "assets/audio/music/musician.ogg",
+      "bytes": 98494,
+      "sha256": "4d7dac0c1754b2faa7261a537097997732460e40435f3f31d8c1d6bf17356d3b"
+    },
+    {
+      "path": "assets/audio/ui/buttons2.ogg",
+      "bytes": 4224,
+      "sha256": "7693bce0c7325b9a95d9608f6c76fd01e0e06f55544e8114b888c5badac4668d"
+    },
+    {
+      "path": "assets/audio/ui/click2.ogg",
+      "bytes": 2114,
+      "sha256": "53e2979b982318d1605d50bea3044310b3d87c3816ff038d43d8edc9d6d88c50"
+    },
+    {
+      "path": "assets/audio/ui/click3.ogg",
+      "bytes": 3462,
+      "sha256": "8d3176ebcb1ab9f68c605f32a1a36fc38c54047d246f339e01cdc8abe8e822c9"
+    },
+    {
+      "path": "assets/audio/ui/customize.ogg",
+      "bytes": 6648,
+      "sha256": "b577e1f49d4018c3d4bca947598849db4035db48f1e4a6e59173241e0ff17458"
+    },
+    {
+      "path": "assets/audio/ui/hover2.ogg",
+      "bytes": 1124,
+      "sha256": "6073c5c0120f88dd319082b073a1b59effd5470942127a684f60807617aba8f3"
+    },
+    {
+      "path": "assets/audio/ui/openbox-checklist.ogg",
+      "bytes": 4600,
+      "sha256": "64f59f8a8f273dc09db488284b5933edc656adfee7acb44bfaf92a94e11e24cb"
+    },
+    {
+      "path": "assets/audio/ui/openbox-emote.ogg",
+      "bytes": 4070,
+      "sha256": "d3b236c466686b12578cf7122bd3c34b7c8ec8774019a2d88122d87f8a0d8cea"
+    },
+    {
+      "path": "assets/audio/ui/openbox1.ogg",
+      "bytes": 1749,
+      "sha256": "b46b4b11e6b582ff4f9896864a3de97e09d73fb071e59f9b6195ab95ff8439af"
+    },
+    {
+      "path": "assets/audio/ui/openbox2.ogg",
+      "bytes": 2662,
+      "sha256": "e91018dd38d6610858ff1d5f60ea03ad6f65697896029f63ca71a8560fbc45d3"
+    },
+    {
+      "path": "assets/audio/ui/paper1.ogg",
+      "bytes": 39101,
+      "sha256": "9f3c8205271294c64a82ce2ea216b744c03aa227db851bdcdf756fc07f83da42"
+    },
+    {
+      "path": "assets/audio/ui/paper4.ogg",
+      "bytes": 63541,
+      "sha256": "c267ef7993f545ea506a8f07a15a2db746da6fac59caec2abb333ff0aec301ed"
+    },
+    {
+      "path": "assets/audio/ui/quest-complete.ogg",
+      "bytes": 23394,
+      "sha256": "3ef37796f3b761d47c46296009af984570a2a612dced806be1f45d3be0d109b0"
+    },
+    {
+      "path": "assets/audio/ui/title.ogg",
+      "bytes": 41310,
+      "sha256": "cdc265fa957cc412fa2371d99b7fcb5d76d32f5fa18b45bba6e1b4ffbc5b02ad"
+    },
+    {
+      "path": "assets/bitmapworker-DtCLhbWB.js",
+      "bytes": 3641,
+      "sha256": "e1d003d5459cb865d00682837a8fc4067b1d4935d2092485803f4ee1dd210028"
+    },
+    {
+      "path": "assets/charactergeoworker-D8pdYVWP.js",
+      "bytes": 77610,
+      "sha256": "0d8be4049c64c662364ca8fdff29098c98481856e50b4c6d529923d547f9b961"
+    },
+    {
+      "path": "assets/collisionworker-eT5h7hIA.js",
+      "bytes": 125306,
+      "sha256": "28ee1a487eb1374669191d1f9ed376975703362e297bb335179c181233699099"
+    },
+    {
+      "path": "assets/dracoworker-9mmlh0V-.js",
+      "bytes": 2894,
+      "sha256": "672248d4644d26a03f5dc3e63153ab02db520b49568da86c638b9fcbd7ee10ff"
+    },
+    {
+      "path": "assets/exrworker-Dm3Bkfzh.js",
+      "bytes": 85821,
+      "sha256": "90dee76bceb8485ecf7f0c27c90b1127bb1dcf6fd35b7d30e98d60ade386954e"
+    },
+    {
+      "path": "assets/favicon16-B6JSd80n.png",
+      "bytes": 2416,
+      "sha256": "9a877345e254ccf432de495ea6a128f4cc5a2b17734a92c2cfc13d459a7ce45e"
+    },
+    {
+      "path": "assets/favicon32-BC0QIL61.png",
+      "bytes": 1713,
+      "sha256": "751d0e16fbd9c299409cdac94718588f3aed868e7ac350d176f20e931dd662ed"
+    },
+    {
+      "path": "assets/fonts/heading.font",
+      "bytes": 27236,
+      "sha256": "35600474b5bcff87f7b133008255845239ad82f095a7f6797f7d78ffbeb5a823"
+    },
+    {
+      "path": "assets/fonts/planet.font",
+      "bytes": 10412,
+      "sha256": "8ea437c4b01dae51ac2b14aaa3d3efc4335346fc62edc3037c5e436a0a7c2d67"
+    },
+    {
+      "path": "assets/fonts/REM-Medium.font",
+      "bytes": 2066,
+      "sha256": "dc669f0c26e175146e54eb05e31a8335ff499ec3380fb8ddf44fa4309564a6b9"
+    },
+    {
+      "path": "assets/fonts/UglyDave-Alternates-optimized.font",
+      "bytes": 222264,
+      "sha256": "1f3c881b0bbfb5722b50283973ce449ebd874d186b7ec53ce58a4599e924d9ec"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/base.drc",
+      "bytes": 7576,
+      "sha256": "68f1cd0c8e4e6ba4992ff59592555f169f21cfdaaf3cc623075be26fb4474556"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/bottom1.drc",
+      "bytes": 5249,
+      "sha256": "90260ed2f08790c15d41b547c089e837e9a81c0e8e368427d0ae0f9a7560a5f8"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/bottom2.drc",
+      "bytes": 3762,
+      "sha256": "98f3aa91e5563547516b66333033326f2680996c502906fe251fd43011f6e144"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/bottom3.drc",
+      "bytes": 4003,
+      "sha256": "e202c4ef66ca68abf0200bd5a4830ec9055e9a9035499e4a3904342c1fb6e014"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/bottom4.drc",
+      "bytes": 5814,
+      "sha256": "09c7a42a5b49c25b2ba40189760987e3647386e18ff6b3f4fc70b8b859e88a9c"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/bottom5.drc",
+      "bytes": 5484,
+      "sha256": "09165bc96a41eb27d0f4bb5f5c081fc9f02c6a4495689b6767e12de7f86ef236"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/bottom6.drc",
+      "bytes": 4835,
+      "sha256": "a49141316ee668defb674454959b8611c4f198aead6f4453a2f663138c9258b7"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/bottom7.drc",
+      "bytes": 4896,
+      "sha256": "02094c0d82714601a9b9d6347437b6d4309efaefdfa89b3fca50451382273a38"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/hair1.drc",
+      "bytes": 2293,
+      "sha256": "0300d1490c25c60b7f19666b6fbee9b166d1416b2ba612d316017e0361a001eb"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/hair2.drc",
+      "bytes": 2175,
+      "sha256": "3e2e222466f141c4c046e23a3cf3bd4f9d12b98aa1fc49f4f0a79afc8f53286a"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/hair3.drc",
+      "bytes": 4373,
+      "sha256": "c43c6a456dbefe30f9a92247e2e29509fffe9c45ccc0f34d8525b5a6efa0c52d"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/hair4.drc",
+      "bytes": 4007,
+      "sha256": "00f72d13dcb6d2d9f140b76b50f60845ae9cbe6863712429addba911dceb0534"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/hair5.drc",
+      "bytes": 2220,
+      "sha256": "d1b93afccd1c2bf9766553767f4fbcc0b4e5586142aba5aca759756d1e4de512"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/hair6.drc",
+      "bytes": 2896,
+      "sha256": "ed4cf7132e33c0c11e0b9e2a189fd4f9bbc449bb00a952fd50568d2ecaf399d8"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/hair7.drc",
+      "bytes": 4375,
+      "sha256": "6e5ef70564edecc0d2430a5504becd95cd1a3d8219398227a6915419793a4022"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/shoes1.drc",
+      "bytes": 3190,
+      "sha256": "7bc1d30009eb754a7b1c5d7556203b825ac68ace337821be800772295408bac6"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/shoes2.drc",
+      "bytes": 3139,
+      "sha256": "1e1202ee187d342ee2d66b0df7da091554f9f18e77d04d86f76ef88ea0b21820"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/shoes3.drc",
+      "bytes": 3191,
+      "sha256": "83407fc6b982bc06a2ad720ed4f3540fc1d855db0e5d3d8262bce7d2100139c5"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/shoes4.drc",
+      "bytes": 3064,
+      "sha256": "06d85d3570374ff120445b1fd7f4b2211e6eebff414f770917d0797f81895805"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/shoes5.drc",
+      "bytes": 1683,
+      "sha256": "b074c8288adc7d85c6f4af591f2a8ae2855b5e5a5484bdbc3b71d88500194a56"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/shoes6.drc",
+      "bytes": 3240,
+      "sha256": "be828f912d2fb308f2136364574f991e2ed84aa24601899b10927f25266db0f0"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/shoes7.drc",
+      "bytes": 3877,
+      "sha256": "9e995420c052a8f149b653225347396ce401e2f6dc6e5d1d0a8936b020600337"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/top1.drc",
+      "bytes": 6071,
+      "sha256": "9c581b55c739213af3140269f06d0bc256beb428386eb7dab81215384f739ac4"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/top2.drc",
+      "bytes": 6928,
+      "sha256": "1f2cc60b04331099f2507950bc41a70a3e8f4e0fcfd7e17165b590a7818f0036"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/top3.drc",
+      "bytes": 5060,
+      "sha256": "a344126bd16ba50e50df04d261795be4c449b53bad99ff72c5e3c4e2b8d483c9"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/top4.drc",
+      "bytes": 8356,
+      "sha256": "c8e5c24a8c2aaad3fa9aafd1c2ac9b73a5a343031fa5050ec8a9dba2694dba99"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/top5.drc",
+      "bytes": 6643,
+      "sha256": "2ba401847370c7d42f416a758e0733baaa7f80d01efe1d50b39557a5e8132f62"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/top6.drc",
+      "bytes": 5891,
+      "sha256": "7a9f373feb6ed4cef4d54f26cdfa83fef0539983aaa12c0c384c78f8ce1a3619"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/top7.drc",
+      "bytes": 6257,
+      "sha256": "1752dc10037ee46654269644fd764caec1aed2275b10083b03e5710853324e73"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/top8.drc",
+      "bytes": 6420,
+      "sha256": "735b10ac05fb1f5fb4d0330d6bbde69993e8db584d705a58ebe11e10546dd573"
+    },
+    {
+      "path": "assets/geometries/avatar/accessories/top9.drc",
+      "bytes": 5314,
+      "sha256": "3886fa0c8eea2d2b9fa7083657ccecbffcb578949fec58ff70a6948cb6fd7b44"
+    },
+    {
+      "path": "assets/geometries/avatar/avatar-afk1.drc",
+      "bytes": 94396,
+      "sha256": "0ce963ec929421cba44866f5fe78f8ffdda7c66d8dac2306d5523a4f09b72b63"
+    },
+    {
+      "path": "assets/geometries/avatar/avatar-afk2.drc",
+      "bytes": 40383,
+      "sha256": "c764c8e9e884714a8cff593ff8108b121578511fdddefec466c6d19afde83dc9"
+    },
+    {
+      "path": "assets/geometries/avatar/avatar-afk3.drc",
+      "bytes": 33768,
+      "sha256": "f7175a91bc41efcbe9b225f45a82bfcff0fff7aa31a9737b2ce9aec00ded6f8d"
+    },
+    {
+      "path": "assets/geometries/avatar/avatar-air.drc",
+      "bytes": 10590,
+      "sha256": "6018150b6e8bf36ff2c778c588b8663610cee9e4d45276b3ce1658250579c2d8"
+    },
+    {
+      "path": "assets/geometries/avatar/avatar-bones.drc",
+      "bytes": 590,
+      "sha256": "d08c4ef50e835c7cf189ff5d1f89e7e02989640a3a7cfbeb6fe3c05c335780ba"
+    },
+    {
+      "path": "assets/geometries/avatar/avatar-idle.drc",
+      "bytes": 22235,
+      "sha256": "a99361950e8ac98d99347de55dc1e158e6d795c910ba02c051a53f53e03458d9"
+    },
+    {
+      "path": "assets/geometries/avatar/avatar-run.drc",
+      "bytes": 5959,
+      "sha256": "eeaf7f0869292a5890d362ef6d355564e0fe80f043727cd9c06460003da81820"
+    },
+    {
+      "path": "assets/geometries/avatar/avatar-sprint.drc",
+      "bytes": 5977,
+      "sha256": "59a91eb63e4dbf7a243e9c865ee3f654013ac0028be72afc08594fcc37cf1b0e"
+    },
+    {
+      "path": "assets/geometries/birds/1.drc",
+      "bytes": 1473,
+      "sha256": "b593ea444c18385642c7cd5f127002434a814a6dc8342382dd36346814894420"
+    },
+    {
+      "path": "assets/geometries/birds/2.drc",
+      "bytes": 897,
+      "sha256": "70db0f67de3c5d50e0fa56721e78eb574a0efb5bce8a69150fcb37c73b46162f"
+    },
+    {
+      "path": "assets/geometries/birds/curve-1.drc",
+      "bytes": 1736,
+      "sha256": "9956ed4997d8ac17be7cfee92a45068edb225a125e744622ec42ccf8ad5dae8d"
+    },
+    {
+      "path": "assets/geometries/birds/curve-2.drc",
+      "bytes": 1288,
+      "sha256": "3845e15e27e1561795beeff0d9b65c01430915c36daf135cce97ccb7fa985a47"
+    },
+    {
+      "path": "assets/geometries/deliveries/clothes.drc",
+      "bytes": 2076,
+      "sha256": "97aadaf383c0eaf3d63ba6870d83e5a412a46eeb68a9c9c9380b7492006c916b"
+    },
+    {
+      "path": "assets/geometries/deliveries/letterwet.drc",
+      "bytes": 814,
+      "sha256": "6c68c67ef9696ebe6b0e798173a8588f08c9167d2968ddac7c9442b171ca09d8"
+    },
+    {
+      "path": "assets/geometries/deliveries/note.drc",
+      "bytes": 808,
+      "sha256": "cee6e2edf7c9bba01c8438bf42a50af49f31bb804b51cf1cf4ad533d19c9d3f0"
+    },
+    {
+      "path": "assets/geometries/deliveries/offering.drc",
+      "bytes": 1166,
+      "sha256": "9d5e6403368abc707199d8deceb2e2d7500280150028996f518b693f628c4ba8"
+    },
+    {
+      "path": "assets/geometries/deliveries/postcard.drc",
+      "bytes": 762,
+      "sha256": "4b2d6af578f6a9c6269038fe310d0747189c984fcc7ebb2e6b5cdabbe29c0849"
+    },
+    {
+      "path": "assets/geometries/deliveries/samplebox.drc",
+      "bytes": 793,
+      "sha256": "25cf7f2f68d0c5ac1d87482e20b2158b0372f50d45af97ace90ba279a3208920"
+    },
+    {
+      "path": "assets/geometries/emojis/1.drc",
+      "bytes": 903,
+      "sha256": "5449560c8abe685767b0a6f371829d032e7c8315706cbedf8b92d1278b958a07"
+    },
+    {
+      "path": "assets/geometries/emojis/10.drc",
+      "bytes": 1348,
+      "sha256": "d99e6b73a980fbdfb1d277035ed5b0e3d992d5ae881496241c3ac8a741a0bba2"
+    },
+    {
+      "path": "assets/geometries/emojis/2.drc",
+      "bytes": 2416,
+      "sha256": "13bcf97c49c7b8b99f69048bc8a83fded3f86f3ebd466c06b102936c59121b45"
+    },
+    {
+      "path": "assets/geometries/emojis/3.drc",
+      "bytes": 2316,
+      "sha256": "c53e7be366849b08821fb34d765bbf12359133bbf0d7095a968f4e473a9dfc60"
+    },
+    {
+      "path": "assets/geometries/emojis/4.drc",
+      "bytes": 1818,
+      "sha256": "c7d1e029b65b35a87ff7ecb15e919b27009ba54290a40ddb3d700d15c800d34f"
+    },
+    {
+      "path": "assets/geometries/emojis/5.drc",
+      "bytes": 3734,
+      "sha256": "691a6c20791785fa002c56a6ce2d651888ca98f119448070c952d5f54d17936e"
+    },
+    {
+      "path": "assets/geometries/emojis/6.drc",
+      "bytes": 2751,
+      "sha256": "db31e5806c3c71aa099ab49c0b77eb067466fe300816caa6a803fa1a91e13308"
+    },
+    {
+      "path": "assets/geometries/emojis/7.drc",
+      "bytes": 2348,
+      "sha256": "ce3dc172c43a79f4593c2fceda04d06b4fa6e875438ddf39f2c49e33776459ea"
+    },
+    {
+      "path": "assets/geometries/emojis/8.drc",
+      "bytes": 2352,
+      "sha256": "2b4243b7675a8ae9aec35ed732450f92566ff7528d0d2edee4ec29cf87203c8b"
+    },
+    {
+      "path": "assets/geometries/emojis/9.drc",
+      "bytes": 3075,
+      "sha256": "9f7b2a7978997a4b3bb9f300d74de35655db695709febaef974b871f0d9a4987"
+    },
+    {
+      "path": "assets/geometries/npcs/present/alien/alien-bones.drc",
+      "bytes": 708,
+      "sha256": "ba183faddb754a87d8c1d32937cb629af505375eb028bbc1f919ea35164815cf"
+    },
+    {
+      "path": "assets/geometries/npcs/present/alien/alien-idle.drc",
+      "bytes": 84079,
+      "sha256": "b1d0570d0d74357f1b70f71d8aae597b220f15f145eff9754168713b5b80c10c"
+    },
+    {
+      "path": "assets/geometries/npcs/present/alien/alien.drc",
+      "bytes": 14054,
+      "sha256": "f1ecab523e915844a40199b7deb8acbd4b6a8648ee94edbd1148ce809d5e70f9"
+    },
+    {
+      "path": "assets/geometries/npcs/present/boss/boss-bones.drc",
+      "bytes": 744,
+      "sha256": "71f0e509ec8e15fcb5f00731f6d235cc7037575f24f6daa4ccada33ab8e0a429"
+    },
+    {
+      "path": "assets/geometries/npcs/present/boss/boss-idle.drc",
+      "bytes": 21098,
+      "sha256": "909c21baf74fc627c2b044c57de7b65b3ec27a4f76cd7ba3b65a63131b76454a"
+    },
+    {
+      "path": "assets/geometries/npcs/present/boss/boss.drc",
+      "bytes": 22889,
+      "sha256": "c6811d6292404438975aa91358ef500a54cef88161d1ba3a34d8d1430e0fbc02"
+    },
+    {
+      "path": "assets/geometries/npcs/present/caveman/caveman-bones.drc",
+      "bytes": 698,
+      "sha256": "c4f5885439ff9625283d8a41616f3818ef560ab7b4d4ddafb96cd4bbe4c879c1"
+    },
+    {
+      "path": "assets/geometries/npcs/present/caveman/caveman-idle.drc",
+      "bytes": 45752,
+      "sha256": "638d56037c589136086e256ff873135b897a78a7db5ad13aeba27e1a823d1f0c"
+    },
+    {
+      "path": "assets/geometries/npcs/present/caveman/caveman.drc",
+      "bytes": 20306,
+      "sha256": "c78b091ad5f77a5471dd2251fd7e57d689864562572e768876d335e660316a96"
+    },
+    {
+      "path": "assets/geometries/npcs/present/chef/chef-bones.drc",
+      "bytes": 699,
+      "sha256": "b8997b21d999da5a33caa776e0311166f76bc7a14fbb95dedd31c357ca054079"
+    },
+    {
+      "path": "assets/geometries/npcs/present/chef/chef-idle.drc",
+      "bytes": 65790,
+      "sha256": "dec03806d50a48672e85e094faa760deba8d6922b1c5a83b9fb246c521113f56"
+    },
+    {
+      "path": "assets/geometries/npcs/present/chef/chef.drc",
+      "bytes": 22889,
+      "sha256": "6d1d5900c057722dc301de206f94f70c000239225536fa47550c77624f41edd3"
+    },
+    {
+      "path": "assets/geometries/npcs/present/diver/diver-bones.drc",
+      "bytes": 633,
+      "sha256": "5f21e43d4f4f3bc699679f07ba5daf3f6ae04537acafe82eac48d89bdb44c65d"
+    },
+    {
+      "path": "assets/geometries/npcs/present/diver/diver-idle.drc",
+      "bytes": 32399,
+      "sha256": "e0b0390f9b1c2a067c501a2d51fdb56440e06aee5cdedbfcd32f7245b9e8a2df"
+    },
+    {
+      "path": "assets/geometries/npcs/present/diver/diver-talk-idle.drc",
+      "bytes": 37230,
+      "sha256": "154e2b65603a65e0c2a998aac82c5caf74ee15bd4419905b81eb9ee4c087f36d"
+    },
+    {
+      "path": "assets/geometries/npcs/present/diver/diver-talk.drc",
+      "bytes": 27737,
+      "sha256": "d3ca553d5168c4689bf2f42adaaf9ad61eb86ce6a9a333f2c573d1773c2618ca"
+    },
+    {
+      "path": "assets/geometries/npcs/present/diver/diver.drc",
+      "bytes": 18152,
+      "sha256": "0662991fd04d136aa74bb3c576fe1d117b5629f6456c315d29c1d9e4018ebac9"
+    },
+    {
+      "path": "assets/geometries/npcs/present/factory-worker-a/factory-worker-a-bones.drc",
+      "bytes": 697,
+      "sha256": "d122a49a219e05d67246c7c80c793c0ae80855d3068267d66487b973d51887e9"
+    },
+    {
+      "path": "assets/geometries/npcs/present/factory-worker-a/factory-worker-a-idle.drc",
+      "bytes": 46537,
+      "sha256": "539a4a8473b0032b825eab0d3f8431f7d9afc6edae5530a8a4c23f9458f775f0"
+    },
+    {
+      "path": "assets/geometries/npcs/present/factory-worker-a/factory-worker-a.drc",
+      "bytes": 20608,
+      "sha256": "ab87ae48a4266418cca6ac9ee276d4a886912904c5751752a4c51fac9dc9f27f"
+    },
+    {
+      "path": "assets/geometries/npcs/present/factory-worker-b/curve-1.drc",
+      "bytes": 977,
+      "sha256": "b1966e71b9b7dc47cb4d98974f420455654ba516faf028067a59bbe5adae3a5b"
+    },
+    {
+      "path": "assets/geometries/npcs/present/factory-worker-b/factory-worker-b-bones.drc",
+      "bytes": 684,
+      "sha256": "a0665672265a9d1a15e73d228ab22db43a4fc2c5ce1df754d99fdb33a0c36536"
+    },
+    {
+      "path": "assets/geometries/npcs/present/factory-worker-b/factory-worker-b-talk.drc",
+      "bytes": 9303,
+      "sha256": "c24cd00dba477d8fd3974055342f1da4fa565c6338123ac6764679613bc26985"
+    },
+    {
+      "path": "assets/geometries/npcs/present/factory-worker-b/factory-worker-b-walk.drc",
+      "bytes": 10773,
+      "sha256": "5c76d874e04d64c3b4a74595761af9a5cdb838673ab4ba4a4b4d8ad5f3d22809"
+    },
+    {
+      "path": "assets/geometries/npcs/present/factory-worker-b/factory-worker-b.drc",
+      "bytes": 20292,
+      "sha256": "433a76db557b03cf4f82321e74f1d7ab7a3e869a7a571e71b41acfdff845247a"
+    },
+    {
+      "path": "assets/geometries/npcs/present/factory-worker-c/factory-worker-c-bones.drc",
+      "bytes": 684,
+      "sha256": "a0665672265a9d1a15e73d228ab22db43a4fc2c5ce1df754d99fdb33a0c36536"
+    },
+    {
+      "path": "assets/geometries/npcs/present/factory-worker-c/factory-worker-c-idle.drc",
+      "bytes": 33781,
+      "sha256": "692d471da730cdc707e4d91669c87a804fdcd854ba48b98fa0498f34489f2f6c"
+    },
+    {
+      "path": "assets/geometries/npcs/present/factory-worker-c/factory-worker-c.drc",
+      "bytes": 20514,
+      "sha256": "a29298ad07034746df6a5c5f44f97ce26a06eafc42ea5516500b332d61ddf677"
+    },
+    {
+      "path": "assets/geometries/npcs/present/female-scientist/female-scientist-bones.drc",
+      "bytes": 694,
+      "sha256": "a49054f986498ed00c3b163e69995b28685fe170bc3c9776acc4400d97759836"
+    },
+    {
+      "path": "assets/geometries/npcs/present/female-scientist/female-scientist-idle.drc",
+      "bytes": 29897,
+      "sha256": "9caf791b34e15e2f976659569aec5b19e804416ac48e674dd1fd735a632e11d7"
+    },
+    {
+      "path": "assets/geometries/npcs/present/female-scientist/female-scientist.drc",
+      "bytes": 21898,
+      "sha256": "e503c5b4e0bd220f363ef53cd10b7b2027adc09c0dafc3088149b27b88cbcb0b"
+    },
+    {
+      "path": "assets/geometries/npcs/present/fox/fox-bones.drc",
+      "bytes": 502,
+      "sha256": "4c852c6f24021cf9ea92503c87a730e30eb5739ab36357af61101c2feae30154"
+    },
+    {
+      "path": "assets/geometries/npcs/present/fox/fox-idle.drc",
+      "bytes": 15796,
+      "sha256": "ceb83910c7dfde0d5b5579152457f5e2a39f825243a0ed9d0823e16c6bd25faf"
+    },
+    {
+      "path": "assets/geometries/npcs/present/fox/fox.drc",
+      "bytes": 8865,
+      "sha256": "e5f259e7b5a221bea2e5f5f0a8f0dc20133bec71c6b0bdb28f33fa61e2c3f224"
+    },
+    {
+      "path": "assets/geometries/npcs/present/male-scientist/male-scientist-bones.drc",
+      "bytes": 691,
+      "sha256": "9fbc5813c88b4af64f95b712e310602b7365f160768ebec0b16c8bebf43af53d"
+    },
+    {
+      "path": "assets/geometries/npcs/present/male-scientist/male-scientist-idle.drc",
+      "bytes": 48854,
+      "sha256": "fa56a50b877d89d1784b4de4b9404277c6ca242ec4ba404225bea8a6b3ca9d89"
+    },
+    {
+      "path": "assets/geometries/npcs/present/male-scientist/male-scientist.drc",
+      "bytes": 23766,
+      "sha256": "2624bb0d547e19f42929da0bc2e18143bf90dd2f00dc42bdbe4e364acc5ab76c"
+    },
+    {
+      "path": "assets/geometries/npcs/present/mountainman/mountainman-bones.drc",
+      "bytes": 640,
+      "sha256": "8c4b70f016034f41801ab6de830a79b297a80a4916fcd66e03d2f9786de41e62"
+    },
+    {
+      "path": "assets/geometries/npcs/present/mountainman/mountainman-idle.drc",
+      "bytes": 19283,
+      "sha256": "1738464118d358210524e66373df60ca529434ba98722c96f5cba8cbb63a0ae1"
+    },
+    {
+      "path": "assets/geometries/npcs/present/mountainman/mountainman.drc",
+      "bytes": 18054,
+      "sha256": "0d52bfd135fc3b0255610c5161c10035751d174303c2ffa6683632fafb48bc61"
+    },
+    {
+      "path": "assets/geometries/npcs/present/musician/musician-bones.drc",
+      "bytes": 644,
+      "sha256": "251eb39db5bb468bb3c1f474f54f0b107e254ae6d25bb5cf7eac5637cec411bb"
+    },
+    {
+      "path": "assets/geometries/npcs/present/musician/musician-idle.drc",
+      "bytes": 19380,
+      "sha256": "d8c3682be7abd94103ffdf480826d309af38edea98c5630af0c5237d13b90279"
+    },
+    {
+      "path": "assets/geometries/npcs/present/musician/musician-talk.drc",
+      "bytes": 12714,
+      "sha256": "43aba2e2c0d691ec3ed756e2e8a351ddb5b4e4c5f9fb9ae23a84eead502cc627"
+    },
+    {
+      "path": "assets/geometries/npcs/present/musician/musician.drc",
+      "bytes": 23409,
+      "sha256": "43d51513ca141c58b9818c4dd7fde13a232e65360fe3525d547bbc8e7f532866"
+    },
+    {
+      "path": "assets/geometries/npcs/present/office-worker/office-worker-alt.drc",
+      "bytes": 19189,
+      "sha256": "0e3b2758e552526f42e803f856454c71f8075827d4bf847b910741707bb90342"
+    },
+    {
+      "path": "assets/geometries/npcs/present/office-worker/office-worker-bones.drc",
+      "bytes": 631,
+      "sha256": "88d31ed72db08776a3ba4aeabcc6c5c1cbaa11c365bde0d22253820957092ef9"
+    },
+    {
+      "path": "assets/geometries/npcs/present/office-worker/office-worker-idle-talk.drc",
+      "bytes": 23838,
+      "sha256": "2e0e9f5904273805af8e1cb3ec28b2c6b0c25ca2eebd297480d30784fb224148"
+    },
+    {
+      "path": "assets/geometries/npcs/present/office-worker/office-worker-idle.drc",
+      "bytes": 74972,
+      "sha256": "74fa3eb27736397644e8786b0d3ecd1e5f9cf9c952d94cd340b094a88e69caa1"
+    },
+    {
+      "path": "assets/geometries/npcs/present/office-worker/office-worker-talk.drc",
+      "bytes": 14376,
+      "sha256": "fbdc360a305e774d2cdd552fdde25ae0c317e226dd1731650e635351b772b6f5"
+    },
+    {
+      "path": "assets/geometries/npcs/present/office-worker/office-worker-walk-alt.drc",
+      "bytes": 8047,
+      "sha256": "3f2ad08e77300243a7e08ccec1cc6dd577d0402a333b1775eaa3ed85777d0115"
+    },
+    {
+      "path": "assets/geometries/npcs/present/office-worker/office-worker-walk.drc",
+      "bytes": 7811,
+      "sha256": "305b99df2d9d330930ffa27302a7f80cf05875fa9dd1ceb409988ef9fdd599b4"
+    },
+    {
+      "path": "assets/geometries/npcs/present/office-worker/office-worker.drc",
+      "bytes": 21287,
+      "sha256": "be9492624d2a2758634013c76d8120970e36313b6e90f84e354adc89a2dfbc15"
+    },
+    {
+      "path": "assets/geometries/npcs/present/oldwoman/oldwoman-bones.drc",
+      "bytes": 650,
+      "sha256": "1ee2388174eb4fe6d75eedca78cc002573f57f8c9920575ef815d66aaba321f0"
+    },
+    {
+      "path": "assets/geometries/npcs/present/oldwoman/oldwoman-idle.drc",
+      "bytes": 13350,
+      "sha256": "d286d5a5395528278e694d6834d644b898e8f20294a2bfa2f9a278703304daab"
+    },
+    {
+      "path": "assets/geometries/npcs/present/oldwoman/oldwoman.drc",
+      "bytes": 16404,
+      "sha256": "7f8f29bd7f3fb4b6a678c33d69cd592cf381b974f881ca5c6471a07b0d63ea6c"
+    },
+    {
+      "path": "assets/geometries/npcs/present/owl/owl-bones.drc",
+      "bytes": 431,
+      "sha256": "fafb520aa92ebac44be239cf187e9dc15f8cf54282f49aacccc3009490f4d91f"
+    },
+    {
+      "path": "assets/geometries/npcs/present/owl/owl-idle.drc",
+      "bytes": 6736,
+      "sha256": "b19069ffe4960afa5a3d7cb7d6545a58bd8d9bd95904cd4bab96a3f4cd4b2b96"
+    },
+    {
+      "path": "assets/geometries/npcs/present/owl/owl.drc",
+      "bytes": 5237,
+      "sha256": "59d7f90238c657babcdf88f09682aa26ecf8690c4bac8e624f5b8bd1011f8852"
+    },
+    {
+      "path": "assets/geometries/npcs/present/scout/scout-bones.drc",
+      "bytes": 688,
+      "sha256": "d939b71bc5f9d823121086873c9245b5e3b82b58204cb34d6b4ee9f81c0e2c01"
+    },
+    {
+      "path": "assets/geometries/npcs/present/scout/scout-idle.drc",
+      "bytes": 45076,
+      "sha256": "d03f0169547cdfab2ebaa505a12dd2e6f644a08a5eabf623a99c71da30958e48"
+    },
+    {
+      "path": "assets/geometries/npcs/present/scout/scout.drc",
+      "bytes": 22025,
+      "sha256": "5f4e0c04188673125facc0a68c2b68245ee8ad5c0229fb69a1e75531fec4eaed"
+    },
+    {
+      "path": "assets/geometries/npcs/present/tall-man-curve.drc",
+      "bytes": 1296,
+      "sha256": "c62df6a7edc2aeee871aea358ff31913917014f0f46985bbfaceda6bee15d2f3"
+    },
+    {
+      "path": "assets/geometries/npcs/present/threekid/threekid-bones.drc",
+      "bytes": 639,
+      "sha256": "dee73dd34a8c6a7db09f19921c212f3691bf134b4138d995dd410f36eacfa2da"
+    },
+    {
+      "path": "assets/geometries/npcs/present/threekid/threekid-idle.drc",
+      "bytes": 16287,
+      "sha256": "85ea0d61c4fd01c04d2dbe9240ff5330176769941a05729febb9ced82462b2c1"
+    },
+    {
+      "path": "assets/geometries/npcs/present/threekid/threekid.drc",
+      "bytes": 20750,
+      "sha256": "88508aec924de86db50aa6568980e30451ae0d9d73670d7803b9a2023ac771da"
+    },
+    {
+      "path": "assets/geometries/npcs/present/young-lady/young-lady-bones.drc",
+      "bytes": 637,
+      "sha256": "3a52143f1941ada67052a8a71b63086bc2bdd7fe7d4fa7cbbc70119a974984d1"
+    },
+    {
+      "path": "assets/geometries/npcs/present/young-lady/young-lady-idle.drc",
+      "bytes": 29894,
+      "sha256": "8ed8b310b8f03670484618f43f8f47880db86d8f16f06393fcef4d6c9929a47e"
+    },
+    {
+      "path": "assets/geometries/npcs/present/young-lady/young-lady-talk-idle.drc",
+      "bytes": 15817,
+      "sha256": "6086c1167a15e63bdc4bc1c385c4a5ce9fe0f557dca9b99884c377d8e4e2e723"
+    },
+    {
+      "path": "assets/geometries/npcs/present/young-lady/young-lady-talk.drc",
+      "bytes": 15091,
+      "sha256": "442c02da39b2220bb9d3ad2465a6f24354a0298dcde379032717274fe3ca48a5"
+    },
+    {
+      "path": "assets/geometries/npcs/present/young-lady/young-lady.drc",
+      "bytes": 16746,
+      "sha256": "f14002ea67fecb84a0c89fbd3f977449dd81d9d72fa82bd023b3c3e7d693aa95"
+    },
+    {
+      "path": "assets/geometries/planets/intro/points.drc",
+      "bytes": 4151,
+      "sha256": "b9f8a1aeec0e38e10226648c60f2b40ea8a936512a101246b01a1954f8ef538e"
+    },
+    {
+      "path": "assets/geometries/planets/present/beachfoam_vfx.drc",
+      "bytes": 6898,
+      "sha256": "5b210c9da2c735465f83b897db066ead70da3c77826da0f001b173cd54bb1350"
+    },
+    {
+      "path": "assets/geometries/planets/present/butterflies.drc",
+      "bytes": 1557,
+      "sha256": "e176785d3f99a8b0471b9283da787dc1a23e02cf815fd8cd488c0156da87522b"
+    },
+    {
+      "path": "assets/geometries/planets/present/cables-1.drc",
+      "bytes": 3218,
+      "sha256": "526e87fc78cbbe150c2c8378addb85fb1c28ddd8bb5f00d4860d89aed7b42d23"
+    },
+    {
+      "path": "assets/geometries/planets/present/cables-2.drc",
+      "bytes": 1678,
+      "sha256": "04227fb78fe7be756680e175f882ddc3fbec3c0da39fa12e2734f56b40b957d8"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-1_0.drc",
+      "bytes": 302516,
+      "sha256": "5e930f48c89755600f9d04be603a9f26314e9ace2b49d4d38e119c035dad19ae"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-1_1.drc",
+      "bytes": 288935,
+      "sha256": "9c2cadf32fd32f92a5bd71e92fb9aaeb8f4f6353c4d6a4a34af7ba63d7a3356e"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-1_2.drc",
+      "bytes": 264042,
+      "sha256": "9f957af636d1d18637f80ce0f2b0310afc627ba04577cb3099a8504eae1e86be"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-1_3.drc",
+      "bytes": 269737,
+      "sha256": "7173a683ae0b71bf9adea29d6a8492458b2f83820fec628b3e54fa32154bdb5f"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-1_4.drc",
+      "bytes": 230415,
+      "sha256": "f8be49c4e4f601c1ebdcf8df1ee64fe94c3d4601db0a0a562e35feabc82b9b64"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-1_5.drc",
+      "bytes": 259920,
+      "sha256": "76dce70fc6c9d02df5884f99b4358a43ed099d26771dd674097ed5f711fb26d4"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-1_6.drc",
+      "bytes": 237215,
+      "sha256": "aaab057fe29e12a82a29e4afc9671e85ddc3f80c83c599a97ad38d010e19b889"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-1_7.drc",
+      "bytes": 209882,
+      "sha256": "5b6c8ebc0da7d849c0c78282ed8a2f4168226c8203efa5747a857476582f13d2"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-1_8.drc",
+      "bytes": 234505,
+      "sha256": "3289428d6c94949dc910dd391e355ec559046c122e52b3b241ee2c5b42ab75e0"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-1_9.drc",
+      "bytes": 6391,
+      "sha256": "4a6c1fc0de67baa94c0efed839e5f03747d06300e2679cf8734a79b99adecc61"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-2_0.drc",
+      "bytes": 264695,
+      "sha256": "61fec4a05add6bbdf35b95468c65854124d545e28a9f476330ceb82ef8e86bb3"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-2_1.drc",
+      "bytes": 246144,
+      "sha256": "75529d2a3855b85fd83491ce949c542d29738a512c488ba228a38bd27a09a50a"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-2_2.drc",
+      "bytes": 230494,
+      "sha256": "337b00f5d59523713aa22b5f31ba837a12806e559da155749f7d1cd71b013350"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-2_3.drc",
+      "bytes": 231512,
+      "sha256": "0ecd12f6ed42485eb9612bf0d3b814889f360728caf3e7a58a79a092caaad1fa"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-2_4.drc",
+      "bytes": 199847,
+      "sha256": "24aff268443b18abe4607a6dc50a788301005636746d940ead5d14f868760ea9"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-2_5.drc",
+      "bytes": 220062,
+      "sha256": "107a2338047c4188a1ad78cbe5c3146997345653da610ee758a64e5eee6a3b82"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-2_6.drc",
+      "bytes": 204298,
+      "sha256": "7f09aeb65d13478699a01d76670a6d36f4494f50d47f693853a655060cff76c2"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-2_7.drc",
+      "bytes": 192811,
+      "sha256": "e6e08bb97e9814517f798d835b18bf44c651fb4bb033acc2970eb479b93ce12d"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-2_8.drc",
+      "bytes": 198957,
+      "sha256": "770ebe4fa1a08da09b6a5d950f87d5396e8d29f228161ccf764df2c66ea01307"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-2_9.drc",
+      "bytes": 5343,
+      "sha256": "a72ca77b8668b68d54e94fbcc347734f8dc7d0e9751a3967e3b3d4e4c9504f51"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-3_0.drc",
+      "bytes": 197538,
+      "sha256": "5459b0e79ff0d8a34002919b6d5ef4798430e41dcecd89359b8e5551d30dc419"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-3_1.drc",
+      "bytes": 186836,
+      "sha256": "7d7a8ec6a6afe138592c93e328ab3a93d2d1987730e8fc5748571a40d2e82686"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-3_2.drc",
+      "bytes": 176647,
+      "sha256": "ac380d58017847589eae2ebd77ccc369913d4ac788540d7f14177256c9a1cc77"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-3_3.drc",
+      "bytes": 184307,
+      "sha256": "5eb84faf25bb0b36fb69fc5aba8cbe911bd2f8171edc10967290d5e33fd114f0"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-3_4.drc",
+      "bytes": 156842,
+      "sha256": "7542a253da9b74482f20461fa1590a5069c4262e19e0e287cea09b5125b1dc4e"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-3_5.drc",
+      "bytes": 168528,
+      "sha256": "b4b04a1d734a61a3880f17c93330533854810e8c6018caed00272e1d7686ac40"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-3_6.drc",
+      "bytes": 159269,
+      "sha256": "cb9cddfdc0d496310dfe80cffafca28f77a59ac69f7e2ba564338214fabf9bec"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-3_7.drc",
+      "bytes": 151398,
+      "sha256": "6f8e49e0fa2c48e3575c7f96075a927a8822ab10a6ad6907658a0f17c1b54af9"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-3_8.drc",
+      "bytes": 154661,
+      "sha256": "aec6c52d34acd1f10738517cf8d049a68c7904abbb62f9edb0bfdf87a63b5742"
+    },
+    {
+      "path": "assets/geometries/planets/present/full-lod-3_9.drc",
+      "bytes": 4292,
+      "sha256": "1c2efcf0147f9738900488e2d2fb8a13e4cdd6556c84dc6cac0237e7bc2edbde"
+    },
+    {
+      "path": "assets/geometries/planets/present/full_0.drc",
+      "bytes": 324025,
+      "sha256": "f54705d9b4762002b9e7b3f435a7b4324c28145f8a584ffa1da346ea0afd288d"
+    },
+    {
+      "path": "assets/geometries/planets/present/full_1.drc",
+      "bytes": 316026,
+      "sha256": "df42485a08b71846657522f3d2819e891e03319b3c2f7904c33d83e205872c72"
+    },
+    {
+      "path": "assets/geometries/planets/present/full_2.drc",
+      "bytes": 284887,
+      "sha256": "c0ee2d7ed654cdeef1d989efdcc34642d3f46b1e170554c957f090e989153587"
+    },
+    {
+      "path": "assets/geometries/planets/present/full_3.drc",
+      "bytes": 293546,
+      "sha256": "d16ceb7e1515557e92831bfd4453c9558e76b3e390abfec4b89137d3679e4692"
+    },
+    {
+      "path": "assets/geometries/planets/present/full_4.drc",
+      "bytes": 246834,
+      "sha256": "10c3daab7f231ac4aff69b52074356a60541cecd3e9254dd5f432aece3e8bf92"
+    },
+    {
+      "path": "assets/geometries/planets/present/full_5.drc",
+      "bytes": 288290,
+      "sha256": "4be9c7f5bcb74b178f1392f640229e7a22d311f6afd2fa7cf243f221273e0021"
+    },
+    {
+      "path": "assets/geometries/planets/present/full_6.drc",
+      "bytes": 266219,
+      "sha256": "7ca33192d232509d4c9f3a7cd926e06f92c44ac229a2305f92eb43f35bc5c39b"
+    },
+    {
+      "path": "assets/geometries/planets/present/full_7.drc",
+      "bytes": 219561,
+      "sha256": "134f93b095fca80689c28fc682342cc361fddc870ea6fc9e6827b34a72894024"
+    },
+    {
+      "path": "assets/geometries/planets/present/full_8.drc",
+      "bytes": 247213,
+      "sha256": "0942cd7c1b52bfbb8c8a716ee67f5d5f80be219f828fca612e6c435eb4811a7b"
+    },
+    {
+      "path": "assets/geometries/planets/present/full_9.drc",
+      "bytes": 7162,
+      "sha256": "b70e3e9c52c0177acf549c1e6b2bdf745beeeb6bbac9fd6f7e999bb93ed09c05"
+    },
+    {
+      "path": "assets/geometries/planets/present/grass.drc",
+      "bytes": 10142,
+      "sha256": "529010c9b09431d801f376b294a3c97302f4fa3162c12f7b5220f2490d048c0a"
+    },
+    {
+      "path": "assets/geometries/planets/present/hitmesh_0.drc",
+      "bytes": 228430,
+      "sha256": "eb05095658625dd4f38b947308278540f662e320af6b8e4f5c96a90975c0c8b3"
+    },
+    {
+      "path": "assets/geometries/planets/present/hitmesh_1.drc",
+      "bytes": 273163,
+      "sha256": "16138ca00d28b02a0a675d5a1ec5fd85c40fce9ff3b031b177aa1e1176cc22c5"
+    },
+    {
+      "path": "assets/geometries/planets/present/hitmesh_2.drc",
+      "bytes": 102580,
+      "sha256": "86b414644a1330939c3ae9aab5ae01455ee1b01e2b0c1afae9c4cd7a13ce961e"
+    },
+    {
+      "path": "assets/geometries/planets/present/hitmesh_3.drc",
+      "bytes": 114845,
+      "sha256": "67a5fc8de388d5425128897a268841a772c4c29d7f364884c5a3c309a4205e2b"
+    },
+    {
+      "path": "assets/geometries/planets/present/hitmesh_4.drc",
+      "bytes": 281,
+      "sha256": "943f7e4b826f313df72388afa692155c55c952b84524fc0d09c16f352899d1c3"
+    },
+    {
+      "path": "assets/geometries/planets/present/intro/button.drc",
+      "bytes": 356,
+      "sha256": "e85dd258924c74fe3b5d13c3fea1b7762ed6c99278af5425bd265d9cb321fd0d"
+    },
+    {
+      "path": "assets/geometries/planets/present/intro/clouds.drc",
+      "bytes": 3678,
+      "sha256": "2ca27fe30ef5155163e2b3b720681c8c12ec42a78b8e93d12e6d87ddd9e22442"
+    },
+    {
+      "path": "assets/geometries/planets/present/intro/galaxies.drc",
+      "bytes": 1008,
+      "sha256": "d7368ffcaba34d8ab5ce852fdfc918cc3af93b9f1a94c2e7b6ab651111147790"
+    },
+    {
+      "path": "assets/geometries/planets/present/intro/low/planet.drc",
+      "bytes": 275759,
+      "sha256": "f49384ef159eb2b79eb2a4d0a7f163e4a28a7230d1a09e654d9ce9dea7712e08"
+    },
+    {
+      "path": "assets/geometries/planets/present/intro/planet.drc",
+      "bytes": 336980,
+      "sha256": "e2def805ef358dbb141723c756771b736cbff3155e2fedd5fad1d9da63c7ffed"
+    },
+    {
+      "path": "assets/geometries/planets/present/intro/title_vertical.drc",
+      "bytes": 8441,
+      "sha256": "ceac82cf045e73616fd6f408acd0194e55409418e25b7c204d4933e56d197078"
+    },
+    {
+      "path": "assets/geometries/planets/present/intro/trees.drc",
+      "bytes": 47443,
+      "sha256": "fa0eaef2bb3c42931b2be4ca6ed1e97d0dec341f17ea32569437bbfedb1968a9"
+    },
+    {
+      "path": "assets/geometries/planets/present/intro/water.drc",
+      "bytes": 44733,
+      "sha256": "b8cac710e3c0f750774f27ec0e9c75d5854675ae8cdd6148f1d531b27c6cf8da"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-1_0.drc",
+      "bytes": 284611,
+      "sha256": "820b970c27a5f4bcbbb41945b329566cde5a631bac254b0542a69ed0488151e4"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-1_1.drc",
+      "bytes": 271454,
+      "sha256": "e015aaab1afa9759ba223875725ff53736edf5c2ca6c460f91d7b37f996d15f8"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-1_2.drc",
+      "bytes": 251532,
+      "sha256": "11fa8f825c1ff14da2ccf76038bc249e19363b4a0e4a38cf3500b255f77ce3ef"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-1_3.drc",
+      "bytes": 252998,
+      "sha256": "c57aeb66eeda59f79c3c8b1a1f9ef525e14ec8dcae615e33d415aa8327d8ab22"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-1_4.drc",
+      "bytes": 217224,
+      "sha256": "99aa23b1d1952f3cd3d5fba2c1da1f86b9a49e640f261682b04cd2fb97f20960"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-1_5.drc",
+      "bytes": 241600,
+      "sha256": "f4a4c2dfab2df9afb5d05cda0930bc60bb0ef89b414e9ebbf74ad33fd0ba9729"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-1_6.drc",
+      "bytes": 223914,
+      "sha256": "a67d3e31a410064b3dc6d1cca6daf82d28d8917d4e0c12b6d58fb89ff6b9a54e"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-1_7.drc",
+      "bytes": 204927,
+      "sha256": "1a6f711b31bf0b754d703b953f4842a0a9cefb551712bbfdd4e51c6ca86ec0fa"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-1_8.drc",
+      "bytes": 220780,
+      "sha256": "42e2882292b4558f99d351f0e233b6f73e81afaf647914d0ca9cf17e850f3cc2"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-1_9.drc",
+      "bytes": 6100,
+      "sha256": "84dcd512385f597f2f0bb756ac1b40c2897373938d4b1c2471628aadabed9259"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-3_0.drc",
+      "bytes": 178752,
+      "sha256": "9b2fb132fc808170900023490c770bbdf1912e8bdd83504e79cc628c8102e361"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-3_1.drc",
+      "bytes": 172763,
+      "sha256": "bf89b82be19d22cc22eddbe00f6762e46b881af588a60eb07a3544aea8987bce"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-3_2.drc",
+      "bytes": 164056,
+      "sha256": "1210eafb8ea18533ba3b667b50d87e13a941fa1f53d1481051703121b313b089"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-3_3.drc",
+      "bytes": 171283,
+      "sha256": "1f4ee335f506b62127cc281c4adb39a97554a22f4a6e6c7d6d95119e72cbf3bb"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-3_4.drc",
+      "bytes": 145685,
+      "sha256": "061b8c94511886ea1ae00f88bab18c2403675c36ae90e339b69455ac65ebabb7"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-3_5.drc",
+      "bytes": 155694,
+      "sha256": "dfd675f6979e1f8e8a578b81de75c93e238c5f808ef38c329f4d015d4c621250"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-3_6.drc",
+      "bytes": 147880,
+      "sha256": "be4139f0c2586f8ea9697ffedfaee030f117ff0e2e6656c0514f58574f76fc22"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-3_7.drc",
+      "bytes": 139445,
+      "sha256": "ce81f8e20bd7d8f6f6e899f8f0e98c938292b2a271509ecf7b40374f99260a08"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-3_8.drc",
+      "bytes": 143427,
+      "sha256": "e82e397e36abe6ee32f212e4e01fe86551438e8b0b228e833746c62a87181c4b"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full-lod-3_9.drc",
+      "bytes": 4123,
+      "sha256": "ffa66f50bb9797cefe6e76c1602ea14aa943fb99d615755954ef1cf0bdd5a86d"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full_0.drc",
+      "bytes": 307674,
+      "sha256": "f78b7273f62f14bf33462c58d054e161e2ec9bd00d9dff18c3bca46b77964c7e"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full_1.drc",
+      "bytes": 296417,
+      "sha256": "594ee974677b30f347a41d1b6abcc81138a37100b87c057cd56843bd0c8dc2d3"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full_2.drc",
+      "bytes": 268887,
+      "sha256": "726b563ed4b6c64b45da6d09bd3dfc502bfad59fc8fdf1dc642ce94b7dddde88"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full_3.drc",
+      "bytes": 276696,
+      "sha256": "31d067ab1a1ba69dbd2dac19857d16c0c4cf3138293b0ea0a28d404fda373fbc"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full_4.drc",
+      "bytes": 235673,
+      "sha256": "cd211603ad45ef4df52f0173c772687e2cc6242904323ea1b0f7271270d0b3dc"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full_5.drc",
+      "bytes": 267084,
+      "sha256": "10149021642fa74dd6047f154e9a64c6d948b1728ff21cf216c68a37842373a8"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full_6.drc",
+      "bytes": 243927,
+      "sha256": "684082ac7591a3af8d0b734632c8fe0128bd199da9861ced00ecd2a17fc5e312"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full_7.drc",
+      "bytes": 212501,
+      "sha256": "b3bed369ae4df7da282440ece7a4f9abd0fb2567bf91b1c24694f53988a29cba"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full_8.drc",
+      "bytes": 239105,
+      "sha256": "7c15f1de0c7aa7b0b659dfad50669e092f615a75b8f67e3440dcd270d9e035bc"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/full_9.drc",
+      "bytes": 6847,
+      "sha256": "de39ea9658953e374ac8f4164c7d09024eb33514206282a242b41d9c3321ab56"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/tree-leaves_0.drc",
+      "bytes": 182682,
+      "sha256": "835b41d3d12478a0d326a71446d65971758db865ff91213d61257992fddaa0f2"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/tree-leaves_1.drc",
+      "bytes": 232569,
+      "sha256": "9cac164130f3ad43926a057d4882366922f86d7f2f2081e4b37a199ea8e73113"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/tree-leaves_2.drc",
+      "bytes": 245142,
+      "sha256": "2fbb3e9281f8d1d2af393575ce0685e86de27bf5d3b9dc55db428d762ae65cc1"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/tree-leaves_3.drc",
+      "bytes": 171602,
+      "sha256": "d615622c1da4dd60c897a11577e4379c24029a5c0ea2adccfdf844f7d59d69cf"
+    },
+    {
+      "path": "assets/geometries/planets/present/low/tree-leaves_4.drc",
+      "bytes": 4369,
+      "sha256": "ad7274a96d41f46ed3c0346efb7b00d1b486503cef737c1d6c65eca92f58832e"
+    },
+    {
+      "path": "assets/geometries/planets/present/smoke-1.drc",
+      "bytes": 5896,
+      "sha256": "e5b80a94c408953176d8ddb4f5b512edcf708b98f9957a65d39ab895635d6b90"
+    },
+    {
+      "path": "assets/geometries/planets/present/tree-leaves_0.drc",
+      "bytes": 312618,
+      "sha256": "adf74f7672225d505b578a26134b4d31a146cc739d92087b393c988bfeb0cfa3"
+    },
+    {
+      "path": "assets/geometries/planets/present/tree-leaves_1.drc",
+      "bytes": 261479,
+      "sha256": "179a72a2b17c8ee97aa91f03357797b179ffa16ccbdc0289e73bf68ef59d8e50"
+    },
+    {
+      "path": "assets/geometries/planets/present/tree-leaves_2.drc",
+      "bytes": 256835,
+      "sha256": "36147e3876ba2aefac39253802389e70f83a86d0b451522a827849cc27ba4f2e"
+    },
+    {
+      "path": "assets/geometries/planets/present/tree-leaves_3.drc",
+      "bytes": 236040,
+      "sha256": "fa12b6f3895ece76ff098f9620fc704c093616dd805ce940c8f9c8095e751573"
+    },
+    {
+      "path": "assets/geometries/planets/present/tree-leaves_4.drc",
+      "bytes": 49107,
+      "sha256": "924d05a9ead5ad8ce23c1de23eb2eb9d29aa8384d377db32546e098f410e648a"
+    },
+    {
+      "path": "assets/geometries/planets/present/water.drc",
+      "bytes": 4767,
+      "sha256": "6277fbbbff867ca2fe50b7626d671b4eff74c40050868532bbf4606a078be9ae"
+    },
+    {
+      "path": "assets/geometries/planets/present/waterfall_inlet_vfx.drc",
+      "bytes": 4331,
+      "sha256": "70f00ea302ed01e37345d83eb7d1b5f41f4884b7b739a6de9deb7a72fe54bbfb"
+    },
+    {
+      "path": "assets/geometries/planets/present/waterfall_vfx.drc",
+      "bytes": 12959,
+      "sha256": "796a5076cee3f81ad78b0f0fab60f7ffa9558a00263add24c3fa3836d13fdebd"
+    },
+    {
+      "path": "assets/geometries/planets/present/waterfallsplash_vfx.drc",
+      "bytes": 27019,
+      "sha256": "b40de5c78b81d7c7cb6b29e4f0f5c6c6e3c05b6ad40532ea7fcf650a314d52f5"
+    },
+    {
+      "path": "assets/geometryworker-WyEueJn9.js",
+      "bytes": 54109,
+      "sha256": "0a28598fc4270f9cd399323a42376aaf8ae42b08699c54f6882cf508f7f731dd"
+    },
+    {
+      "path": "assets/glyphworker-DoaYwstb.js",
+      "bytes": 91731,
+      "sha256": "985d568f16f3b6529d40d0ebef7dcd8077013e48b15abfdad12ce0760c0cd803"
+    },
+    {
+      "path": "assets/images/atlas.png",
+      "bytes": 375,
+      "sha256": "442a9b765987dcab366cbb26aac58592106aa5cbf8b1c710413e5010e2596a86"
+    },
+    {
+      "path": "assets/images/butterfly-front-highq.ktx2",
+      "bytes": 1202,
+      "sha256": "a16862b56e7da61d2d1f91e0d14c9e6d40959a89b1d06588079d890efcc233be"
+    },
+    {
+      "path": "assets/images/butterfly-highq.ktx2",
+      "bytes": 1278,
+      "sha256": "ddbe3e24da3fd628cab10ac77cd4a588c395e62489c55b3144591a471b59e034"
+    },
+    {
+      "path": "assets/images/clouds_noise_512.ktx2",
+      "bytes": 74409,
+      "sha256": "313d24c055b0322573ff5020054b4cdc74c63dcb5994a58ac138bd8440e0ab1b"
+    },
+    {
+      "path": "assets/images/clouds_noise_64.ktx2",
+      "bytes": 2305,
+      "sha256": "a440a370294e11017c2c689cff3023b26fbbf3b6f876c9d5a3c1357af4e30f00"
+    },
+    {
+      "path": "assets/images/controls/circles.avif",
+      "bytes": 15548,
+      "sha256": "b3a26a3faad2d459b38ccfa66cd900af7704be8ca5f35546b76d36d72d2ab95e"
+    },
+    {
+      "path": "assets/images/eye-highq.ktx2",
+      "bytes": 4611,
+      "sha256": "c3b6f71e0d9b29f79de980f1209e6e1954cdf0c9fc7fe000a3bd2402bff3496d"
+    },
+    {
+      "path": "assets/images/galaxy.ktx2",
+      "bytes": 4678,
+      "sha256": "f04d616daa26472de42b6eeb5ea151d9b3e3f0c09b4aad1d7ff25cd5ec8d61a2"
+    },
+    {
+      "path": "assets/images/grass-blades-highq.ktx2",
+      "bytes": 51306,
+      "sha256": "e712af88b8e444eabde0afb845df5e2da8b49569ed81d79fa7455c21f6e65e46"
+    },
+    {
+      "path": "assets/images/lut.ktx2",
+      "bytes": 96633,
+      "sha256": "7912813a13f80c09cdaaf403723ceaf8204048d018b01186cdff3af5b6677b58"
+    },
+    {
+      "path": "assets/images/mainchar-eye-highq.ktx2",
+      "bytes": 3792,
+      "sha256": "9ff8dfa81d9435ffbec2bbed6444baacc3935432deee812d073d2aa3f47f8857"
+    },
+    {
+      "path": "assets/images/mouth-highq.ktx2",
+      "bytes": 18160,
+      "sha256": "89db034bac7fd9210f3650806f3e2f3efda6aaeb81d8e6185bd29e9d754032ec"
+    },
+    {
+      "path": "assets/images/noise-simplex-layered-blur-highq.ktx2",
+      "bytes": 80922,
+      "sha256": "67e501761de8d014a4f73fc07efa947af86d68dffd721660f628eba4e40d7892"
+    },
+    {
+      "path": "assets/images/noise-simplex-layered-pixellated-highq.ktx2",
+      "bytes": 83772,
+      "sha256": "6723727b00dc3e1793003d2f7359aeae2954025e6afdf084f2f98049953efcec"
+    },
+    {
+      "path": "assets/images/noises-terrain.ktx2",
+      "bytes": 13271,
+      "sha256": "f638529fb9ac11c3ba05b4725a2ce15ec9e683f4edfb719b16a97c0f9b79c594"
+    },
+    {
+      "path": "assets/images/particle_sprites.ktx2",
+      "bytes": 1608,
+      "sha256": "e166c150fd24f8c5b7e5ad962623754be716efe82f26e3207fff604e80821817"
+    },
+    {
+      "path": "assets/images/trails-noise.ktx2",
+      "bytes": 5763,
+      "sha256": "3286feb15ecefbd0d9b0288f5764791a67a13ca579470d740cba45912c88cd96"
+    },
+    {
+      "path": "assets/images/tree-leaves-detail.ktx2",
+      "bytes": 3251,
+      "sha256": "bc2da23efe5ef1f0ef3af43265e1793c1d553e324a4e206ed91d507eb3f9b21d"
+    },
+    {
+      "path": "assets/images/tree-leaves.ktx2",
+      "bytes": 8633,
+      "sha256": "063d01b013e4652bad0603efe26be8d37d7e98b2cc2341279ed2e83b1954a101"
+    },
+    {
+      "path": "assets/images/ui/arrow.icon",
+      "bytes": 880,
+      "sha256": "18d8a9c5e154e852d375cd31b6a6e124cf78a7c6f8a1816f46eae9196740c6e0"
+    },
+    {
+      "path": "assets/images/ui/cross.icon",
+      "bytes": 1140,
+      "sha256": "3c302417c09d4df61e191ce6347830e13f79d9b77da77ba6819f01f62eae1564"
+    },
+    {
+      "path": "assets/images/ui/emojis/0.icon",
+      "bytes": 1680,
+      "sha256": "39cc52aef0518432dc9edd1153dd4e098da75617ae105f9e53964e58cc463339"
+    },
+    {
+      "path": "assets/images/ui/emojis/1.icon",
+      "bytes": 952,
+      "sha256": "0032c63ecb7731f5d90ef8963e71b79178edb012d0103efacd6d9894a6cc0a4e"
+    },
+    {
+      "path": "assets/images/ui/emojis/2.icon",
+      "bytes": 1996,
+      "sha256": "2acf73ca6a8e72c4e01619d323c24393619f0ebd672bf208294d94c26916923e"
+    },
+    {
+      "path": "assets/images/ui/emojis/3.icon",
+      "bytes": 1960,
+      "sha256": "8fb46d3f709e022b4813e29d6f3d70ae6ef918b438558856a42f65c70f583b5b"
+    },
+    {
+      "path": "assets/images/ui/emojis/4.icon",
+      "bytes": 1200,
+      "sha256": "140f16b24dbf0fd68e925e1755d5f3b165f6ede7cd53de1c92355e5dcd053c34"
+    },
+    {
+      "path": "assets/images/ui/emojis/5.icon",
+      "bytes": 1644,
+      "sha256": "6bca5bb29f80e344c4789c9f5e0e4d6076c06b5a75a791c226dad8e84fcd0925"
+    },
+    {
+      "path": "assets/images/ui/emojis/6.icon",
+      "bytes": 2500,
+      "sha256": "92fd5ce19803c8981079a99c10cfadf4daabef5dbca9d47893764c5320cc9499"
+    },
+    {
+      "path": "assets/images/ui/emojis/7.icon",
+      "bytes": 1672,
+      "sha256": "08effa9e2f42297468829b958ce7de9ac9b7645c441e705777ed0637d85ecd93"
+    },
+    {
+      "path": "assets/images/ui/emojis/8.icon",
+      "bytes": 2464,
+      "sha256": "1c505cea447becc3d36e34d371574525eff267637f121495bf26d4378c227b85"
+    },
+    {
+      "path": "assets/images/ui/emojis/9.icon",
+      "bytes": 2652,
+      "sha256": "72ccb2365ccf4803f1efd20480a7553a879a9145c7d38b59f8e9045627f05dae"
+    },
+    {
+      "path": "assets/images/ui/npc-icons/active.icon",
+      "bytes": 588,
+      "sha256": "e4d40b9dc644e4c6be26c7756c44350431ca4fd8a85bf8a492fe6100fd2f3dd2"
+    },
+    {
+      "path": "assets/images/ui/npc-icons/inactive.icon",
+      "bytes": 536,
+      "sha256": "86ad2729b05d655234cb4f41274fc3eb8da8164fb41695c56f65e883d721c6a0"
+    },
+    {
+      "path": "assets/images/ui/quests/cave.icon",
+      "bytes": 1148,
+      "sha256": "0a80e050ff5cef869a79d84e8aa97d1479047906882d3327d8d33dbdd67818bb"
+    },
+    {
+      "path": "assets/images/ui/quests/complete.icon",
+      "bytes": 1928,
+      "sha256": "2e351fdb94a66f380332accff78d4baacb5cf65e836d644d6972be31456608f4"
+    },
+    {
+      "path": "assets/images/ui/quests/flowerlady.icon",
+      "bytes": 1920,
+      "sha256": "fea15c331ea3d6c7afffd64a50ca314b4706bf4c1635b72320356daf3bd92cc2"
+    },
+    {
+      "path": "assets/images/ui/quests/frebi.icon",
+      "bytes": 2932,
+      "sha256": "080386cc89e53511c0905bf7d2fe059f4ae8cb8637f16f02fd6dddec6eff9ac2"
+    },
+    {
+      "path": "assets/images/ui/quests/frieb.icon",
+      "bytes": 2852,
+      "sha256": "771f3e4ffee7c4c6124b00a65fcb4c6fd7f3860a7044c42d661d9c8e8f1a6dd4"
+    },
+    {
+      "path": "assets/images/ui/quests/house.icon",
+      "bytes": 1440,
+      "sha256": "fb0e6ccba20c3dd80c53b58c861b21413f5616eff4da8a5c32f188e9aa112460"
+    },
+    {
+      "path": "assets/images/ui/quests/musician.icon",
+      "bytes": 2676,
+      "sha256": "4438a8ef5612cf7b9a47f57db8e68defde92175c972e3319a2bed93042b02c45"
+    },
+    {
+      "path": "assets/images/ui/quests/officeworker.icon",
+      "bytes": 1532,
+      "sha256": "8de96a010dc61d82ddf720d6ec20d7b5313bd42dc4f0559e6571b10c00c7ef58"
+    },
+    {
+      "path": "assets/images/ui/quests/temple.icon",
+      "bytes": 1784,
+      "sha256": "861fb9d1b52b10080ecd4e3ea7f8923f6854f50dc94d62cf6202c843b6e6ada1"
+    },
+    {
+      "path": "assets/images/ui/sidebuttons/list.icon",
+      "bytes": 2276,
+      "sha256": "b2f93afac0e13672d0062f2499114ab62eb662f8a0440f9ae11b7f2062ac71aa"
+    },
+    {
+      "path": "assets/images/ui/sidebuttons/poo.icon",
+      "bytes": 2000,
+      "sha256": "d59a9e625eb41a16851533c0e3a952affac1b414b4a13eb798bb260e690b7b47"
+    },
+    {
+      "path": "assets/images/ui/sidebuttons/sound-muted.icon",
+      "bytes": 1736,
+      "sha256": "26c30b006fec1ed9ccfedee7ec3bb9dcc51869a985baa05031fd7cabbf398b67"
+    },
+    {
+      "path": "assets/images/ui/sidebuttons/sound.icon",
+      "bytes": 1348,
+      "sha256": "056d67164a3d43da0a87af964ddccc250412eb75b50c305c103530b93c9c7893"
+    },
+    {
+      "path": "assets/images/ui/sidebuttons/t-shirt.icon",
+      "bytes": 1548,
+      "sha256": "adb7e0946d88dbe2eb8d498dfe31ec189e887ab94f0e839b90f826dc1f523af8"
+    },
+    {
+      "path": "assets/images/uv/uvchecker-srgb.ktx2",
+      "bytes": 298298,
+      "sha256": "a81fe1f0cf18ad16c22cccbf5283036f896a43d7b3f3ac31ea3fd83442e56349"
+    },
+    {
+      "path": "assets/images/water-noises-highq.ktx2",
+      "bytes": 212083,
+      "sha256": "133ab5d8d9ecf5965889a4b0d9f17758c21870b122a210ed17f6f72e5bcbb75a"
+    },
+    {
+      "path": "assets/libs/basis/basis_transcoder.js",
+      "bytes": 67059,
+      "sha256": "a7bb97ecab372f4ad63db3ae74fcfe5e436f0cce02646ec1d3c4feb8b898face"
+    },
+    {
+      "path": "assets/libs/basis/basis_transcoder.wasm",
+      "bytes": 472914,
+      "sha256": "57edc886080bbcda30a399c9d56efed5813335c8ac968a6f9bb080826c1d099c"
+    },
+    {
+      "path": "assets/libs/draco/draco_decoder.wasm",
+      "bytes": 285948,
+      "sha256": "2516a4e43526d71787bf2f678f951329f7f858f8f15f42d4bc9e370b31a0da3a"
+    },
+    {
+      "path": "assets/libs/draco/draco_wasm_wrapper.js",
+      "bytes": 58548,
+      "sha256": "873fb6375806d93b61c43ad49fc252cf487126b0130b669e6cd38ef4f8d1bcbd"
+    },
+    {
+      "path": "assets/libs/glyph/glyph.js",
+      "bytes": 13341,
+      "sha256": "3142796bd375d9b847d354e3870756433021fc5113d947096779e4a7e8f40ff5"
+    },
+    {
+      "path": "assets/libs/glyph/glyph.wasm",
+      "bytes": 107306,
+      "sha256": "0f249465a38a9af8f98523c23b45d4e538e5a6530b30e70860d2e725f91f0d5d"
+    },
+    {
+      "path": "assets/msdfworker-DGxypdow.js",
+      "bytes": 3543,
+      "sha256": "b60b254e0a52fe94b5a920314af55ea80762971c3ff84fc562b9625ea4230285"
+    },
+    {
+      "path": "assets/style-BgpnrCnL.css",
+      "bytes": 1493,
+      "sha256": "9f4eecf7a0f3f57040ef6d0154ad383eb4df76fa51d8f288372e790e701ea277"
+    },
+    {
+      "path": "assets/webgl-CS4l6lxD.js",
+      "bytes": 3817,
+      "sha256": "5b90d83ceccf7a770955637e8d5944f14877ccc7fd6ee390a16148f626bebe91"
+    },
+    {
+      "path": "index.html",
+      "bytes": 1548,
+      "sha256": "0b750d5480c54b3b86b1c8a5ea2b4ed7894c4530f188741c936ad89bedbb9e15"
+    }
+  ],
+  "totalBytes": 28878404
+}

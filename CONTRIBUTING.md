@@ -4,7 +4,7 @@
 
 1. Node 22 (`nvm use`) and pnpm 9 (`npm i -g pnpm@9`).
 2. `pnpm install`
-3. `cp .env.example .env` and `cp .env apps/web/.env.local`; get values from the team's shared secrets.
+3. `cp .env.example .env` and `cp .env frontend/web/.env.local`; get values from the team's shared secrets.
 4. `pnpm dev` - web on http://localhost:3000, api on http://localhost:4000 (`/health`).
 
 ## Workflow
@@ -18,4 +18,4 @@
 ## Rules
 
 - No secrets in git. Add new variables to `.env.example`.
-- Shared types/schemas go in `packages/shared`.
+- Shared types/schemas go in `shared`.
