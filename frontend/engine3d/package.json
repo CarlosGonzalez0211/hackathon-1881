@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@athena/shared": "workspace:*",
-    "meshoptimizer": "^1.3.0"
+    "meshoptimizer": "^1.3.0",
+    "@athena/brand": "workspace:*"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.5.1",

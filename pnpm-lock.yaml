@@ -97,6 +97,9 @@ importers:
 
   frontend/engine3d:
     dependencies:
+      '@athena/brand':
+        specifier: workspace:*
+        version: link:../brand
       '@athena/shared':
         specifier: workspace:*
         version: link:../../shared

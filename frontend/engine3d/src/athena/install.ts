@@ -30,6 +30,9 @@ import {
   fitToBounds,
   snapToGround,
 } from "../placement/athena-placement";
+import { createAthenaToon } from "../materials/athena-toon-material";
+import { ensureAthenaThreeClasses } from "../materials/three-shims";
+import type { AthenaToon } from "../materials/athena-toon-material";
 import type { LegacyContext } from "../runtime/legacy-context";
 import type { EngineLifecycle } from "../runtime/lifecycle";
 
@@ -48,6 +51,8 @@ export interface AthenaInstallContext {
   readonly enabled: boolean;
   /** Owns timers/listeners/frames/workers of this engine instance. */
   readonly lifecycle: EngineLifecycle;
+  /** Shared toon + ink conversion (one gradient map and ink material per engine). */
+  readonly toon: AthenaToon;
   readonly placement: {
     readonly overrides: typeof athenaPlacementOverrides;
     readonly fitToBounds: typeof fitToBounds;
@@ -105,6 +110,9 @@ export async function installAthena(
     gltfAvailable = false;
   }
   const installed: string[] = [];
+  ensureAthenaThreeClasses(scope);
+  const toon = createAthenaToon(scope);
+  disposers.push(() => toon.dispose());
   const installation: AthenaInstallation = {
     scope,
     gltf,
@@ -113,6 +121,7 @@ export async function installAthena(
     resolveForLoader,
     enabled: gltfAvailable && options.athenaAssets && isAthenaAssetsEnabled(),
     lifecycle: options.lifecycle,
+    toon,
     placement: { overrides: athenaPlacementOverrides, fitToBounds, snapToGround, debugBounds },
     onDispose: (callback) => disposers.push(callback),
     installed,
