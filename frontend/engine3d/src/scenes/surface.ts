@@ -23,6 +23,8 @@ export interface SurfaceOptions {
   onProjection?: (houses: ProjectedHouse[]) => void;
   onStats?: (stats: EngineStats) => void;
   onReady?: () => void;
+  /** Resolve assets through the Athena manifest first (default true). */
+  athenaAssets?: boolean;
 }
 export interface SurfaceHandle {
   update(state: PlanetState): void;
@@ -42,7 +44,7 @@ export async function createSurfaceEngine(
   host: HTMLElement,
   options: SurfaceOptions,
 ): Promise<SurfaceHandle> {
-  const { scope, lifecycle } = await createEngineContext();
+  const { scope, lifecycle } = await createEngineContext({ athenaAssets: options.athenaAssets });
   let state = options.state;
   let disposed = false;
   let controller: LegacyContext | undefined;

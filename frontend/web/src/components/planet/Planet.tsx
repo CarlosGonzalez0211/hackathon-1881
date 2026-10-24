@@ -66,6 +66,7 @@ function SurfacePlanet({
         const instance = await createSurfaceEngine(host.current, {
           state,
           signal: abort.signal,
+          athenaAssets: process.env.NEXT_PUBLIC_ATHENA_ASSETS !== "false",
           onHouseClick: (house) => callbacks.current.onHouseClick?.(house),
           onStats: (stats) => callbacks.current.onStats?.(stats),
           onProjection: (points) => {
@@ -160,6 +161,7 @@ export function OrbitCanvas({
         if (abort.signal.aborted) return;
         const instance = await createOrbitEngine(host.current, states, {
           signal: abort.signal,
+          athenaAssets: process.env.NEXT_PUBLIC_ATHENA_ASSETS !== "false",
           onPlanetClick: (planet) => callbacks.current.onPlanetClick?.(planet),
           onStats: (stats) => callbacks.current.onStats?.(stats),
           onProjection: (next) => {

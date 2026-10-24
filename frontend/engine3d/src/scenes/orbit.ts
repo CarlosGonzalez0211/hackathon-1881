@@ -14,6 +14,8 @@ export interface OrbitOptions {
   onPlanetClick?: (planet: PlanetState) => void;
   onProjection?: (planets: ProjectedPlanet[]) => void;
   onStats?: (stats: EngineStats) => void;
+  /** Resolve assets through the Athena manifest first (default true). */
+  athenaAssets?: boolean;
 }
 /** One shared canvas/renderer and geometry cache, regardless of planet count. */
 export async function createOrbitEngine(
@@ -21,7 +23,7 @@ export async function createOrbitEngine(
   initial: PlanetState[],
   options: OrbitOptions = {},
 ) {
-  const { scope, lifecycle } = await createEngineContext();
+  const { scope, lifecycle } = await createEngineContext({ athenaAssets: options.athenaAssets });
   let disposed = false;
   let states = initial;
   const objects: LegacyContext[] = [];
