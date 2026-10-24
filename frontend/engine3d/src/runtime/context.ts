@@ -2,6 +2,8 @@ import { EngineLifecycle } from "./lifecycle";
 import type { LegacyContext } from "./legacy-context";
 import { configureRecoveredEngine } from "./configuration";
 import { loadAthenaManifest, setAthenaAssetsEnabled } from "../assets/athena-manifest";
+import { installAthena } from "../athena/install";
+import "../athena/systems";
 
 export interface EngineContextOptions {
   /** Resolve assets through the Athena manifest (`/athena/`) before legacy. Default true. */
@@ -32,6 +34,8 @@ export async function createEngineContext(options: EngineContextOptions = {}) {
       throw new Error("WebGL2 no está disponible. Puedes utilizar la lista de temas.");
     configureRecoveredEngine(scope, { athenaAssets, lifecycle });
     console.info("[Athena] authoring configuration applied");
+    // Registered Athena systems (src/athena/systems.ts) patch on top of the overrides above.
+    await installAthena(scope, { lifecycle, athenaAssets });
     return { scope, lifecycle, athenaAssets };
   } catch (error) {
     lifecycle.dispose();
@@ -43,6 +47,7 @@ export function disposeEngineContext(scope: LegacyContext, lifecycle: EngineLife
   // Stop scheduling first; no callbacks may re-create resources during teardown.
   lifecycle.dispose();
   for (const callback of [
+    () => scope.athena?.dispose(),
     () => scope.events$1?.emit("render_active", false),
     () => scope.global$1?.dispose({ renderer: true, input: true, audioContext: true }),
     () => scope.client$1?.dispose(),
