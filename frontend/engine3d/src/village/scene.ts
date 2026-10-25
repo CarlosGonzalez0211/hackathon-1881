@@ -6,6 +6,7 @@ import type { LegacyContext } from "../runtime/legacy-context";
 import { createWater } from "./water";
 import { createTerrain } from "./terrain";
 import { paintMaterial, windMaterial } from "./look";
+import { dressHouse } from "./houses-look";
 import { buildAmbience, createBanners } from "./ambience";
 import { createGroves, createMeadows, createCloudBelt } from "./botanical";
 import { createLivingLandmarks } from "./landscape-life";
@@ -134,7 +135,7 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
     locked: { base: 0, flicker: 0 },
     available: { base: 0.9, flicker: 0.08 },
     in_progress: { base: 1.7, flicker: 0.35 },
-    done: { base: 2.6, flicker: 0.12 },
+    done: { base: 2.2, flicker: 0.12 },
   };
   function lightWindows(slot: number, model: AthenaModel, status: string) {
     const materials: { material: LegacyContext; weight: number }[] = [];
@@ -142,18 +143,23 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
       if (!part.isMesh) return;
       for (const material of Array.isArray(part.material) ? part.material : [part.material]) {
         const name = String(material?.name);
-        // Windows carry the glow; beacons and gilt trim only accent it.
+        // Windows carry the glow; lanterns follow, beacons, gilt trim and vine buds accent it.
         const weight = /window_glow/.test(name)
           ? 1
-          : /beacon/.test(name)
-            ? 0.35
-            : /gilt/.test(name)
-              ? 0.2
-              : 0;
+          : /lantern_glow/.test(name)
+            ? 0.6
+            : /beacon/.test(name)
+              ? 0.35
+              : /gilt/.test(name)
+                ? 0.2
+                : /vine_bloom/.test(name)
+                  ? 0.15
+                  : 0;
         if (weight && material.emissive) materials.push({ material, weight });
       }
     });
     const lamp = LAMP[status] ?? LAMP.available!;
+    dressHouse(model, status, breeze);
     lamps.set(slot, { materials, ...lamp });
     for (const { material, weight } of materials) material.emissiveIntensity = lamp.base * weight;
   }
