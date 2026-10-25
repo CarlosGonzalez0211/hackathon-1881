@@ -29,8 +29,16 @@ float athenaHem = smoothstep(0.84, 0.86, vClothUv.y) * (1.0 - smoothstep(0.9, 0.
 vec2 athenaCell = vec2(fract(vClothUv.x * 6.0) - 0.5, vClothUv.y - 0.7);
 float athenaStar = 1.0 - smoothstep(0.03, 0.05, abs(athenaCell.x) + abs(athenaCell.y) * 1.6);
 totalEmissiveRadiance += uClothGlow * (athenaHem + athenaStar * 0.8);
-// Thin cloth transmits the low sun: backlit capes glow in their own colour.
-totalEmissiveRadiance += diffuseColor.rgb * 0.32;`;
+// Thin cloth transmits the low sun: with the sun behind the wearer the cape glows in its own
+// colour, warmed by the light passing through, and stays softly lit from the front.
+vec3 athenaSun = normalize(vec3(-0.4, 0.8, 0.6));
+#if NUM_DIR_LIGHTS > 0
+  athenaSun = directionalLights[0].direction;
+#endif
+vec3 athenaView = normalize(vViewPosition);
+float athenaThrough = pow(clamp(dot(athenaSun, -athenaView) * 0.5 + 0.5, 0.0, 1.0), 2.0);
+float athenaThin = 1.0 - 0.45 * abs(dot(normalize(normal), athenaSun));
+totalEmissiveRadiance += diffuseColor.rgb * (0.2 + 0.62 * athenaThrough * athenaThin) * mix(vec3(1.0), vec3(1.12, 0.92, 0.7), athenaThrough);`;
 
 function capeGeometry(s: LegacyContext, width: number, length: number) {
   const columns = 10,
@@ -68,26 +76,61 @@ function capeGeometry(s: LegacyContext, width: number, length: number) {
   return geometry;
 }
 
-/** The most saturated outfit colour (tops first), so each cape belongs to its wearer. */
+/**
+ * The cape colour of a wearer. Characters are vertex-coloured: the mantle (`athena_style` 5)
+ * names it outright; otherwise the cloth (style 4 or woven 7). Either way the colour is the
+ * dominant hue (the most vertices of one of twelve hue bins, near-greys ignored), so a gold hem
+ * or a pale lining never outvotes the body of the garment.
+ */
 export function outfitColour(s: LegacyContext, root: LegacyContext) {
-  let best: LegacyContext | undefined,
-    score = -1;
+  const bins = (): { r: number; g: number; b: number; n: number }[] =>
+    Array.from({ length: 12 }, () => ({ r: 0, g: 0, b: 0, n: 0 }));
+  const mantle = bins();
+  const cloth = bins();
+  const tint = new s.Color();
   const hsl = { h: 0, s: 0, l: 0 };
   root.traverse((mesh: LegacyContext) => {
     if (!mesh.isMesh) return;
-    for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
-      if (!material?.color) continue;
-      const name = String(material.name ?? "");
-      if (/skin|hair|eye|blush|lips|sole|shoe|paper|ink/.test(name)) continue;
-      material.color.getHSL(hsl);
-      const value = hsl.s * (1 - Math.abs(hsl.l - 0.45)) + (/^top/.test(name) ? 0.3 : 0);
-      if (value > score) {
-        score = value;
-        best = material.color;
+    const colors = mesh.geometry?.attributes?.color;
+    const styles = mesh.geometry?.attributes?._athena_style;
+    if (colors && styles) {
+      for (let i = 0; i < colors.count; i++) {
+        const style = Math.round(styles.getX(i));
+        if (style !== 5 && style !== 4 && style !== 7) continue;
+        tint.setRGB(colors.getX(i), colors.getY(i), colors.getZ(i));
+        tint.getHSL(hsl);
+        if (hsl.s < 0.12) continue;
+        const bin = (style === 5 ? mantle : cloth)[Math.min(11, Math.floor(hsl.h * 12))]!;
+        bin.r += tint.r;
+        bin.g += tint.g;
+        bin.b += tint.b;
+        bin.n++;
       }
+      return;
+    }
+    // Legacy models without painted categories: the saturated material colours.
+    for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      if (
+        !material?.color ||
+        /skin|hair|eye|blush|lips|sole|shoe|paper|ink/.test(String(material.name ?? ""))
+      )
+        continue;
+      material.color.getHSL(hsl);
+      if (hsl.s < 0.12) continue;
+      const bin = cloth[Math.min(11, Math.floor(hsl.h * 12))]!;
+      bin.r += material.color.r;
+      bin.g += material.color.g;
+      bin.b += material.color.b;
+      bin.n++;
     }
   });
-  return best ? new s.Color().copy(best) : new s.Color("#b5432f");
+  const dominant = (list: { r: number; g: number; b: number; n: number }[]) =>
+    list.reduce((best, bin) => (bin.n > best.n ? bin : best), list[0]!);
+  const mantleBin = dominant(mantle);
+  const pick = mantleBin.n > 0 ? mantleBin : dominant(cloth);
+  return pick.n > 0
+    ? new s.Color(pick.r / pick.n, pick.g / pick.n, pick.b / pick.n)
+    : new s.Color("#b5432f");
 }
 
 /**
@@ -143,7 +186,7 @@ export function dressWithCloth(
         `#include <emissivemap_fragment>\n${CLOTH_FRAGMENT}`,
       );
   };
-  cloth.customProgramCacheKey = () => `${previousKey()}-cloth-v1`;
+  cloth.customProgramCacheKey = () => `${previousKey()}-cloth-v2`;
   ctx.onDispose(() => {
     cloth.dispose();
     base.dispose();
@@ -158,17 +201,27 @@ export function dressWithCloth(
   const parent =
     root.getObjectByName("chest") ?? root.getObjectByName("torso") ?? root.getObjectByName("body");
   root.updateMatrixWorld(true);
-  // Shoulder line on the garment itself, never on satchels, books or packs that stick out:
-  // the cloth must lie against the back, not hover behind the widest prop.
-  const garment = root.getObjectByName("shirt") ?? root.getObjectByName("top_detail") ?? parent;
-  const back = garment ? new s.Box3().setFromObject(garment) : undefined;
-  back?.applyMatrix4(root.matrixWorld.clone().invert());
-  const torsoTop = back && !back.isEmpty() ? back.max.y : bounds.min.y + height * 0.74;
-  const anchor = new s.Vector3(
-    0,
-    Math.min(torsoTop - height * 0.03, bounds.min.y + height * 0.76),
-    back && !back.isEmpty() ? back.min.z + height * 0.012 : bounds.min.z,
-  );
+  // The rig's `chest` node sits on the shoulder line at the back of the torso: the cape hangs
+  // from it, never from satchels or packs that stick out. Legacy models without a chest node
+  // fall back to the garment bounds.
+  const chest = root.getObjectByName("chest");
+  const rootInverse = root.matrixWorld.clone().invert();
+  let anchor: LegacyContext;
+  if (chest) {
+    anchor = chest.getWorldPosition(new s.Vector3()).applyMatrix4(rootInverse);
+    anchor.x = 0;
+    anchor.z -= height * 0.014;
+  } else {
+    const garment = root.getObjectByName("shirt") ?? root.getObjectByName("top_detail") ?? parent;
+    const back = garment ? new s.Box3().setFromObject(garment) : undefined;
+    back?.applyMatrix4(rootInverse);
+    const torsoTop = back && !back.isEmpty() ? back.max.y : bounds.min.y + height * 0.74;
+    anchor = new s.Vector3(
+      0,
+      Math.min(torsoTop - height * 0.03, bounds.min.y + height * 0.76),
+      back && !back.isEmpty() ? back.min.z + height * 0.012 : bounds.min.z,
+    );
+  }
   if (parent) {
     const world = anchor.clone().applyMatrix4(root.matrixWorld);
     parent.add(mesh);
