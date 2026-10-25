@@ -67,18 +67,33 @@ export function applyCharacterLook(ctx: AthenaInstallContext, root: LegacyContex
             }
             // Woven motifs recolour the already lit painterly result.
             outgoingLight *= base/max(diffuseColor.rgb,vec3(.02));
-            float facing = max(0.0,dot(normal,normalize(vViewPosition)));
-            // Skin scatters warm light into its shade, like backlit cheeks and ears.
-            outgoingLight += base*vec3(.24,.09,.05)*skin*(1.0-facing*.55);
-            vec3 halfLight = normalize(lightDir+normalize(vViewPosition));
-            float sheen = pow(max(0.0,dot(normal,halfLight)),24.0)*hair;
-            outgoingLight += base*sheen*.12;
+            vec3 viewDir = normalize(vViewPosition);
+            float facing = max(0.0,dot(normal,viewDir));
+            float towardSun = dot(normal,lightDir);
+            // Skin scatters the sun's warmth into its terminator (wrap lighting) and, with
+            // the sun behind the head, glows warm along the silhouette like thin ears and cheeks.
+            float wrap = clamp((towardSun+.35)/1.35,0.0,1.0);
+            float terminator = smoothstep(.05,.45,wrap)*(1.0-smoothstep(.45,.9,wrap));
+            float backlit = pow(clamp(dot(lightDir,-viewDir)*.5+.5,0.0,1.0),2.0);
+            float rim = pow(1.0-facing,2.6);
+            outgoingLight += base*vec3(.22,.08,.04)*skin*terminator;
+            outgoingLight += base*vec3(.34,.16,.07)*(skin+hair*.6)*rim*backlit*1.4;
+            outgoingLight += base*vec3(.05,.02,.01)*skin*(1.0-facing*.6);
+            // Hair: a tight pale lobe plus a broad coloured lobe shifted along the strands.
+            vec3 halfLight = normalize(lightDir+viewDir);
+            float lobeA = pow(max(0.0,dot(normal,halfLight)),70.0);
+            float lobeB = pow(max(0.0,dot(normalize(normal+vec3(0.,.3,0.)),halfLight)),12.0);
+            outgoingLight += (vec3(1.,.95,.86)*lobeA*.2+base*base*lobeB*.14)*hair;
+            // Eyes read their ink colour, with a bright catchlight from the sun and a faint fill.
+            float catchlight = pow(max(0.0,dot(normal,halfLight)),180.0);
+            float fill = pow(max(0.0,dot(normal,normalize(vec3(.5,-.3,.8)))),60.0);
             outgoingLight = mix(outgoingLight,base*1.05,eye*.9);
+            outgoingLight += vec3(1.,.97,.9)*(catchlight*.9+fill*.14)*eye;
             #include <opaque_fragment>
           `,
           );
       };
-      material.customProgramCacheKey = () => "athena-character-luminous-v1";
+      material.customProgramCacheKey = () => "athena-character-luminous-v2";
       cache.set(source, material);
       const owned = material;
       ctx.onDispose(() => owned.dispose());

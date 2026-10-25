@@ -90,16 +90,13 @@ Storybook environment upgrade:
 
 Character art pass:
 
-- `scripts/refine-characters.mjs` authors smoother faces, small storybook eyes,
-  swept Bezier hair locks, tailored cloth profiles, thumbs and sculpted boots into the
-  built GLBs. Source kit files remain intact. Its content hash invalidates the build cache.
-- Knees and elbows are new rig sockets in both the base and outfit parts. Derived clip
-  channels articulate them during walk, sprint, jump and sitting, while hair follows
-  the head and moves slightly with locomotion. Blinking plays on a separate face node.
-- `scripts/story-explorer.mjs` gives the student an open hood, ochre poncho, trousers,
-  hiking boots, canvas backpack, bedroll, maps, lantern and field journal. Gear attaches
-  to the head, torso and articulated hands. Poncho motifs use a separate UV attribute
-  and fragment shading, keeping their borders crisp during movement.
+- The cast is sculpted headlessly by `athena-assets/code/families/characters.mjs` (forms in
+  `rig/forms.mjs`, clothes and props in `rig/wardrobe.mjs`, node tree and the
+  `RIG_CONTRACT` in `rig/skeleton.mjs`, clips in `rig/clips.mjs`). The retired
+  `refine-characters` and `story-explorer` build passes no longer exist.
+- Knees and elbows are rig nodes in the base and in every outfit part; clips articulate them
+  during walk, sprint, jump and sitting. Blinking plays on a separate face node. The student's
+  hood, ochre poncho, boots, satchel, scarf, lantern staff and journal come from the outfit parts.
 - `athena/character-look.ts` shades material categories carried through batching in a
   custom vertex attribute. Warm skin shadows, quieter ink and soft hair highlights
   are limited to characters. Character faces avoid low resolution shadow-map acne.

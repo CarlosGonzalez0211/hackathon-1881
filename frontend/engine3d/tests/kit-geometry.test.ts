@@ -88,14 +88,20 @@ for (const file of files) {
     assert.ok(triangles > 0);
     assert.ok(degenerate / triangles <= 0.02, `${degenerate}/${triangles} degenerate triangles`);
 
-    // Contract: pivot at the base centre, +Y up.
-    const bounds = getBounds(root.listScenes()[0]!);
-    const size = bounds.max.map((v, i) => v - bounds.min[i]!);
-    const largest = Math.max(...size);
-    assert.ok(Math.abs(bounds.min[1]) <= 0.02 * size[1]! + 1e-4, `base at y=${bounds.min[1]}`);
-    for (const axis of [0, 2]) {
-      const centre = (bounds.max[axis]! + bounds.min[axis]!) / 2;
-      assert.ok(Math.abs(centre) <= 0.05 * largest, `axis ${axis} centred (${centre})`);
+    // Contract: pivot at the base centre, +Y up. Avatar outfit parts are slices of a body that
+    // is grafted onto the base (a hair cap floats at head height, a sleeve hangs off-centre),
+    // so only whole models are grounded.
+    const outfitPart =
+      file.replaceAll("\\", "/").includes("/avatar/athena-avatar-") && !file.endsWith("-base.glb");
+    if (!outfitPart) {
+      const bounds = getBounds(root.listScenes()[0]!);
+      const size = bounds.max.map((v, i) => v - bounds.min[i]!);
+      const largest = Math.max(...size);
+      assert.ok(Math.abs(bounds.min[1]) <= 0.02 * size[1]! + 1e-4, `base at y=${bounds.min[1]}`);
+      for (const axis of [0, 2]) {
+        const centre = (bounds.max[axis]! + bounds.min[axis]!) / 2;
+        assert.ok(Math.abs(centre) <= 0.05 * largest, `axis ${axis} centred (${centre})`);
+      }
     }
 
     // The asset build switches on these document extras.
