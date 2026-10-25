@@ -1,4 +1,8 @@
 import type { PlanetState } from "@athena/shared";
+import { buildAthenaOrbit } from "../athena/orbit";
+import type { AthenaInstallation } from "../athena/install";
+import { orbitLayout } from "../config/orbit";
+import type { PlanetKind } from "../config/orbit";
 import { createEngineContext, disposeEngineContext } from "../runtime/context";
 import type { LegacyContext } from "../runtime/legacy-context";
 import type { EngineStats } from "./surface";
@@ -14,6 +18,10 @@ export interface OrbitOptions {
   onPlanetClick?: (planet: PlanetState) => void;
   onProjection?: (planets: ProjectedPlanet[]) => void;
   onStats?: (stats: EngineStats) => void;
+  /** Resolve assets through the Athena manifest first (default true). */
+  athenaAssets?: boolean;
+  /** Student planet look for the class (Athena only). Default `earth`. */
+  planetKind?: PlanetKind | ((state: PlanetState, index: number) => PlanetKind);
 }
 /** One shared canvas/renderer and geometry cache, regardless of planet count. */
 export async function createOrbitEngine(
@@ -21,7 +29,7 @@ export async function createOrbitEngine(
   initial: PlanetState[],
   options: OrbitOptions = {},
 ) {
-  const { scope, lifecycle } = await createEngineContext();
+  const { scope, lifecycle } = await createEngineContext({ athenaAssets: options.athenaAssets });
   let disposed = false;
   let states = initial;
   const objects: LegacyContext[] = [];
@@ -43,6 +51,77 @@ export async function createOrbitEngine(
       adaptiveDPR: false,
       shadowMap: false,
     });
+    const athena = scope.athena as AthenaInstallation | undefined;
+    if (athena?.enabled) {
+      const scene = new scope.Scene();
+      scene.background = new scope.Color(orbitLayout.background);
+      const camera = new scope.PerspectiveCamera(
+        42,
+        host.clientWidth / host.clientHeight,
+        0.1,
+        200,
+      );
+      camera.position.set(0, 9.5, 19);
+      camera.lookAt(0, orbitLayout.sunHeight, 0);
+      scope.global$1.renderPass.scene = scene;
+      scope.global$1.renderPass.camera = camera;
+      const orbit = await buildAthenaOrbit(athena, initial, { planetKind: options.planetKind });
+      if (disposed) throw new DOMException("Aborted", "AbortError");
+      scene.add(orbit.root);
+      const raycaster = new scope.Raycaster();
+      const mouse = new scope.Vector2();
+      const point = new scope.Vector3();
+      lifecycle.listen(scope.global$1.renderer.domElement, "pointerup", ((event: PointerEvent) => {
+        const rect = host.getBoundingClientRect();
+        mouse.set(
+          ((event.clientX - rect.left) / rect.width) * 2 - 1,
+          (-(event.clientY - rect.top) / rect.height) * 2 + 1,
+        );
+        raycaster.setFromCamera(mouse, camera);
+        const studentId = orbit.pick(raycaster);
+        const selected = states.find((state) => state.studentId === studentId);
+        if (selected) options.onPlanetClick?.(selected);
+      }) as EventListener);
+      lifecycle.listen(window, "resize", () => {
+        camera.aspect = host.clientWidth / host.clientHeight;
+        camera.updateProjectionMatrix();
+      });
+      let last = 0;
+      scope.events$1.on("prerender", () => {
+        orbit.tick(scope.renderInfo.time);
+        if (scope.renderInfo.time - last < 0.1) return;
+        last = scope.renderInfo.time;
+        options.onProjection?.(
+          states.map((state) => {
+            point.copy(orbit.positions.get(state.studentId) ?? point).project(camera);
+            return {
+              studentId: state.studentId,
+              x: ((point.x + 1) * host.clientWidth) / 2,
+              y: ((1 - point.y) * host.clientHeight) / 2,
+              visible: point.z < 1,
+            };
+          }),
+        );
+        options.onStats?.({
+          fps: scope.renderInfo.averageFPS || 0,
+          drawCalls: scope.global$1.renderer.info.render.calls,
+          triangles: scope.global$1.renderer.info.render.triangles,
+          planets: states.length,
+        });
+      });
+      scope.events$1.emit("render_active", true);
+      return {
+        update(next: PlanetState[]) {
+          states = next;
+          orbit.update(next);
+        },
+        dispose,
+        get resourceCounts() {
+          return lifecycle.counts;
+        },
+      };
+    }
+    // Legacy Messenger planets (athenaAssets: false): kept for A/B comparison.
     const scene = new scope.Scene();
     scene.background = new scope.Color("#172f3a");
     const camera = new scope.PerspectiveCamera(42, host.clientWidth / host.clientHeight, 0.1, 400);

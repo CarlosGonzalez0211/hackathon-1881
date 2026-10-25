@@ -3,18 +3,18 @@ import { analyticsRoutes } from "@athena/analytics";
 import { curriculumRoutes } from "@athena/curriculum";
 import { learningRoutes } from "@athena/learning";
 import { platformRoutes } from "@athena/platform";
+import { worldRoutes } from "@athena/world";
+import { analyticsOptionsFor } from "./analytics.js";
 
 /**
  * One line per subsystem module. Each module edits only its own entry, so the app composition
  * never becomes a merge-conflict magnet. Modules register inside the `/api` prefix and read
  * shared services from `app.platform`.
- *
- * World (P3) is not listed yet: add `{ name: "world", plugin: worldRoutes }` from `@athena/world`
- * when that module merges.
  */
 export const modulePlugins: { name: string; plugin: (app: FastifyInstance) => Promise<void> }[] = [
   { name: "platform", plugin: platformRoutes },
   { name: "curriculum", plugin: curriculumRoutes },
   { name: "learning", plugin: learningRoutes },
-  { name: "analytics", plugin: analyticsRoutes },
+  { name: "analytics", plugin: (app) => analyticsRoutes(app, analyticsOptionsFor()) },
+  { name: "world", plugin: worldRoutes },
 ];

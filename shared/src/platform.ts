@@ -6,10 +6,15 @@ export const roleSchema = z.enum(["student", "professor", "admin"]);
 export type Role = z.infer<typeof roleSchema>;
 
 export const authContextSchema = z.object({
+  /** The caller's profile id (not the Supabase auth user id). */
   userId: idSchema,
+  displayName: z.string(),
   role: roleSchema,
+  /** Professor: classes they teach. Student: classes they are enrolled in. */
   classIds: z.array(idSchema),
   courseIds: z.array(idSchema),
+  /** Professor: students enrolled in their classes. Student: just themselves. */
+  studentIds: z.array(idSchema),
 });
 export type AuthContext = z.infer<typeof authContextSchema>;
 
