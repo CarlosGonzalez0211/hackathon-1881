@@ -23,9 +23,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
     vec3 ray = normalize(world - uCameraWorld[3].xyz);
     float altitude = max(0.0, length(world) - uRadius);
     float amount = 1.0 - exp(-max(0.0, length(viewPos) - uHazeStart) * uHazeDensity);
-    amount *= exp(-altitude * 0.055);
+    amount *= exp(-altitude * 0.09);
     float toSun = pow(max(0.0, dot(ray, uSun)), 6.0);
-    vec3 haze = mix(uHaze, uHazeSun * 1.35, toSun);
+    vec3 haze = mix(uHaze, uHazeSun * 1.1, toSun);
     color = mix(color, haze, clamp(amount, 0.0, uHazeMax));
   }
   // Screen-space light shafts: march towards the sun and count unoccluded sky samples.
@@ -115,9 +115,9 @@ export function createLuminousGrade(
     uSun: new s.Uniform(new s.Vector3(0, 1, 0)),
     uHaze: new s.Uniform(new s.Color(LUMINOUS.haze)),
     uHazeSun: new s.Uniform(new s.Color(LUMINOUS.hazeSun)),
-    uHazeStart: new s.Uniform(16),
-    uHazeDensity: new s.Uniform(0.016),
-    uHazeMax: new s.Uniform(0.6),
+    uHazeStart: new s.Uniform(30),
+    uHazeDensity: new s.Uniform(0.007),
+    uHazeMax: new s.Uniform(0.42),
     uRadius: new s.Uniform(RADIUS),
     uSunScreen: new s.Uniform(new s.Vector2(0.5, 0.8)),
     uShafts: new s.Uniform(0),
@@ -146,10 +146,10 @@ export function createLuminousGrade(
     }
     bloom?.dispose();
     bloom = new s.BloomEffect({
-      luminanceThreshold: 1.15,
+      luminanceThreshold: 1.3,
       luminanceSmoothing: 0.4,
-      intensity: tier === "high" ? 0.75 : 0.6,
-      radius: 0.8,
+      intensity: tier === "high" ? 0.55 : 0.45,
+      radius: 0.62,
       levels: tier === "high" ? 7 : 5,
       mipmapBlur: true,
     });
@@ -180,11 +180,11 @@ export function createLuminousGrade(
       cam.getWorldDirection(cameraForward);
       const facing = cameraForward.dot(sunPoint.set(...sun));
       hazeUniforms.uShafts.value =
-        tier === "high" && !overview ? 0.38 * Math.max(0, Math.min(1, (facing - 0.05) / 0.4)) : 0;
+        tier === "high" && !overview ? 0.26 * Math.max(0, Math.min(1, (facing - 0.05) / 0.4)) : 0;
       hazeUniforms.uInvProjection.value.copy(cam.projectionMatrixInverse);
       hazeUniforms.uCameraWorld.value.copy(cam.matrixWorld);
-      hazeUniforms.uHazeStart.value = overview ? 44 : 16;
-      hazeUniforms.uHazeDensity.value = overview ? 0.01 : 0.016;
+      hazeUniforms.uHazeStart.value = overview ? 60 : 30;
+      hazeUniforms.uHazeDensity.value = overview ? 0.004 : 0.007;
     },
     downgrade() {
       if (tier === "low") return;

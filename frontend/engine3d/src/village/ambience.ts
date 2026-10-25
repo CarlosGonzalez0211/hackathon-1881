@@ -1,4 +1,5 @@
 import type { AthenaInstallContext } from "../athena/install";
+import { roundedBox } from "./geometry";
 import type { LegacyContext } from "../runtime/legacy-context";
 import { ClipPlayer, loadAthenaModel } from "../athena/models";
 import {
@@ -171,7 +172,7 @@ export function createBanners(
     group.name = "athena-topic-banner";
     group.position.set(...surfacePoint(up));
     orient(group, up, plot.forward);
-    const pole = new s.Mesh(new s.BoxGeometry(0.07, 2.9, 0.07), poleMaterial);
+    const pole = new s.Mesh(roundedBox(s, 0.07, 2.9, 0.07), poleMaterial);
     pole.position.y = 1.45;
     pole.castShadow = true;
     const clothGeometry = new s.PlaneGeometry(1.1, 0.7, 12, 6);

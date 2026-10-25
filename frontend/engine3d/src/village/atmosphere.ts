@@ -49,9 +49,9 @@ export function createAtmosphere(ctx: AthenaInstallContext, scene: LegacyContext
         vec3 color=mix(horizon,middle,smoothstep(0.0,.28,up));
         color=mix(color,zenith,smoothstep(.22,1.0,up));
         // Mie halo and sun disc in HDR.
-        color+=vec3(1.0,.62,.32)*pow(facing,6.0)*.35;
-        color+=vec3(1.0,.78,.5)*pow(facing,48.0)*1.6;
-        color=mix(color,vec3(7.0,5.4,3.6),smoothstep(.9986,.9993,facing));
+        color+=vec3(1.0,.62,.32)*pow(facing,8.0)*.22;
+        color+=vec3(1.0,.78,.5)*pow(facing,64.0)*.9;
+        color=mix(color,vec3(4.2,3.4,2.4),smoothstep(.9986,.9993,facing));
         // Lit cumulus: soft fbm masses with sun-facing silver linings and violet undersides.
         vec2 uv=vec2(dot(ray,uRight),dot(ray,uForward))/(max(.06,h)+.35);
         vec2 flow=uv*1.6+vec2(uTime*.006,uTime*.002);

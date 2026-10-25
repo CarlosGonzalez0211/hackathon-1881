@@ -127,8 +127,8 @@ export async function createSurfaceEngine(
     grade = createLuminousGrade(s, renderer, scene, camera, tier);
     if (grade.composed) {
       // The depth haze carries aerial perspective; scene fog only softens the far edge.
-      scene.fog.near = 70;
-      scene.fog.far = 230;
+      scene.fog.near = 120;
+      scene.fog.far = 260;
     }
     resize();
     const observer = new ResizeObserver(resize);
@@ -412,8 +412,8 @@ export async function createSurfaceEngine(
         .add(new s.Vector3(...add(mul(walker.up, 12), mul(walker.forward, 18))));
       fill.target.position.copy(avatarRoot.position);
       fill.target.updateMatrixWorld();
-      scene.fog.near = overview ? 120 : grade!.composed ? 70 : 30;
-      scene.fog.far = overview ? 230 : grade!.composed ? 230 : 105;
+      scene.fog.near = overview ? 140 : grade!.composed ? 120 : 30;
+      scene.fog.far = overview ? 260 : grade!.composed ? 260 : 105;
       atmosphere.tick(camera, walker.up, walker.forward, now / 1000, reduced, overview);
       for (let i = rewards.length - 1; i >= 0; i--) {
         const reward = rewards[i]!;

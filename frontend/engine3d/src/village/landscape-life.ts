@@ -1,7 +1,7 @@
 import type { AthenaInstallContext } from "../athena/install";
 import type { LegacyContext } from "../runtime/legacy-context";
 import { mergeStaticMeshes } from "../athena/merge";
-import { taperedTube } from "./geometry";
+import { roundedBox, taperedTube } from "./geometry";
 import {
   advance,
   canOccupy,
@@ -70,7 +70,7 @@ export function createLivingLandmarks(
     const cap = new s.Mesh(taperedTube(s, 0.03, 0.96, 1.1, 24), clay);
     cap.position.y = 3.7;
     mill.add(cap);
-    const door = new s.Mesh(new s.BoxGeometry(0.42, 0.85, 0.08), wood);
+    const door = new s.Mesh(roundedBox(s, 0.42, 0.85, 0.08), wood);
     door.position.set(0, 0.53, 0.92);
     mill.add(door);
     for (const sign of [-1, 1]) {
@@ -85,14 +85,14 @@ export function createLivingLandmarks(
     for (let i = 0; i < 4; i++) {
       const wing = new s.Group();
       wing.rotation.z = (i * Math.PI) / 2;
-      const spar = new s.Mesh(new s.BoxGeometry(0.075, 2.65, 0.08), wood);
+      const spar = new s.Mesh(roundedBox(s, 0.075, 2.65, 0.08), wood);
       spar.position.y = 1.25;
       const cloth = new s.Mesh(new s.PlaneGeometry(0.48, 1.65, 1, 5), sail);
       cloth.position.set(0.22, 1.55, 0.06);
       cloth.rotation.y = 0.18;
       wing.add(spar, cloth);
       for (let bar = 0; bar < 5; bar++) {
-        const slat = new s.Mesh(new s.BoxGeometry(0.52, 0.035, 0.035), wood);
+        const slat = new s.Mesh(roundedBox(s, 0.52, 0.035, 0.035), wood);
         slat.position.set(0.21, 0.8 + bar * 0.34, 0.07);
         wing.add(slat);
       }
@@ -145,7 +145,7 @@ export function createLivingLandmarks(
   leaves.name = "athena-floating-lily-pads";
   leaves.receiveShadow = true;
   const petals = new s.InstancedMesh(
-    new s.SphereGeometry(1, 8, 6),
+    new s.SphereGeometry(1, 16, 12),
     ctx.toon.toonMaterial(new s.MeshStandardMaterial({ color: "#f7c7bb" })),
     Math.ceil(pads.length / 3) * 5,
   );

@@ -11,6 +11,7 @@ import { createGroves, createMeadows, createCloudBelt } from "./botanical";
 import { createLivingLandmarks } from "./landscape-life";
 import { createWelcomeCourtyard } from "./welcome";
 import { createTerrace } from "./terrace";
+import { roundedBox, taperedTube } from "./geometry";
 import {
   direction,
   surfacePoint,
@@ -376,20 +377,26 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
   for (const bridge of bridges) {
     const group = new s.Group();
     group.name = "athena-wooden-bridge";
-    const wood = new s.MeshStandardMaterial({ color: "#98785c", roughness: 1 });
+    const wood = new s.MeshStandardMaterial({ color: "#a07f5f", roughness: 1 });
+    const plankShape = roundedBox(s, 2.2, 0.1, 0.22, 0.2, 8);
+    const postShape = taperedTube(s, 0.05, 0.065, 0.7, 10, 1);
+    const capShape = roundedBox(s, 0.16, 0.12, 0.16, 0.5, 6);
     for (let index = 0; index <= 28; index++) {
       const up = advance(bridge.up, bridge.forward, -3.4 + (index * 6.8) / 28).up;
-      const plank = new s.Mesh(new s.BoxGeometry(2.2, 0.09, 0.23), wood);
+      const plank = new s.Mesh(plankShape, wood);
       plank.position.set(...mul(up, walkingRadius(up) - 0.045));
       orient(s, plank, up, bridge.forward);
       group.add(plank);
       if (index % 4 === 0)
         for (const side of [-1, 1]) {
           const edge = advance(up, bridge.side, side * 1.1).up;
-          const post = new s.Mesh(new s.BoxGeometry(0.1, 0.7, 0.1), wood);
+          const post = new s.Mesh(postShape, wood);
           post.position.set(...mul(edge, walkingRadius(up) + 0.3));
           orient(s, post, edge, bridge.forward);
-          group.add(post);
+          const cap = new s.Mesh(capShape, wood);
+          cap.position.set(...mul(edge, walkingRadius(up) + 0.68));
+          orient(s, cap, edge, bridge.forward);
+          group.add(post, cap);
         }
     }
     mergeStaticMeshes(s, group, new Set());

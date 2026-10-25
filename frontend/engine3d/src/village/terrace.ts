@@ -1,4 +1,5 @@
 import type { AthenaInstallContext } from "../athena/install";
+import { roundedBox } from "./geometry";
 import type { LegacyContext } from "../runtime/legacy-context";
 import { mergeStaticMeshes } from "../athena/merge";
 import { add, cross, dot, mul, norm, surfacePoint, type Vec } from "./layout";
@@ -83,7 +84,7 @@ export function createTerrace(
       z0: z - 0.16,
       z1: z + 0.16,
     });
-    const step = new s.Mesh(new s.BoxGeometry(width, height, 0.32), material);
+    const step = new s.Mesh(roundedBox(s, width, height, 0.32), material);
     step.position.set(...world(0, top - height / 2, z));
     const y = new s.Vector3(...up),
       f = new s.Vector3(...forward),

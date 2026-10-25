@@ -47,3 +47,47 @@ export function taperedTube(
   geometry.computeVertexNormals();
   return geometry;
 }
+
+/**
+ * Pillowy box: a superellipsoid with smooth normals, so planks, crates and steps catch soft
+ * highlights along their edges instead of reading as hard polygons. `exponent` near 0 is
+ * boxier, 1 is an ellipsoid.
+ */
+export function roundedBox(
+  s: LegacyContext,
+  width: number,
+  height: number,
+  depth: number,
+  exponent = 0.22,
+  segments = 10,
+) {
+  const positions: number[] = [],
+    uvs: number[] = [],
+    indices: number[] = [];
+  const shape = (v: number, half: number) => Math.sign(v) * Math.pow(Math.abs(v), exponent) * half;
+  for (let y = 0; y <= segments; y++)
+    for (let x = 0; x <= segments * 2; x++) {
+      const u = x / (segments * 2),
+        v = y / segments;
+      const theta = u * Math.PI * 2,
+        phi = v * Math.PI;
+      const dx = Math.sin(phi) * Math.sin(theta),
+        dy = Math.cos(phi),
+        dz = Math.sin(phi) * Math.cos(theta);
+      positions.push(shape(dx, width / 2), shape(dy, height / 2), shape(dz, depth / 2));
+      uvs.push(u, 1 - v);
+    }
+  const row = segments * 2 + 1;
+  for (let y = 0; y < segments; y++)
+    for (let x = 0; x < segments * 2; x++) {
+      const a = y * row + x,
+        b = a + row;
+      indices.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+  const geometry = new s.BufferGeometry();
+  geometry.setAttribute("position", new s.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new s.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}

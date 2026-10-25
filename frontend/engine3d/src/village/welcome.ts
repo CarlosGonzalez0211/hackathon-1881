@@ -1,7 +1,7 @@
 import type { AthenaInstallContext } from "../athena/install";
 import type { LegacyContext } from "../runtime/legacy-context";
 import { mergeStaticMeshes } from "../athena/merge";
-import { taperedTube } from "./geometry";
+import { roundedBox, taperedTube } from "./geometry";
 import { paintMaterial } from "./look";
 import {
   add,
@@ -72,7 +72,7 @@ export function createWelcomeCourtyard(
     x: number,
     y: number,
     z: number,
-  ) => mesh(name, new s.BoxGeometry(w, h, d), material, x, y, z);
+  ) => mesh(name, roundedBox(s, w, h, d), material, x, y, z);
   const tube = (
     name: string,
     top: number,
