@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type {
   ClassAnalytics,
   Intervention,
+  InterventionStatus,
   StudentAnalytics,
   TopicAnalytics,
 } from "@athena/shared";
@@ -107,14 +108,21 @@ function TopicList({ topics }: { topics: TopicAnalytics[] }) {
   );
 }
 
+const actionButton =
+  "min-h-[var(--athena-target-min)] rounded-[var(--athena-radius-small)] border border-[var(--athena-border)] px-3 text-sm disabled:opacity-50";
+
 function InterventionList({
   interventions,
   students,
   topics,
+  onStatus,
+  busyId,
 }: {
   interventions: Intervention[];
   students: StudentAnalytics[];
   topics: TopicAnalytics[];
+  onStatus?: (id: string, status: InterventionStatus) => void;
+  busyId?: string | null;
 }) {
   const nameOf = (id: string) => students.find((s) => s.studentId === id)?.displayName ?? id;
   const topicOf = (id: string) => topics.find((t) => t.topicId === id)?.title ?? id;
@@ -140,6 +148,28 @@ function InterventionList({
           <p className="mt-1 text-sm">
             <span className="font-semibold">Siguiente paso:</span> {item.recommendedAction}
           </p>
+          {onStatus ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {item.status === "open" ? (
+                <button
+                  type="button"
+                  className={actionButton}
+                  disabled={busyId === item.id}
+                  onClick={() => onStatus(item.id, "acknowledged")}
+                >
+                  Marcar como vista / Acknowledge
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className={actionButton}
+                disabled={busyId === item.id}
+                onClick={() => onStatus(item.id, "resolved")}
+              >
+                Resolver / Resolve
+              </button>
+            </div>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -198,7 +228,18 @@ function StudentTable({ students }: { students: StudentAnalytics[] }) {
   );
 }
 
-export function ClassDashboardView({ analytics }: { analytics: ClassAnalytics }) {
+export function ClassDashboardView({
+  analytics,
+  onInterventionStatus,
+  busyId,
+  notice,
+}: {
+  analytics: ClassAnalytics;
+  /** When given, interventions show acknowledge/resolve buttons. */
+  onInterventionStatus?: (id: string, status: InterventionStatus) => void;
+  busyId?: string | null;
+  notice?: string | null;
+}) {
   const { students, topics, interventions, aiUsage } = analytics;
   const avg = students.length
     ? students.reduce((sum, s) => sum + s.averageMastery, 0) / students.length
@@ -231,7 +272,18 @@ export function ClassDashboardView({ analytics }: { analytics: ClassAnalytics })
           <TopicList topics={topics} />
         </Panel>
         <Panel title="Intervenciones sugeridas / Suggested interventions">
-          <InterventionList interventions={interventions} students={students} topics={topics} />
+          {notice ? (
+            <p role="alert" className="mb-3 text-sm">
+              {notice}
+            </p>
+          ) : null}
+          <InterventionList
+            interventions={interventions}
+            students={students}
+            topics={topics}
+            onStatus={onInterventionStatus}
+            busyId={busyId}
+          />
         </Panel>
       </div>
 
@@ -263,6 +315,33 @@ export function ClassDashboard({ classId }: { classId: string }) {
     { status: "loading" } | { status: "error" } | { status: "ready"; data: ClassAnalytics }
   >({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function updateStatus(id: string, status: InterventionStatus) {
+    setBusyId(id);
+    setNotice(null);
+    try {
+      await getAnalyticsClient().updateInterventionStatus(classId, id, status);
+      setState((current) => {
+        if (current.status !== "ready") return current;
+        const interventions = current.data.interventions.map((item) =>
+          item.id === id ? { ...item, status } : item,
+        );
+        const students = current.data.students.map((student) => ({
+          ...student,
+          openInterventions: interventions.filter(
+            (item) => item.studentId === student.studentId && item.status !== "resolved",
+          ).length,
+        }));
+        return { status: "ready", data: { ...current.data, interventions, students } };
+      });
+    } catch {
+      setNotice("No se pudo guardar el cambio. / Could not save the change.");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -293,5 +372,12 @@ export function ClassDashboard({ classId }: { classId: string }) {
       </div>
     );
   }
-  return <ClassDashboardView analytics={state.data} />;
+  return (
+    <ClassDashboardView
+      analytics={state.data}
+      onInterventionStatus={updateStatus}
+      busyId={busyId}
+      notice={notice}
+    />
+  );
 }

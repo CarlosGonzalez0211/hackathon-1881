@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { athenaDemoIds, type DomainEvent } from "@athena/shared";
-import { InMemoryDomainEventStore } from "@athena/platform";
+import { InMemoryDomainEventStore, RoleAuthorizationService } from "@athena/platform";
 import {
   ProjectedAnalyticsRepository,
   projectClassAnalytics,
@@ -168,6 +168,72 @@ test("API serves the projection of events appended to the platform store", async
 
     const unknown = await app.inject({ method: "GET", url: "/api/analytics/class/nope" });
     assert.equal(unknown.statusCode, 404);
+  } finally {
+    await app.close();
+  }
+});
+
+test("professors acknowledge and resolve interventions; statuses overlay the projection", async () => {
+  const { createApp } = await import("../src/app.js");
+  const app = await createApp({ logger: false, dataMode: "mock" });
+  const base = `/api/analytics/class/${athenaDemoIds.class}`;
+  const patch = (id: string, status: string) =>
+    app.inject({
+      method: "PATCH",
+      url: `${base}/interventions/${encodeURIComponent(id)}`,
+      payload: { status },
+    });
+  try {
+    await app.platform.events.append(mastery(students.diego, topics.geometry, 0.4, 0.15));
+    const id = `${students.diego}:${topics.geometry}`;
+
+    const acknowledged = await patch(id, "acknowledged");
+    assert.equal(acknowledged.statusCode, 200);
+    assert.equal(acknowledged.json().status, "acknowledged");
+    let analytics = (await app.inject({ method: "GET", url: base })).json();
+    assert.equal(analytics.interventions[0].status, "acknowledged");
+    const diego = () =>
+      analytics.students.find((s: { studentId: string }) => s.studentId === students.diego);
+    assert.equal(diego().openInterventions, 1);
+
+    assert.equal((await patch(id, "resolved")).statusCode, 200);
+    analytics = (await app.inject({ method: "GET", url: base })).json();
+    assert.equal(analytics.interventions[0].status, "resolved");
+    assert.equal(diego().openInterventions, 0);
+
+    assert.equal((await patch("not-an-intervention", "resolved")).statusCode, 404);
+    assert.equal((await patch(id, "banana")).statusCode, 400);
+  } finally {
+    await app.close();
+  }
+});
+
+test("students cannot change interventions", async () => {
+  const { createApp } = await import("../src/app.js");
+  const student = {
+    userId: students.lucia,
+    displayName: "Lucía Torres",
+    role: "student" as const,
+    classIds: [athenaDemoIds.class],
+    courseIds: [athenaDemoIds.course],
+    studentIds: [students.lucia],
+  };
+  const app = await createApp({
+    logger: false,
+    dataMode: "mock",
+    platform: {
+      auth: { authenticate: async () => student },
+      authorization: new RoleAuthorizationService(),
+    },
+  });
+  try {
+    await app.platform.events.append(mastery(students.diego, topics.geometry, 0.4, 0.15));
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/analytics/class/${athenaDemoIds.class}/interventions/${students.diego}:${topics.geometry}`,
+      payload: { status: "resolved" },
+    });
+    assert.equal(res.statusCode, 403);
   } finally {
     await app.close();
   }
