@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { LayeredGuardrailClassifier, MockEmbeddingProvider } from "@athena/content";
 import {
+  AnthropicGuardrailClassifier,
+  anthropicAnswerGenerator,
+  type AnthropicMessages,
+} from "../src/content-anthropic.js";
+import {
   GeminiEmbeddingProvider,
   GeminiGuardrailClassifier,
   GeminiTextGenerator,
@@ -105,6 +110,98 @@ test("Gemini text generation sends the system prompt and asks for JSON", async (
     simplifiedLanguage: false,
   });
   assert.deepEqual(answer.citedSources, ["S1"]);
+});
+
+test("Gemini text generation retries overload errors and falls back to the next model", async () => {
+  const overloaded = Object.assign(new Error("UNAVAILABLE"), { status: 503 });
+  const tried: string[] = [];
+  const models: GenAiModels = {
+    embedContent: async () => ({ embeddings: [] }),
+    async generateContent(request) {
+      tried.push(request.model);
+      if (request.model !== "backup") throw overloaded;
+      return { text: '{"ok":true}' };
+    },
+  };
+  const generator = new GeminiTextGenerator(models, "primary", {
+    fallbackModels: ["flaky", "backup"],
+    backoffMs: 1,
+  });
+  assert.equal(await generator.generate({ system: "S", user: "U" }), '{"ok":true}');
+  assert.deepEqual(tried, ["primary", "flaky", "backup"]);
+
+  tried.length = 0;
+  await assert.rejects(
+    new GeminiTextGenerator(models, "primary", { rounds: 2, backoffMs: 1 }).generate({
+      system: "S",
+      user: "U",
+    }),
+    overloaded,
+  );
+  assert.deepEqual(tried, ["primary", "primary"]);
+});
+
+test("Anthropic adapters send system + fenced user text and parse the JSON reply", async () => {
+  const requests: Parameters<AnthropicMessages["create"]>[0][] = [];
+  const reply = (text: string, stop_reason: string | null = "end_turn") => ({
+    content: [{ type: "thinking" }, { type: "text", text }],
+    stop_reason,
+  });
+  let next = reply('{"answer":"Base por altura [S1]","citedSources":["S1"],"unsupported":false}');
+  const messages: AnthropicMessages = {
+    async create(request) {
+      requests.push(request);
+      return next;
+    },
+  };
+
+  const answer = await anthropicAnswerGenerator(messages, "claude-sonnet-5-5").generate({
+    mode: "answer",
+    message: "q",
+    history: [],
+    sources: [{ label: "S1", materialTitle: "Notas", text: "x" }],
+    locale: "es",
+    simplifiedLanguage: false,
+  });
+  assert.deepEqual(answer.citedSources, ["S1"]);
+  assert.equal(requests[0]!.model, "claude-sonnet-5-5");
+  assert.ok(requests[0]!.system.length > 0);
+  assert.equal(requests[0]!.messages[0]!.role, "user");
+
+  next = reply('{"category":"graded_work","confidence":0.9}');
+  const classifier = new AnthropicGuardrailClassifier(messages, "claude-haiku-5-5");
+  assert.deepEqual(await classifier.classify({ message: "hazme el examen", locale: "es" }), {
+    category: "graded_work",
+    confidence: 0.9,
+  });
+  assert.match(requests[1]!.messages[0]!.content, /^MESSAGE <<</);
+
+  // Garbage, a refusal and a cut-off reply all throw, so the chat fails closed.
+  next = reply("not json");
+  await assert.rejects(classifier.classify({ message: "hola", locale: "es" }));
+  next = reply('{"category":"ok","confidence":1}', "refusal");
+  await assert.rejects(classifier.classify({ message: "hola", locale: "es" }), /refusal/);
+  next = reply('{"category":"ok"', "max_tokens");
+  await assert.rejects(classifier.classify({ message: "hola", locale: "es" }), /max_tokens/);
+});
+
+test("Gemini text generation does not retry client errors", async () => {
+  let calls = 0;
+  const models: GenAiModels = {
+    embedContent: async () => ({ embeddings: [] }),
+    async generateContent() {
+      calls += 1;
+      throw Object.assign(new Error("bad request"), { status: 400 });
+    },
+  };
+  await assert.rejects(
+    new GeminiTextGenerator(models, "primary", {
+      fallbackModels: ["backup"],
+      backoffMs: 1,
+    }).generate({ system: "S", user: "U" }),
+    /bad request/,
+  );
+  assert.equal(calls, 1);
 });
 
 test("Gemini guardrail parses verdicts, fences the message and fails on garbage", async () => {

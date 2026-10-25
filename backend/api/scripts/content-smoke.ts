@@ -69,7 +69,7 @@ async function must<T>(
   if (error) throw new Error(`${what}: ${error.message}`);
 }
 
-async function main() {
+async function run() {
   await must(
     client.from("profiles").insert([
       { id: professorId, role: "professor", display_name: "Content smoke professor", locale: "es" },
@@ -222,6 +222,14 @@ async function main() {
     step("delete material (row, chunks, stored file)", removed.status);
   } finally {
     await app.close();
+  }
+}
+
+/** Cleanup also runs when startup fails after the test rows exist. */
+async function main() {
+  try {
+    await run();
+  } finally {
     await cleanup();
   }
 }

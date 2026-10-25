@@ -13,19 +13,20 @@
     "enroll": "tsx --env-file-if-exists=../../.env src/scripts/enroll.ts"
   },
   "dependencies": {
-    "@fastify/cors": "^10.0.2",
-    "@athena/shared": "workspace:*",
-    "@supabase/supabase-js": "^2.47.10",
-    "fastify": "^5.2.0",
-    "resend": "^4.0.1",
-    "zod": "^3.24.1",
+    "@anthropic-ai/sdk": "^1.3.0",
     "@athena/ai": "workspace:*",
     "@athena/analytics": "workspace:*",
     "@athena/content": "workspace:*",
     "@athena/curriculum": "workspace:*",
     "@athena/learning": "workspace:*",
     "@athena/platform": "workspace:*",
-    "@athena/world": "workspace:*"
+    "@athena/shared": "workspace:*",
+    "@athena/world": "workspace:*",
+    "@fastify/cors": "^10.0.2",
+    "@supabase/supabase-js": "^2.47.10",
+    "fastify": "^5.2.0",
+    "resend": "^4.0.1",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
