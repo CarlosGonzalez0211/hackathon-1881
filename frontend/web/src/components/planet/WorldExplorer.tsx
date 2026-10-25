@@ -5,17 +5,14 @@ import type { HouseState, PlanetState } from "@athena/shared";
 import type { EngineStats } from "@athena/engine3d";
 import { Planet } from "./Planet";
 import { HouseSession } from "../house/HouseSession";
-const names = {
-  locked: "Bloqueado",
-  available: "Disponible",
-  in_progress: "En progreso",
-  done: "Completado",
-};
-const symbols = { locked: "◇", available: "⌂", in_progress: "◐", done: "✓" };
+import { SoundControls } from "@/features/world/components/SoundControls";
+import type { Volumes } from "@/features/world/components/SoundControls";
+import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
 export function WorldExplorer({ state, simulated }: { state: PlanetState; simulated: boolean }) {
   const [house, setHouse] = useState<HouseState | null>(null);
   const [topics, setTopics] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [volumes, setVolumes] = useState<Volumes>({ music: 0.8, effects: 0.8 });
   const [stats, setStats] = useState<EngineStats | null>(null);
   return (
     <main className="world-app">
@@ -28,6 +25,7 @@ export function WorldExplorer({ state, simulated }: { state: PlanetState; simula
         onHouseClick={setHouse}
         paused={Boolean(house)}
         muted={muted}
+        volumes={volumes}
         onStats={setStats}
       />
       <nav className="world-controls" aria-label="Controles del mundo">
@@ -39,13 +37,12 @@ export function WorldExplorer({ state, simulated }: { state: PlanetState; simula
           Temas
         </button>
         <Link href="/orbit">Órbita</Link>
-        <button
-          onClick={() => setMuted(!muted)}
-          aria-pressed={!muted}
-          aria-label={muted ? "Activar sonido" : "Silenciar sonido"}
-        >
-          {muted ? "Sonido: apagado" : "Sonido: encendido"}
-        </button>
+        <SoundControls
+          muted={muted}
+          onMutedChange={setMuted}
+          volumes={volumes}
+          onVolumesChange={setVolumes}
+        />
       </nav>
       <aside
         hidden={!topics}
@@ -73,11 +70,11 @@ export function WorldExplorer({ state, simulated }: { state: PlanetState; simula
               key={item.topicId}
             >
               <span className="status-symbol" aria-hidden="true">
-                {symbols[item.status]}
+                <StateIcon status={item.status} size={18} />
               </span>
               <span>
                 <strong>{item.title}</strong>
-                <small>{names[item.status]}</small>
+                <small>{stateLabel(item.status)}</small>
               </span>
               <span className="topic-progress">{Math.round(item.progress * 100)}%</span>
             </button>

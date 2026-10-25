@@ -7,6 +7,7 @@ import { installAthenaSky } from "./sky";
  *   registerAthenaSystem("npcs", installAthenaNpcs);
  */
 import { registerAthenaSystem } from "./install";
+import { installAthenaAudio } from "./audio";
 import { installAthenaAvatar } from "./avatar";
 import { installAthenaFauna } from "./fauna";
 import { installAthenaFoliage } from "./foliage";
@@ -51,3 +52,4 @@ registerAthenaSystem("houses", installAthenaHouses);
 registerAthenaSystem("sky", installAthenaSky);
 registerAthenaSystem("fauna", installAthenaFauna);
 registerAthenaSystem("foliage", installAthenaFoliage);
+registerAthenaSystem("audio", installAthenaAudio);

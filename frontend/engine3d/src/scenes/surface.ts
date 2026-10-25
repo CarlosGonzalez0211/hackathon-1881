@@ -31,6 +31,8 @@ export interface SurfaceHandle {
   update(state: PlanetState): void;
   setPaused(paused: boolean): void;
   setMuted(muted: boolean): void;
+  /** Music (score + ambient bed) and effects volumes, 0-1 (brand guide 07). */
+  setVolumes(volumes: { music?: number; effects?: number }): void;
   dispose(): void;
   readonly resourceCounts: {
     listeners: number;
@@ -190,6 +192,9 @@ export async function createSurfaceEngine(
       },
       setMuted(muted) {
         scope.events$1.emit("audio_mute_toggle", muted);
+      },
+      setVolumes(volumes) {
+        scope.athenaAudio?.setVolumes(volumes);
       },
       dispose,
       get resourceCounts() {

@@ -2,6 +2,8 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { HouseState, PlanetState } from "@athena/shared";
 import type { EngineStats, ProjectedHouse, ProjectedPlanet, SurfaceHandle } from "@athena/engine3d";
+import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
+import type { Volumes } from "@/features/world/components/SoundControls";
 export interface PlanetProps {
   state: PlanetState;
   mode: "surface" | "orbit";
@@ -9,16 +11,11 @@ export interface PlanetProps {
   onPlanetClick?: (planet: PlanetState) => void;
   paused?: boolean;
   muted?: boolean;
+  /** Music and effects volumes (0-1), applied live. */
+  volumes?: Volumes;
   onStats?: (stats: EngineStats) => void;
 }
 const OrbitContext = createContext<{ positions: ProjectedPlanet[] } | null>(null);
-const symbols = { locked: "◇", available: "⌂", in_progress: "◐", done: "✓" };
-const names = {
-  locked: "Bloqueado",
-  available: "Disponible",
-  in_progress: "En progreso",
-  done: "Completado",
-};
 export function Planet(props: PlanetProps) {
   return props.mode === "orbit" ? <OrbitPlanet {...props} /> : <SurfacePlanet {...props} />;
 }
@@ -47,6 +44,7 @@ function SurfacePlanet({
   onHouseClick,
   paused = false,
   muted = true,
+  volumes,
   onStats,
 }: PlanetProps) {
   const host = useRef<HTMLDivElement>(null);
@@ -95,6 +93,9 @@ function SurfacePlanet({
   useEffect(() => handle.current?.update(state), [state]);
   useEffect(() => handle.current?.setPaused(paused), [paused]);
   useEffect(() => handle.current?.setMuted(muted), [muted, phase]);
+  useEffect(() => {
+    if (volumes) handle.current?.setVolumes(volumes);
+  }, [volumes, phase]);
   return (
     <div className="scene" data-engine-status={phase} data-renderer="extracted-three">
       <div ref={host} className="engine-host" aria-label="Mundo 3D de Athena" />
@@ -123,9 +124,9 @@ function SurfacePlanet({
                 className={`house-marker ${house.status}`}
                 style={{ left: marker.x, top: marker.y }}
                 onClick={() => onHouseClick?.(house)}
-                aria-label={`${house.title}: ${names[house.status]}`}
+                aria-label={`${house.title}: ${stateLabel(house.status)}`}
               >
-                <span aria-hidden="true">{symbols[house.status]}</span>
+                <StateIcon status={house.status} />
                 <span>{house.title}</span>
               </button>
             );
