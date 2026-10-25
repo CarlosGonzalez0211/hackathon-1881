@@ -3,13 +3,17 @@
  * Add one line per system, e.g.:
  *
  *   import { installAthenaNpcs } from "./npcs";
+import { installAthenaSky } from "./sky";
  *   registerAthenaSystem("npcs", installAthenaNpcs);
  */
 import { registerAthenaSystem } from "./install";
 import { installAthenaAvatar } from "./avatar";
+import { installAthenaFauna } from "./fauna";
+import { installAthenaFoliage } from "./foliage";
 import { installAthenaHouses } from "./houses";
 import { installAthenaLook } from "./look";
 import { installAthenaNpcs } from "./npcs";
+import { installAthenaSky } from "./sky";
 
 /** With any `?athenaDebug=…` flag, expose the install context as `globalThis.__athena`. */
 registerAthenaSystem("debug", (ctx) => {
@@ -44,3 +48,6 @@ registerAthenaSystem("look", installAthenaLook);
 registerAthenaSystem("avatar", installAthenaAvatar);
 registerAthenaSystem("npcs", installAthenaNpcs);
 registerAthenaSystem("houses", installAthenaHouses);
+registerAthenaSystem("sky", installAthenaSky);
+registerAthenaSystem("fauna", installAthenaFauna);
+registerAthenaSystem("foliage", installAthenaFoliage);
