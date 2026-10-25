@@ -21,6 +21,17 @@ export const birdSlots: Record<string, string> = {
   "birds/1.drc": "geometries/birds/1",
   "birds/2.drc": "geometries/birds/2",
 };
+/**
+ * Legacy bird meshes, measured once (span = longest of length/wingspan, centre of the
+ * bounds), so the swap needs no legacy download.
+ */
+export const legacyBirds: Record<
+  string,
+  { span: number; centre: [number, number, number]; surfaceId: number }
+> = {
+  "birds/1.drc": { span: 0.8546, centre: [-0.0462, 0.0184, 0], surfaceId: 0.7804 },
+  "birds/2.drc": { span: 0.3647, centre: [-0.0021, 0.0059, 0], surfaceId: 0.7803 },
+};
 /** Emote geometry index (EMOJI_MAP value) → manifest key. */
 export const emoteSlot = (geometryIndex: number) => `slot:emote/${geometryIndex}`;
 /** Lifetime of a legacy emoji spawn (`expiration: 2`). */
@@ -37,11 +48,11 @@ export function installAthenaFauna(ctx: AthenaInstallContext) {
     const resolved = key ? ctx.resolve(key) : undefined;
     if (resolved?.kind !== "glb") return load(relative, ...args);
     try {
-      const [legacy, athena] = await Promise.all([
-        load(relative, ...args),
-        ctx.gltf.loadGeometryFromGlb(resolved.url),
-      ]);
-      return fitBird(scope, legacy, athena);
+      return fitBird(
+        scope,
+        legacyBirds[relative]!,
+        await ctx.gltf.loadGeometryFromGlb(resolved.url),
+      );
     } catch (error) {
       console.warn(`[Athena] bird ${relative} kept legacy`, error);
       return load(relative, ...args);
@@ -95,27 +106,21 @@ export function installAthenaFauna(ctx: AthenaInstallContext) {
 
 /**
  * Kit bird (+Z forward, wings along X) → legacy convention (+X forward, wings along +Z),
- * centred and scaled to the legacy bird's length, with a `surfaceId` for the shader.
+ * centred and scaled to the legacy bird's span, with a `surfaceId` for the shader.
  */
-function fitBird(scope: LegacyContext, legacy: Object3D, athena: Object3D) {
-  if (!legacy.boundingBox) legacy.computeBoundingBox();
+function fitBird(scope: LegacyContext, legacy: (typeof legacyBirds)[string], athena: Object3D) {
   athena.rotateY(Math.PI / 2);
   athena.computeBoundingBox();
-  const legacySize = legacy.boundingBox.getSize(new scope.Vector3());
-  const athenaSize = athena.boundingBox.getSize(new scope.Vector3());
-  const scale = Math.max(legacySize.x, legacySize.z) / Math.max(athenaSize.x, athenaSize.z, 1e-6);
+  const size = athena.boundingBox.getSize(new scope.Vector3());
+  const scale = legacy.span / Math.max(size.x, size.z, 1e-6);
   const centre = athena.boundingBox.getCenter(new scope.Vector3());
   athena.translate(-centre.x, -centre.y, -centre.z);
   athena.scale(scale, scale, scale);
-  const legacyCentre = legacy.boundingBox.getCenter(new scope.Vector3());
-  athena.translate(legacyCentre.x, legacyCentre.y, legacyCentre.z);
+  athena.translate(...legacy.centre);
   const count = athena.attributes.position.count;
   athena.setAttribute(
     "surfaceId",
-    new scope.BufferAttribute(
-      new Float32Array(count).fill(legacy.attributes.surfaceId?.getX(0) ?? 0.5),
-      1,
-    ),
+    new scope.BufferAttribute(new Float32Array(count).fill(legacy.surfaceId), 1),
   );
   athena.computeBoundingBox();
   athena.computeBoundingSphere();
