@@ -11,7 +11,7 @@ import { norm, type Vec } from "./layout";
  */
 export function createWaypoint(ctx: AthenaInstallContext, scene: LegacyContext, host: HTMLElement) {
   const s = ctx.scope;
-  const uniforms = { uTime: { value: 0 } };
+  const uniforms = { uTime: { value: 0 }, uFade: { value: 1 } };
   const beamMaterial = new s.ShaderMaterial({
     uniforms,
     transparent: true,
@@ -22,16 +22,16 @@ export function createWaypoint(ctx: AthenaInstallContext, scene: LegacyContext, 
       void main(){ vH=position.y/14.0+.5; vec4 w=modelMatrix*vec4(position,1.0);
         vN=normalize(mat3(modelMatrix)*normal); vV=normalize(cameraPosition-w.xyz);
         gl_Position=projectionMatrix*viewMatrix*w; }`,
-    fragmentShader: `uniform float uTime; varying float vH; varying vec3 vN, vV;
+    fragmentShader: `uniform float uTime, uFade; varying float vH; varying vec3 vN, vV;
       void main(){
         float core=pow(abs(dot(normalize(vN),normalize(vV))),1.6);
         float fade=(1.0-smoothstep(.0,1.0,vH))*smoothstep(0.0,.04,vH);
         float shimmer=.75+.25*sin(vH*26.0-uTime*3.0);
-        float a=core*fade*shimmer*.55;
+        float a=core*fade*shimmer*.5*uFade;
         gl_FragColor=vec4(vec3(2.2,1.6,.75)*a,a);
       }`,
   });
-  const beam = new s.Mesh(taperedTube(s, 0.32, 0.5, 14, 32, 12), beamMaterial);
+  const beam = new s.Mesh(taperedTube(s, 0.2, 0.32, 14, 32, 12), beamMaterial);
   beam.position.y = 7;
   const ringMaterial = new s.MeshBasicMaterial({
     color: new s.Color(2.4, 1.7, 0.8),
@@ -99,6 +99,8 @@ export function createWaypoint(ctx: AthenaInstallContext, scene: LegacyContext, 
       marker.quaternion.setFromUnitVectors(new s.Vector3(0, 1, 0), up);
       // From the aerial view the column grows so it reads across the whole globe.
       const grow = overview ? 1.9 : 1;
+      // The column guides from afar and steps aside as the student arrives.
+      uniforms.uFade.value = overview ? 1 : Math.min(1, Math.max(0.12, (target.distance - 3) / 12));
       beam.scale.set(grow, grow, grow);
       beam.position.y = 7 * grow;
       const breath = (1 + 0.25 * Math.sin(time * 2.4)) * (overview ? 2.2 : 1);

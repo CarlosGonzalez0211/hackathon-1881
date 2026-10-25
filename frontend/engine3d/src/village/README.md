@@ -113,3 +113,26 @@ Arrival and interface:
   compact keyboard hints, native modal NPC dialogue and paper alerts. Topic pages pair
   material cards and learning tabs with a code-native illustrated island. Academic
   progression and server authorization are unchanged.
+
+Luminous art pass (Sky-inspired):
+
+- `grade.ts` routes the surface through the recovered pmndrs composer: a NaN/Inf scrub,
+  depth-aware aerial haze, 16-sample screen-space light shafts, mipmap bloom, ACES and a
+  split-tone grade. `light.ts` owns the shared golden-hour sun and the quality tier
+  (`?quality=low|high`, automatic downgrade under 42 fps).
+- The village toon pass runs in soft mode (`athena-toon-material.ts`): a linear half-Lambert
+  ramp, radial sky/ground fill, cool shadow tint and a silhouette-only backlit rim. Ink hulls
+  are off for the village; the class orbit keeps the original toon defaults.
+- `scripts/smooth-normals.mjs` gives faceted kit solids crease-aware smooth normals at build
+  time. Simplification is gentler but unused vertex attributes are pruned and meshopt runs
+  at its highest level; the surface first load stays under the 8 MB budget.
+- `atmosphere.ts` paints the sky in linear light; `botanical.ts` clouds are sun-lit sphere
+  impostors with a tilted bank ring; `ambience.ts` motes rise and bloom.
+- `cloth.ts` gives every person a spring-driven cape; `lumen.ts` sculpts Lumen from smooth
+  forms over the hidden kit rig; `spirit.ts` adds floating monoliths, candle shrines, lake
+  crystals and gliding light mantas, none with a footprint on the paths.
+- `welcome.ts` is a floating halo gate over the round plaza. House windows glow by learning
+  status (`scene.ts`), colliders follow ground footprints and foundations are walkable.
+- `waypoint.ts` marks the next topic with a light column and a HUD medallion that docks to
+  the screen edge; NPCs are spread over the whole globe and the nearest target wins, except
+  that Lumen never hides a door.

@@ -14,6 +14,7 @@ import { createTerrace } from "./terrace";
 import { roundedBox, taperedTube } from "./geometry";
 import { dressWithCloth, type Cloth } from "./cloth";
 import { illuminateLumen } from "./lumen";
+import { createSpiritDressing } from "./spirit";
 import {
   direction,
   surfacePoint,
@@ -29,7 +30,7 @@ import {
   mul,
   cross,
   arcDistance,
-  mainLatitude,
+  TAU,
   HOUSE_SCALE,
   canOccupy,
   buildingObstacle,
@@ -122,6 +123,40 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
   const terraces: ReturnType<typeof createTerrace>[] = [];
   let ambience: Awaited<ReturnType<typeof buildAmbience>> | undefined;
   let lumenLight: ReturnType<typeof illuminateLumen> | undefined;
+  /** Window/beacon materials per house slot, breathing with the topic's status. */
+  const lamps = new Map<
+    number,
+    { materials: { material: LegacyContext; weight: number }[]; base: number; flicker: number }
+  >();
+  // Learning state reads as light: dark when locked, a soft welcome when available, warm
+  // flickering lamplight in progress and a golden blaze once done (HDR, so it blooms).
+  const LAMP: Record<string, { base: number; flicker: number }> = {
+    locked: { base: 0, flicker: 0 },
+    available: { base: 0.9, flicker: 0.08 },
+    in_progress: { base: 1.7, flicker: 0.35 },
+    done: { base: 2.6, flicker: 0.12 },
+  };
+  function lightWindows(slot: number, model: AthenaModel, status: string) {
+    const materials: { material: LegacyContext; weight: number }[] = [];
+    model.root.traverse((part: LegacyContext) => {
+      if (!part.isMesh) return;
+      for (const material of Array.isArray(part.material) ? part.material : [part.material]) {
+        const name = String(material?.name);
+        // Windows carry the glow; beacons and gilt trim only accent it.
+        const weight = /window_glow/.test(name)
+          ? 1
+          : /beacon/.test(name)
+            ? 0.35
+            : /gilt/.test(name)
+              ? 0.2
+              : 0;
+        if (weight && material.emissive) materials.push({ material, weight });
+      }
+    });
+    const lamp = LAMP[status] ?? LAMP.available!;
+    lamps.set(slot, { materials, ...lamp });
+    for (const { material, weight } of materials) material.emissiveIntensity = lamp.base * weight;
+  }
   const groves = [
     direction(-0.8, 0.95),
     direction(0.8, -1.05),
@@ -217,6 +252,7 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
         item.status = house.status;
         item.group.add(model.root);
         paintArchitecture(model.root);
+        lightWindows(house.slot, model, house.status);
         const plot = plots[house.slot]!;
         fitObstacle(model, plot.up, plot.forward, HOUSE_SCALE, obstacles[house.slot]);
         if (item.terrace) {
@@ -470,11 +506,36 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
       patrol: patrol as boolean,
       model: id === "lumen" ? "new:npc.cat" : `models/npcs/athena-npc-${id}.glb`,
     }));
+    // Spread neighbours over the whole globe: golden-angle candidates beside the paths, at
+    // least 7 m apart, clear of buildings, water and the arrival plaza.
+    const spots = new Map<string, Vec>();
+    const taken: Vec[] = [];
+    const people = npcs.filter((npc) => npc.id !== "lumen");
+    for (let n = 0, k = 0; n < 6000 && k < people.length; n++) {
+      const latitude = Math.asin(1 - (2 * (n + 0.5)) / 6000);
+      const candidate = direction((n * 2.399963) % TAU, latitude);
+      const path = pathDistance(candidate);
+      if (
+        path < 1.1 ||
+        path > 2.6 ||
+        buildingClearance(candidate) < 1.5 ||
+        waterDepth(candidate) > 0.01 ||
+        inWelcomeCourtyard(candidate) ||
+        !canOccupy(candidate, obstacles, 0.5) ||
+        taken.some((other) => arcDistance(other, candidate) < 7)
+      )
+        continue;
+      taken.push(candidate);
+      spots.set(people[k++]!.id, candidate);
+    }
     for (const npc of npcs)
       tasks.push(
         optional(
           (async () => {
-            const up = npc.id === "lumen" ? direction(0.08, 0.08) : direction(npc.lon, npc.lat);
+            const up =
+              npc.id === "lumen"
+                ? direction(0.08, 0.08)
+                : (spots.get(npc.id) ?? direction(npc.lon, npc.lat));
             const placed = await place(npc.model, up, [1, 0, 0], npc.id === "lumen" ? 1.1 : 1);
             if (placed) {
               if (npc.id === "lumen") lumenLight = illuminateLumen(ctx, placed.model.root);
@@ -482,9 +543,7 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
               player.play("idle");
               player.update(actors.length * 0.37);
               actors.push({
-                cloth: CAPELESS.has(npc.id)
-                  ? undefined
-                  : dressWithCloth(ctx, placed.model.root, "cape"),
+                cloth: CAPELESS.has(npc.id) ? undefined : dressWithCloth(ctx, placed.model.root),
                 id: npc.id,
                 name: npc.name,
                 travel: 0,
@@ -504,6 +563,8 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
   await Promise.all(tasks);
   const landscapeLife = createLivingLandmarks(ctx, root, obstacles, cameraObstacles);
   if (!ctx.lifecycle.disposed) createMeadows(ctx, root, obstacles, breeze, low);
+  const spirit = createSpiritDressing(ctx, root, obstacles, low);
+  ctx.onDispose(() => spirit.dispose());
   actors.sort((a, b) => a.id.localeCompare(b.id));
   // Keep NPCs out of solid footprints and water, including after the layout is compacted.
   for (const actor of actors) {
@@ -511,12 +572,14 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
       !canOccupy(actor.up, obstacles, 0.4) ||
       actors.some((other) => other !== actor && arcDistance(other.up, actor.up) < 1.6)
     ) {
-      const lon = Math.atan2(actor.up[0], actor.up[2]);
-      for (let i = 0; i < 60; i++) {
-        const candidate = direction(
-          lon + i * 0.035,
-          actor.home[1] > 0.75 ? 1.04 : mainLatitude(lon + i * 0.035),
+      // Search outward in a spiral around the intended spot, keeping the spread.
+      for (let i = 1; i < 120; i++) {
+        const angle = i * 2.399963;
+        const heading = tangent(
+          [Math.cos(angle), Math.sin(angle), Math.sin(angle * 0.7)],
+          actor.home,
         );
+        const candidate = advance(actor.home, heading, 0.4 * Math.sqrt(i) * 1.6).up;
         if (
           canOccupy(candidate, obstacles, 0.4) &&
           !actors.some((other) => other !== actor && arcDistance(other.up, candidate) < 1.6)
@@ -565,6 +628,14 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
       landscapeLife.tick(reduced ? 0 : time);
       ambience?.tick(dt, time, reduced);
       lumenLight?.tick(reduced ? 0 : time);
+      spirit.tick(reduced ? 0 : time);
+      for (const [slot, lamp] of lamps) {
+        const flame = reduced
+          ? 0
+          : Math.sin(time * 7.1 + slot * 1.7) * 0.5 + Math.sin(time * 12.3 + slot) * 0.3;
+        for (const { material, weight } of lamp.materials)
+          material.emissiveIntensity = lamp.base * weight * (1 + lamp.flicker * flame);
+      }
       for (let i = fades.length - 1; i >= 0; i--) {
         const fade = fades[i]!;
         fade.elapsed += dt;

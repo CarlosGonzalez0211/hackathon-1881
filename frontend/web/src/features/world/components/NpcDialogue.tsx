@@ -29,7 +29,11 @@ export function NpcDialogue({
       ref={ref}
       className="npc-dialogue toon-paper"
       aria-labelledby="npc-speaker"
-      onClose={onClose}
+      // A remount (React StrictMode in development) closes and reopens the modal; its queued
+      // `close` event then arrives while the dialog is open again and must not dismiss it.
+      onClose={() => {
+        if (!ref.current?.open) onClose();
+      }}
       onKeyDown={(event) => {
         event.stopPropagation();
         if (event.key.toLowerCase() === "e") {

@@ -43,7 +43,7 @@ export async function createSurfaceEngine(
   const atmosphere = createAtmosphere(assets, scene);
   scene.fog = new s.Fog(LUMINOUS.haze, 30, 105);
   const tier = detectTier();
-  const camera = new s.PerspectiveCamera(50, 1, 0.08, 260);
+  const camera = new s.PerspectiveCamera(55, 1, 0.08, 260);
   const audio = createVillageAudio();
   let renderer: LegacyContext,
     grade: LuminousGrade | undefined,
@@ -84,7 +84,8 @@ export async function createSurfaceEngine(
       alpha: true,
       powerPreference: "high-performance",
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier === "high" ? 1.5 : 1));
+    // The HDR chain (MSAA, bloom mips, shafts) scales with pixels: 1.25 is the sweet spot.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier === "high" ? 1.25 : 1));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = s.PCFSoftShadowMap;
     renderer.outputColorSpace = s.SRGBColorSpace;
@@ -246,6 +247,20 @@ export async function createSurfaceEngine(
       targetCamera = new s.Vector3(),
       targetLook = new s.Vector3(),
       smoothedLook = new s.Vector3();
+    // Only obstacles near the student can come between it and the camera: test those.
+    const nearbyBlockers: LegacyContext[] = [];
+    const blockerCentre = new s.Vector3();
+    let blockersAt = -1;
+    const cameraBlockers = (now: number) => {
+      if (now - blockersAt < 250) return nearbyBlockers;
+      blockersAt = now;
+      nearbyBlockers.length = 0;
+      for (const object of village!.cameraObstacles) {
+        object.getWorldPosition(blockerCentre);
+        if (blockerCentre.distanceToSquared(avatarRoot.position) < 144) nearbyBlockers.push(object);
+      }
+      return nearbyBlockers;
+    };
     const cameraRay = new s.Raycaster(),
       cameraAnchor = new s.Vector3(),
       cameraVector = new s.Vector3();
@@ -296,7 +311,7 @@ export async function createSurfaceEngine(
         }
         for (const actor of village!.actors) {
           const before = actor.up;
-          const nearby = arcDistance(walker.up, actor.up) < 2.6;
+          const nearby = arcDistance(walker.up, actor.up) < 2.9;
           if (actor.id === "lumen") {
             const house =
               [...state.houses]
@@ -329,7 +344,7 @@ export async function createSurfaceEngine(
           const step = arcDistance(before, actor.up);
           const moved = step > 0.0001;
           actor.cloth?.tick(dt, now / 1000, dt > 0 ? step / dt : 0, 0, reduced);
-          const close = arcDistance(walker.up, actor.up) < 2.6;
+          const close = arcDistance(walker.up, actor.up) < 2.9;
           actor.root.position.set(...surfacePoint(actor.up));
           orient(
             s,
@@ -357,13 +372,20 @@ export async function createSurfaceEngine(
       targetCamera.set(
         ...add(
           walker.position,
-          add(mul(walker.up, overview ? 48 : 1.55), mul(ahead, overview ? -25 : -3.5)),
+          add(mul(walker.up, overview ? 48 : 1.35), mul(ahead, overview ? -25 : -3.9)),
         ),
       );
       targetLook.set(
         ...(overview
           ? [0, 0, 0]
-          : add(walker.position, add(mul(walker.up, 1.12), mul(ahead, 6.0)))),
+          : add(
+              walker.position,
+              add(
+                add(mul(walker.up, 1.15), mul(ahead, 6.0)),
+                // Look a little into the direction of travel, like a chase camera.
+                mul(walker.facing, walker.moving ? (walker.sprinting ? 1.6 : 0.9) : 0),
+              ),
+            )),
       );
       if (!overview) {
         // Pull forward before a wall can enter the camera, then stay above the sampled terrain.
@@ -371,9 +393,8 @@ export async function createSurfaceEngine(
         cameraVector.copy(targetCamera).sub(cameraAnchor);
         cameraRay.set(cameraAnchor, cameraVector.clone().normalize());
         cameraRay.far = cameraVector.length();
-        village!.root.updateMatrixWorld(true);
         const hit = cameraRay
-          .intersectObjects(village!.cameraObstacles, true)
+          .intersectObjects(cameraBlockers(now), true)
           .find((hit: LegacyContext) => !hit.object.userData.athenaInk);
         if (hit)
           targetCamera
@@ -392,7 +413,7 @@ export async function createSurfaceEngine(
         cameraRay.set(cameraAnchor, cameraVector.clone().normalize());
         cameraRay.far = cameraVector.length();
         const hit = cameraRay
-          .intersectObjects(village!.cameraObstacles, true)
+          .intersectObjects(cameraBlockers(now), true)
           .find((hit: LegacyContext) => !hit.object.userData.athenaInk);
         if (hit)
           camera.position
@@ -404,7 +425,14 @@ export async function createSurfaceEngine(
         if (camera.position.length() < minimumRadius)
           camera.position.set(...mul(up, minimumRadius));
       }
-      smoothedLook.lerp(targetLook, easing);
+      // Look eases more slowly than position: a soft, weighty follow.
+      smoothedLook.lerp(targetLook, cameraReady ? 1 - Math.exp(-dt * (reduced ? 18 : 4.2)) : 1);
+      // Field of view opens on a sprint and narrows for the aerial portrait.
+      const targetFov = overview ? 45 : walker.sprinting && !reduced ? 61 : 55;
+      if (Math.abs(camera.fov - targetFov) > 0.01) {
+        camera.fov += (targetFov - camera.fov) * (1 - Math.exp(-dt * 3));
+        camera.updateProjectionMatrix();
+      }
       camera.up.set(...walker.up);
       camera.lookAt(smoothedLook);
       cameraReady = true;

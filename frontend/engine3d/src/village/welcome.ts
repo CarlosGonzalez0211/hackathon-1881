@@ -153,9 +153,6 @@ export function createWelcomeCourtyard(
       relative = add(point, mul(base, -1));
     return [dot(relative, side), dot(relative, up), dot(relative, forward)];
   }
-  function groundHeight(x: number, z: number) {
-    return groundPoint(x, z)[1];
-  }
   function paving(
     name: string,
     inner: number,

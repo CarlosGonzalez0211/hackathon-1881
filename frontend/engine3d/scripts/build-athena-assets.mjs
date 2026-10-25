@@ -26,7 +26,7 @@ import {
   normalizeLegacyKey,
 } from "../src/assets/athena-keys.mjs";
 
-const PIPELINE_VERSION = 12;
+const PIPELINE_VERSION = 13;
 const CHARACTER_PASS_HASH = createHash("sha256")
   .update(await fs.readFile(new URL("./refine-characters.mjs", import.meta.url)))
   .update(await fs.readFile(new URL("./story-explorer.mjs", import.meta.url)))
@@ -40,9 +40,9 @@ const CHARACTER_PASS_HASH = createHash("sha256")
  * point clouds are left exact.
  */
 const SIMPLIFY = { ratio: 0.6, error: 0.004 };
-const CHARACTER_SIMPLIFY = { ratio: 0.6, error: 0.002 };
+const CHARACTER_SIMPLIFY = { ratio: 0.42, error: 0.0025 };
 /** Houses are large and many; smooth normals let them shed more triangles invisibly. */
-const BUILDING_SIMPLIFY = { ratio: 0.4, error: 0.006 };
+const BUILDING_SIMPLIFY = { ratio: 0.3, error: 0.008 };
 /** Character parts carry authored normals; terrain tiles are collision data. */
 const KEEP_NORMALS = /models\/(terrain|avatar|npcs|characters)\//;
 const NO_SIMPLIFY = /models\/terrain\/|athena-space-(starfield|galaxy)\.glb$/;
@@ -171,7 +171,9 @@ const processors = {
       functions.dedup(),
       // Keep empty leaf nodes (rig sockets/attachment points) and unused attributes (UV/colour
       // may be used by the toon material later).
-      functions.prune({ keepLeaves: true, keepAttributes: true }),
+      // Character rigs keep custom style/weave attributes; everything else drops vertex
+      // attributes no material reads (the kit is untextured), which shrinks every file.
+      functions.prune({ keepLeaves: true, keepAttributes: KEEP_NORMALS.test(posix(absolute)) }),
       ...(KEEP_HIERARCHY.test(posix(absolute)) ? [] : [functions.flatten(), functions.join()]),
       (doc) => {
         if (!KEEP_NORMALS.test(posix(absolute))) smoothNormals(doc);
@@ -189,7 +191,7 @@ const processors = {
                   : SIMPLIFY),
             }),
           ]),
-      functions.meshopt({ encoder: MeshoptEncoder, level: "medium" }),
+      functions.meshopt({ encoder: MeshoptEncoder, level: "high" }),
     );
     return {
       buffer: Buffer.from(await io.writeBinary(document)),

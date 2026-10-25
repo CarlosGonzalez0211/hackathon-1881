@@ -33,14 +33,14 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
     // Only sky samples close to the sun emit, so open sky stays clean and shafts appear
     // where leaves, roofs and the student cut across the sun.
     vec2 aspectFix = vec2(aspect, 1.0);
-    vec2 delta = (uv - uSunScreen) * (0.9 / 24.0);
+    vec2 delta = (uv - uSunScreen) * (0.9 / 16.0);
     vec2 coord = uv;
     float decay = 1.0, light = 0.0;
-    for (int i = 0; i < 24; i++) {
+    for (int i = 0; i < 16; i++) {
       coord -= delta;
       float glow = exp(-distance(coord * aspectFix, uSunScreen * aspectFix) * 7.0);
       light += step(0.99999, readDepth(clamp(coord, 0.0, 1.0))) * decay * glow;
-      decay *= 0.94;
+      decay *= 0.91;
     }
     color += uHazeSun * light * 0.28 * uShafts;
   }

@@ -3,7 +3,7 @@ import { localBounds } from "../athena/models";
 import type { LegacyContext } from "../runtime/legacy-context";
 
 /**
- * Signature capes and scarves. Every character gets flowing cloth cut from its own outfit
+ * Signature capes. Every character gets flowing cloth cut from its own outfit
  * colour with a glowing gold hem; a damped spring lifts it with speed and lets it settle,
  * and a shared breeze keeps it alive at rest. The cloth bends in the vertex shader, so
  * twenty characters cost twenty small draws and no CPU skinning.
@@ -13,8 +13,6 @@ export interface Cloth {
   /** Advance the spring: `speed` in m/s along the facing, `turn` in rad/s. */
   tick(dt: number, time: number, speed: number, turn: number, reduced: boolean): void;
 }
-
-export type ClothStyle = "cape" | "scarf";
 
 const CLOTH_VERTEX = /* glsl */ `
 float athenaK = pow(clamp(-position.y / uClothLength, 0.0, 1.0), 1.5);
@@ -34,8 +32,8 @@ totalEmissiveRadiance += uClothGlow * (athenaHem + athenaStar * 0.8);
 // Thin cloth transmits the low sun: backlit capes glow in their own colour.
 totalEmissiveRadiance += diffuseColor.rgb * 0.32;`;
 
-function clothGeometry(s: LegacyContext, width: number, length: number, style: ClothStyle) {
-  const columns = style === "cape" ? 10 : 4,
+function capeGeometry(s: LegacyContext, width: number, length: number) {
+  const columns = 10,
     rows = 16;
   const positions: number[] = [],
     uvs: number[] = [],
@@ -46,11 +44,10 @@ function clothGeometry(s: LegacyContext, width: number, length: number, style: C
       const u = x / columns,
         v = y / rows;
       // Capes widen towards a softly rounded hem and wrap around the shoulders.
-      const flare = style === "cape" ? 0.62 + 0.38 * v : 1;
+      const flare = 0.62 + 0.38 * v;
       const across = (u - 0.5) * width * flare;
-      const hem = style === "cape" ? 1 - 0.1 * Math.pow(Math.abs(u - 0.5) * 2, 2) : 1;
-      const wrap =
-        style === "cape" ? Math.pow(Math.abs(u - 0.5) * 2, 2) * width * 0.28 * (1 - v * 0.6) : 0;
+      const hem = 1 - 0.1 * Math.pow(Math.abs(u - 0.5) * 2, 2);
+      const wrap = Math.pow(Math.abs(u - 0.5) * 2, 2) * width * 0.28 * (1 - v * 0.6);
       positions.push(across, -v * length * hem, wrap);
       uvs.push(u, v);
       colors.push(1 - v * 0.32, 1 - v * 0.38, 1 - v * 0.2);
@@ -63,7 +60,7 @@ function clothGeometry(s: LegacyContext, width: number, length: number, style: C
     }
   const geometry = new s.BufferGeometry();
   geometry.setAttribute("position", new s.Float32BufferAttribute(positions, 3));
-  // Own attribute name: the built-in `uv` is only declared when a material uses maps.
+  // Own attribute name, so the shared toon program never confuses it with texture UVs.
   geometry.setAttribute("clothUv", new s.Float32BufferAttribute(uvs, 2));
   geometry.setAttribute("color", new s.Float32BufferAttribute(colors, 3));
   geometry.setIndex(indices);
@@ -94,13 +91,12 @@ export function outfitColour(s: LegacyContext, root: LegacyContext) {
 }
 
 /**
- * Hang cloth from the wearer's shoulders. It parents to the chest/torso node when the rig
+ * Hang a cape from the wearer's shoulders. It parents to the chest/torso node when the rig
  * has one, so it follows the upper body through every clip.
  */
 export function dressWithCloth(
   ctx: AthenaInstallContext,
   root: LegacyContext,
-  style: ClothStyle,
   colour?: LegacyContext,
 ): Cloth | undefined {
   const s = ctx.scope;
@@ -108,8 +104,8 @@ export function dressWithCloth(
   const bounds = localBounds(s, root);
   const height = bounds.max.y - bounds.min.y;
   if (!(height > 0.2)) return undefined;
-  const width = style === "cape" ? height * 0.34 : height * 0.1,
-    length = style === "cape" ? height * 0.5 : height * 0.44;
+  const width = height * 0.34,
+    length = height * 0.5;
   const tint = colour ?? outfitColour(s, root);
   const base = new s.MeshStandardMaterial({
     color: tint,
@@ -119,7 +115,7 @@ export function dressWithCloth(
   });
   const material = ctx.toon.toonMaterial(base);
   const uniforms = {
-    uClothSwing: { value: new s.Vector2(0, style === "scarf" ? 0.42 : 0.06) },
+    uClothSwing: { value: new s.Vector2(0, 0.06) },
     uClothLength: { value: length },
     uClothTime: { value: 0 },
     uClothFlutter: { value: 1 },
@@ -152,8 +148,8 @@ export function dressWithCloth(
     cloth.dispose();
     base.dispose();
   });
-  const mesh = new s.Mesh(clothGeometry(s, width, length, style), cloth);
-  mesh.name = style === "cape" ? "athena-signature-cape" : "athena-traveller-scarf";
+  const mesh = new s.Mesh(capeGeometry(s, width, length), cloth);
+  mesh.name = "athena-signature-cape";
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.frustumCulled = false;
@@ -189,7 +185,7 @@ export function dressWithCloth(
     mesh.position.copy(anchor);
   }
   ctx.onDispose(() => mesh.geometry.dispose());
-  const rest = style === "scarf" ? 0.42 : 0.06;
+  const rest = 0.06;
   const swing = { x: 0, y: rest, vx: 0, vy: 0 };
   return {
     mesh,
@@ -199,7 +195,7 @@ export function dressWithCloth(
         uniforms.uClothFlutter.value = 0;
         return;
       }
-      const lift = rest + Math.min(1.25, speed * (style === "scarf" ? 0.32 : 0.2));
+      const lift = rest + Math.min(1.25, speed * 0.2);
       const side = Math.max(-0.6, Math.min(0.6, -turn * 0.18));
       // Critically damped-ish spring: quick to lift, gentle to settle.
       const k = 38,

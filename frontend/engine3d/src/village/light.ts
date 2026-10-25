@@ -10,14 +10,11 @@ export function sunDirection(up: Vec, forward: Vec): Vec {
   return norm(add(add(mul(up, 0.3), mul(forward, 0.86)), mul(right, -0.36)));
 }
 
-/** Warm key, cool sky fill and grass bounce. Values are linear and feed HDR bloom. */
+/** Warm key, cool sky fill and the haze tints shared by the grade. */
 export const LUMINOUS = {
   sun: "#ffd2a1",
   sunIntensity: 2.8,
   sky: "#9fd1e8",
-  ground: "#d8b07a",
-  rim: "#ffe4bd",
-  shadow: "#6f78b8",
   haze: "#cfe3ea",
   hazeSun: "#ffd9a8",
 } as const;
