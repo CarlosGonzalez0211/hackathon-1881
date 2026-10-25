@@ -39,7 +39,19 @@ export interface FitResult {
  * Overrides keyed by manifest key (`slot:house/0/done`, `geometries/npcs/present/fox/fox`,
  * …). Empty for now; later tasks add entries as they swap slots.
  */
-export const athenaPlacementOverrides: Record<string, AthenaPlacementOverride> = {};
+export const athenaPlacementOverrides: Record<string, AthenaPlacementOverride> = {
+  // Topic houses (athena/houses.ts). Slot 3 sits on the narrow summit by the temple and
+  // slot 5 on the crowded shop street: a smaller house finds a clear plinth there.
+  "slot:house/3": { scale: 0.8 },
+  "slot:house/5": { scale: 0.8 },
+};
+
+/**
+ * Legacy world units per kit metre. The kit is authored in metres around a 1.2 m student;
+ * the legacy avatar/NPC fits land at 1.14–1.26 (avatar 1.26), so new Athena objects with no
+ * legacy counterpart (Lumen, topic houses, props) use 1.2 to keep the kit's proportions.
+ */
+export const ATHENA_WORLD_SCALE = 1.2;
 
 /** Smallest scale an override may produce (negative/zero overrides would mirror or vanish). */
 export const MIN_OVERRIDE_SCALE = 1e-6;

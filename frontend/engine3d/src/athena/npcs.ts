@@ -14,13 +14,14 @@
 import type { HouseState, PlanetState } from "@athena/shared";
 import { athenaClipFade } from "../config/characters";
 import { houseInteractionAnchors } from "../config/world";
-import { applyFit, fitToBounds } from "../placement/athena-placement";
+import { ATHENA_WORLD_SCALE, applyFit, fitToBounds } from "../placement/athena-placement";
 import type { LegacyContext } from "../runtime/legacy-context";
+import type { Vec3 } from "../world/house-sites";
 import type { AthenaInstallContext } from "./install";
 import { ClipPlayer, loadAthenaModel, localBounds } from "./models";
 
 export const LUMEN_SLOT = "new:npc.cat";
-/** Lumen stands this far (m) from the house anchor, along the surface. */
+/** Lumen sits this far (legacy units) beside the house door, or from a bare anchor. */
 export const LUMEN_OFFSET = 1.4;
 
 export interface NpcAnimationState {
@@ -132,7 +133,7 @@ async function attachLumen(ctx: AthenaInstallContext, scene: LegacyContext) {
   lumen.name = "athena-lumen";
   lumen.add(model.root);
   const override = ctx.placement.overrides[LUMEN_SLOT];
-  model.root.scale.setScalar(override?.scale ?? 1);
+  model.root.scale.setScalar(ATHENA_WORLD_SCALE * (override?.scale ?? 1));
   model.root.rotation.y = override?.rotationY ?? 0;
   const player = new ClipPlayer(scope, model.root, model.animations, athenaClipFade);
   player.play("idle", 0);
@@ -144,7 +145,10 @@ async function attachLumen(ctx: AthenaInstallContext, scene: LegacyContext) {
   const side = new scope.Vector3();
   const basis = new scope.Matrix4();
   const place = (house: HouseState | undefined) => {
-    const key = house ? `${house.slot}:${house.status}` : "none";
+    const sites = scene.userData.athenaHouseSites as
+      Map<number, { door: Vec3; forward: Vec3; up: Vec3 }> | undefined;
+    const site = house ? sites?.get(house.slot) : undefined;
+    const key = house ? `${house.slot}:${house.status}:${!!site}` : "none";
     if (key === placedFor) return;
     placedFor = key;
     const source = house
@@ -152,13 +156,21 @@ async function attachLumen(ctx: AthenaInstallContext, scene: LegacyContext) {
       : undefined;
     lumen.visible = !!source;
     if (!source) return;
-    anchor.fromArray(source.position);
-    up.copy(anchor).normalize();
-    // Step sideways along the surface so Lumen sits beside the door, not inside it.
-    tangent.set(0, 1, 0).cross(up);
-    if (tangent.lengthSq() < 1e-6) tangent.set(1, 0, 0);
-    tangent.normalize();
-    lumen.position.copy(anchor).addScaledVector(tangent, LUMEN_OFFSET);
+    if (site) {
+      // Beside the door of the topic house, looking at the path to it.
+      anchor.fromArray(site.door).addScaledVector(up.fromArray(site.forward), 2);
+      up.fromArray(site.up);
+      tangent.crossVectors(up, side.fromArray(site.forward)).normalize();
+      lumen.position.fromArray(site.door).addScaledVector(tangent, LUMEN_OFFSET);
+    } else {
+      anchor.fromArray(source.position);
+      up.copy(anchor).normalize();
+      // Step sideways along the surface so Lumen does not stand on the NPC.
+      tangent.set(0, 1, 0).cross(up);
+      if (tangent.lengthSq() < 1e-6) tangent.set(1, 0, 0);
+      tangent.normalize();
+      lumen.position.copy(anchor).addScaledVector(tangent, LUMEN_OFFSET);
+    }
     const collider = scene.characters?.mesh?._collisionPhysics?._collider;
     if (collider) ctx.placement.snapToGround(scope, lumen, [collider]);
     // Stand on the local surface (+Y = planet normal) facing the house anchor (+Z).

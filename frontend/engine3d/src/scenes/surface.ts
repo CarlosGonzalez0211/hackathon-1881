@@ -2,6 +2,7 @@ import type { HouseState, PlanetState } from "@athena/shared";
 import { houseInteractionAnchors, renderingDefinition } from "../config";
 import { createEngineContext, disposeEngineContext } from "../runtime/context";
 import type { LegacyContext } from "../runtime/legacy-context";
+import type { Vector3Tuple } from "../types";
 
 export interface ProjectedHouse {
   slot: number;
@@ -123,6 +124,7 @@ export async function createSurfaceEngine(
     scene.userData.planetState = state;
     const position = new scope.Vector3();
     const projected = new scope.Vector3();
+    const door = new scope.Vector3();
     let nearest: number | undefined;
     let lastUi = 0;
     scene.beforeRenderCbs.push(() => {
@@ -132,19 +134,28 @@ export async function createSurfaceEngine(
       const player = scene.characters.mesh._localObject;
       let min = Infinity;
       nearest = undefined;
+      // Athena houses stand beside their anchors (athena/houses.ts): labels go above the
+      // roof, and E works near the anchor (legacy) or the house door.
+      const sites = scene.userData.athenaHouseSites as
+        Map<number, { top: Vector3Tuple; door: Vector3Tuple }> | undefined;
       const points = houseInteractionAnchors.map((anchor) => {
+        const slot = anchor.interaction!.slot!;
+        const site = sites?.get(slot);
         position.fromArray(anchor.position);
-        const distance = position.distanceTo(player.position);
+        let distance = position.distanceTo(player.position);
+        if (site)
+          distance = Math.min(distance, door.fromArray(site.door).distanceTo(player.position));
         if (distance < min && distance < (anchor.interaction?.radius || 2.2)) {
           min = distance;
-          nearest = anchor.interaction?.slot;
+          nearest = slot;
         }
+        if (site) position.fromArray(site.top);
         projected
           .copy(position)
-          .addScaledVector(position.clone().normalize(), 1.2)
+          .addScaledVector(position.clone().normalize(), site ? 0.4 : 1.2)
           .project(scene.camera);
         return {
-          slot: anchor.interaction!.slot!,
+          slot,
           x: ((projected.x + 1) * host.clientWidth) / 2,
           y: ((1 - projected.y) * host.clientHeight) / 2,
           visible: projected.z < 1 && position.dot(scene.camera.position) > 0,
