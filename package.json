@@ -16,7 +16,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
-    "build:platform": "pnpm --filter @athena/shared build && pnpm --filter @athena/ai build",
+    "build:platform": "pnpm --filter ./shared --filter ./ai --filter \"./backend/modules/*\" build",
     "test": "pnpm build:platform && pnpm --filter @athena/api exec tsx --test ../../shared/tests/*.test.ts tests/*.test.ts"
   },
   "lint-staged": {

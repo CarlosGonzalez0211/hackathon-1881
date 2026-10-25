@@ -1,2 +1,36 @@
-# Everyone on the team reviews by default. Replace with real handles / a team.
+# Default reviewer for anything not matched below.
 * @CarlosGonzalez0211
+
+# Platform (P4)
+/backend/modules/platform/ @CarlosGonzalez0211
+/backend/modules/analytics/ @CarlosGonzalez0211
+/backend/api/src/app.ts @CarlosGonzalez0211
+/data/supabase/ @CarlosGonzalez0211
+/shared/src/common.ts @CarlosGonzalez0211
+/shared/src/events.ts @CarlosGonzalez0211
+/shared/src/platform.ts @CarlosGonzalez0211
+/shared/src/analytics.ts @CarlosGonzalez0211
+/frontend/web/src/features/auth/ @CarlosGonzalez0211
+/frontend/web/src/features/classes/ @CarlosGonzalez0211
+/frontend/web/src/features/analytics/ @CarlosGonzalez0211
+
+# Other owners: uncomment and replace with real GitHub handles. Unknown handles are ignored
+# by GitHub with a warning, so they stay commented until the team fills them in.
+# Curriculum + demo (P1)
+# /backend/modules/curriculum/ @handle-p1
+# /ai/rag/ @handle-p1
+# /shared/src/curriculum.ts @handle-p1
+# /shared/src/mocks/demo-identities.ts @handle-p1
+# /shared/src/mocks/demo-scenarios.ts @handle-p1
+# /shared/src/mocks/demo-curriculum.ts @handle-p1
+# /frontend/web/src/features/curriculum/ @handle-p1
+# Learning (P2)
+# /backend/modules/learning/ @handle-p2
+# /shared/src/learning.ts @handle-p2
+# /shared/src/mocks/demo-learning.ts @handle-p2
+# /frontend/web/src/features/learning/ @handle-p2
+# World (P3)
+# /backend/modules/world/ @handle-p3
+# /shared/src/world.ts @handle-p3
+# /frontend/engine3d/ @handle-p3
+# /frontend/web/src/features/world/ @handle-p3
