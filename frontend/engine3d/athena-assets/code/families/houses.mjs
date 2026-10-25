@@ -287,7 +287,7 @@ const TONES = {
 /** Documented for the report (rule 5). */
 export const ASYMMETRY = [
   "door lantern on one side only (v0 right, v1 left, v2 right, v3 left, v4 right, v5 left)",
-  "oculus placement per variant (v0 left face, v1 right face, v2 near axis, v3 in the +X gable, v4 and v5 on axis)",
+  "oculus placement per variant (v0 left face, v1 right face, v2 near axis, v3 in the front gable, crossed beams on the front gable only, v4 and v5 on axis)",
   "one off-axis chimney per house",
   "middle step shifted 3 cm off the door axis, uneven half-ring of flagstones",
   "moss on the back-left of the plinth only",
