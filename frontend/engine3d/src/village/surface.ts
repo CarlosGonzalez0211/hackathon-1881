@@ -9,6 +9,8 @@ import { buildVillage, orient, disposeScene } from "./scene";
 import { interactionTarget } from "./interaction";
 import { SphericalWalker } from "./walker";
 import { createAtmosphere } from "./atmosphere";
+import { createLuminousGrade, type LuminousGrade } from "./grade";
+import { detectTier, sunDirection, LUMINOUS } from "./light";
 import {
   add,
   mul,
@@ -38,10 +40,13 @@ export async function createSurfaceEngine(
   const { scope: s, lifecycle, assets } = context;
   const scene = new s.Scene();
   const atmosphere = createAtmosphere(assets, scene);
-  scene.fog = new s.Fog("#bdd9d2", 30, 105);
+  scene.fog = new s.Fog(LUMINOUS.haze, 30, 105);
+  const tier = detectTier();
   const camera = new s.PerspectiveCamera(50, 1, 0.08, 260);
   const audio = createVillageAudio();
-  let renderer: LegacyContext, village: Awaited<ReturnType<typeof buildVillage>> | undefined;
+  let renderer: LegacyContext,
+    grade: LuminousGrade | undefined,
+    village: Awaited<ReturnType<typeof buildVillage>> | undefined;
   let avatarPlayer: ClipPlayer | undefined;
   let state = options.state,
     quests: QuestState[] = [],
@@ -63,6 +68,7 @@ export async function createSurfaceEngine(
     avatarPlayer?.dispose();
     disposeScene(scene);
     village?.dispose();
+    grade?.dispose();
     renderer?.dispose();
     renderer?.forceContextLoss();
     context.dispose();
@@ -72,11 +78,12 @@ export async function createSurfaceEngine(
   try {
     if (options.signal?.aborted) throw new DOMException("Aborted", "AbortError");
     renderer = new s.WebGLRenderer({
-      antialias: true,
+      // Multisampling lives in the HDR composer; the default framebuffer only receives the grade.
+      antialias: false,
       alpha: true,
       powerPreference: "high-performance",
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier === "high" ? 1.5 : 1));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = s.PCFSoftShadowMap;
     renderer.outputColorSpace = s.SRGBColorSpace;
@@ -89,11 +96,13 @@ export async function createSurfaceEngine(
       "Planeta de Athena. Usa WASD o las flechas para caminar, Espacio para saltar, E para interactuar y V para ver el planeta.",
     );
     host.appendChild(renderer.domElement);
-    const ambient = new s.AmbientLight("#cce5df", 1.2);
+    // Painterly materials add their own radial sky/ground fill; this only lifts deep shade.
+    const ambient = new s.AmbientLight(LUMINOUS.sky, 0.45);
     scene.add(ambient);
-    const sun = new s.DirectionalLight("#ffe0ad", 2.65);
+    const sun = new s.DirectionalLight(LUMINOUS.sun, LUMINOUS.sunIntensity);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(tier === "high" ? 2048 : 1024, tier === "high" ? 2048 : 1024);
+    sun.shadow.radius = 4;
     Object.assign(sun.shadow.camera, {
       left: -22,
       right: 22,
@@ -105,15 +114,22 @@ export async function createSurfaceEngine(
     sun.shadow.bias = -0.001;
     sun.shadow.normalBias = 0.045;
     scene.add(sun, sun.target);
-    const fill = new s.DirectionalLight("#aecfdf", 0.6);
+    const fill = new s.DirectionalLight("#9fc4e6", 0.5);
     scene.add(fill, fill.target);
     const resize = () => {
       const width = Math.max(1, host.clientWidth),
         height = Math.max(1, host.clientHeight);
       renderer!.setSize(width, height);
+      grade?.setSize(width, height);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
     };
+    grade = createLuminousGrade(s, renderer, scene, camera, tier);
+    if (grade.composed) {
+      // The depth haze carries aerial perspective; scene fog only softens the far edge.
+      scene.fog.near = 70;
+      scene.fog.far = 230;
+    }
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(host);
@@ -235,6 +251,7 @@ export async function createSurfaceEngine(
       frames = 0,
       statsAt = previous,
       fps = 60,
+      slowSince = 0,
       footstepsAt = 0;
     let cameraReady = false;
     const render = (now: number) => {
@@ -385,16 +402,8 @@ export async function createSurfaceEngine(
       camera.up.set(...walker.up);
       camera.lookAt(smoothedLook);
       cameraReady = true;
-      sun.position
-        .copy(avatarRoot.position)
-        .add(
-          new s.Vector3(
-            ...add(
-              mul(walker.up, 18),
-              add(mul(walker.forward, 32), mul(cross(walker.forward, walker.up), -12)),
-            ),
-          ),
-        );
+      const sunward = sunDirection(walker.up, walker.forward);
+      sun.position.copy(avatarRoot.position).add(new s.Vector3(...mul(sunward, 40)));
       sun.target.position.copy(avatarRoot.position);
       sun.target.updateMatrixWorld();
       fill.position
@@ -402,8 +411,8 @@ export async function createSurfaceEngine(
         .add(new s.Vector3(...add(mul(walker.up, 12), mul(walker.forward, 18))));
       fill.target.position.copy(avatarRoot.position);
       fill.target.updateMatrixWorld();
-      scene.fog.near = overview ? 120 : 30;
-      scene.fog.far = overview ? 210 : 105;
+      scene.fog.near = overview ? 120 : grade!.composed ? 70 : 30;
+      scene.fog.far = overview ? 230 : grade!.composed ? 230 : 105;
       atmosphere.tick(camera, walker.up, walker.forward, now / 1000, reduced, overview);
       for (let i = rewards.length - 1; i >= 0; i--) {
         const reward = rewards[i]!;
@@ -417,10 +426,24 @@ export async function createSurfaceEngine(
           rewards.splice(i, 1);
         }
       }
-      renderer!.render(scene, camera);
+      camera.updateMatrixWorld();
+      grade!.tick(camera, sunward, overview);
+      grade!.render(dt);
       frames++;
       if (now - statsAt > 1000) {
         fps = (frames * 1000) / (now - statsAt);
+        // Sustained low frame rate: shed god rays and deep bloom, then resolution.
+        if (fps < 42 && !document.hidden) {
+          slowSince ||= now;
+          if (now - slowSince > 3500) {
+            slowSince = 0;
+            if (grade!.tier === "high") grade!.downgrade();
+            else if (renderer!.getPixelRatio() > 1) {
+              renderer!.setPixelRatio(1);
+              resize();
+            }
+          }
+        } else slowSince = 0;
         frames = 0;
         statsAt = now;
         options.onStats?.({
