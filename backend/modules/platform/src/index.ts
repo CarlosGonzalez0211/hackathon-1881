@@ -24,6 +24,12 @@ export {
 export { RoleAuthorizationService } from "./authorization.js";
 export { demoClass, InMemoryClassCatalog, type ClassCatalog } from "./classes.js";
 export {
+  InMemoryEnrollmentRegistry,
+  notAStudent,
+  type EnrolledStudent,
+  type EnrollmentRegistry,
+} from "./enrollments.js";
+export {
   DirectoryAuthService,
   InMemoryIdentityDirectory,
   StaticTokenVerifier,

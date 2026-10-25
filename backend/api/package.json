@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "content:models": "tsx --env-file-if-exists=../../.env scripts/content-models.ts",
-    "content:smoke": "tsx --env-file-if-exists=../../.env scripts/content-smoke.ts"
+    "content:smoke": "tsx --env-file-if-exists=../../.env scripts/content-smoke.ts",
+    "enroll": "tsx --env-file-if-exists=../../.env src/scripts/enroll.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",

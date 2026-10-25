@@ -16,6 +16,11 @@ const schema = z.object({
   CONTENT_EMBED_MODEL: z.string().default("gemini-embedding-2"),
   /** Cosine similarity a chunk needs to count as evidence for the real embeddings. */
   CONTENT_MIN_SIMILARITY: z.coerce.number().min(0).max(1).default(0.55),
+  /** Lets mock mode run when NODE_ENV=production (demo deployments only). */
+  ATHENA_ALLOW_MOCK: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 export const env = schema.parse(process.env);

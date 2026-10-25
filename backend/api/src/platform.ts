@@ -5,6 +5,7 @@ import {
 } from "@athena/platform";
 import { env } from "./env.js";
 import { supabaseAdmin } from "./lib.js";
+import { SupabaseEnrollmentRegistry } from "./supabase-enrollments.js";
 import {
   SupabaseClassCatalog,
   SupabaseIdentityDirectory,
@@ -26,5 +27,6 @@ export function platformServicesFor(mode = env.ATHENA_DATA_MODE): Partial<Platfo
     ),
     authorization: new RoleAuthorizationService(),
     classes: new SupabaseClassCatalog(client),
+    enrollments: new SupabaseEnrollmentRegistry(client),
   };
 }

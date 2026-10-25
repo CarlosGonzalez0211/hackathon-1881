@@ -13,6 +13,7 @@ import {
   type CurriculumTopicSummary,
 } from "@athena/shared";
 import { WorldService, createMockWorldPorts, worldRoutes } from "@athena/world";
+import { installPlatform } from "@athena/platform";
 import Fastify from "fastify";
 
 const LUCIA = "student-lucia";
@@ -23,6 +24,7 @@ async function setup(options: { demoControls?: boolean } = {}) {
   const ports = createMockWorldPorts();
   const service = new WorldService({ ports, now: () => AT });
   const app = Fastify({ logger: false });
+  installPlatform(app);
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     const status = err.name === "ZodError" ? 400 : (err.statusCode ?? 500);
     reply.status(status).send({ error: err.message });
