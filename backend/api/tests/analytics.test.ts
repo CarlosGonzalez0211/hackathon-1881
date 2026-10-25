@@ -145,3 +145,30 @@ test("replay is order-independent and live events flow through the store", async
   assert.equal(after.interventions.length, 1);
   assert.equal(after.interventions[0]!.severity, "high");
 });
+
+test("API serves the projection of events appended to the platform store", async () => {
+  const { createApp } = await import("../src/app.js");
+  const app = await createApp({ logger: false, dataMode: "mock" });
+  const url = `/api/analytics/class/${athenaDemoIds.class}`;
+  try {
+    const before = (await app.inject({ method: "GET", url })).json();
+    assert.equal(before.interventions.length, 0);
+    assert.equal(before.students.length, 8);
+    assert.ok(before.topics.length > 0);
+
+    await app.platform.events.append(mastery(students.diego, topics.geometry, 0.4, 0.15));
+    await app.platform.events.append(
+      event({ studentId: students.diego, type: "AiUsageRecorded", payload: { kind: "hint" } }),
+    );
+    const after = (await app.inject({ method: "GET", url })).json();
+    assert.equal(after.interventions.length, 1);
+    assert.equal(after.interventions[0].studentId, students.diego);
+    assert.equal(after.interventions[0].severity, "high");
+    assert.equal(after.aiUsage.hint, 1);
+
+    const unknown = await app.inject({ method: "GET", url: "/api/analytics/class/nope" });
+    assert.equal(unknown.statusCode, 404);
+  } finally {
+    await app.close();
+  }
+});
