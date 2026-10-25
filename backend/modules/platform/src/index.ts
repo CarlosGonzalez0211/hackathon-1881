@@ -22,6 +22,7 @@ export {
   type AuthService,
 } from "./auth.js";
 export { RoleAuthorizationService } from "./authorization.js";
+export { demoClass, InMemoryClassCatalog, type ClassCatalog } from "./classes.js";
 export {
   DirectoryAuthService,
   InMemoryIdentityDirectory,

@@ -6,6 +6,7 @@ export {
   InMemoryAnalyticsRepository,
   InMemoryInterventionStatusStore,
   type AnalyticsReadRepository,
+  type InterventionDecision,
   type InterventionStatusStore,
 } from "./repository.js";
 export { AnalyticsService } from "./service.js";

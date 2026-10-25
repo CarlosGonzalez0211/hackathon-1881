@@ -2,6 +2,7 @@ import {
   athenaDemoIds,
   demoClassAnalytics,
   type ClassAnalytics,
+  type Intervention,
   type InterventionStatus,
 } from "@athena/shared";
 
@@ -25,26 +26,32 @@ export class InMemoryAnalyticsRepository implements AnalyticsReadRepository {
  * Professor decisions on derived interventions. Interventions are recomputed from events, so
  * only their status is stored, keyed by the deterministic intervention id.
  */
+export interface InterventionDecision {
+  status: InterventionStatus;
+  /** Severity when the professor decided; a later escalation reopens the intervention. */
+  severity: Intervention["severity"];
+}
+
 export interface InterventionStatusStore {
-  statuses(classId: string): Promise<Map<string, InterventionStatus>>;
+  statuses(classId: string): Promise<Map<string, InterventionDecision>>;
   set(
     classId: string,
     interventionId: string,
-    status: InterventionStatus,
+    decision: InterventionDecision,
     actorId: string,
   ): Promise<void>;
 }
 
 export class InMemoryInterventionStatusStore implements InterventionStatusStore {
-  private readonly byClass = new Map<string, Map<string, InterventionStatus>>();
+  private readonly byClass = new Map<string, Map<string, InterventionDecision>>();
 
   async statuses(classId: string) {
     return new Map(this.byClass.get(classId) ?? []);
   }
 
-  async set(classId: string, interventionId: string, status: InterventionStatus) {
-    const map = this.byClass.get(classId) ?? new Map<string, InterventionStatus>();
-    map.set(interventionId, status);
+  async set(classId: string, interventionId: string, decision: InterventionDecision) {
+    const map = this.byClass.get(classId) ?? new Map<string, InterventionDecision>();
+    map.set(interventionId, decision);
     this.byClass.set(classId, map);
   }
 }
