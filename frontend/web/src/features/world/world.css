@@ -1,0 +1,51 @@
+/* World UI styles (Person 3): learning-state icons and sound controls. Tokens only. */
+
+/* Learning-state icons (brand guide 05): kit shape on the state token, always with text. */
+.state-icon {
+  display: block;
+  flex: none;
+}
+.status-symbol {
+  color: var(--athena-ink);
+}
+.locked .status-symbol {
+  border-color: var(--athena-locked);
+}
+.available .status-symbol {
+  border-color: var(--athena-available);
+}
+.in_progress .status-symbol {
+  border-color: var(--athena-in-progress);
+}
+.done .status-symbol {
+  border-color: var(--athena-done);
+}
+/* Sound: off until the first gesture, then music/effects sliders (brand guide 07). */
+.sound-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--athena-space-small);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+/* Text only on solid veils (brand guide 08): the sliders sit on the paper veil. */
+.sound-controls label {
+  font-size: 11px;
+  color: var(--athena-ink);
+  background: var(--athena-veil);
+  padding: var(--athena-space-small);
+  border-radius: var(--athena-radius-small);
+}
+.sound-controls input[type="range"] {
+  width: 88px;
+  accent-color: var(--athena-accent);
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

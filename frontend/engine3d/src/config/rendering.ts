@@ -1,3 +1,4 @@
+import { athenaBrand } from "@athena/brand";
 import { assetCatalog } from "../assets/catalog";
 
 export const renderingDefinition = {
@@ -24,6 +25,19 @@ export const renderingDefinition = {
     azimuthAngle: Math.PI * -0.25,
     forwardOffset: 6,
   },
+  /** Athena look (task 11). Toggle `enabled` / `outline.enabled` to A/B. */
+  toon: {
+    enabled: true,
+    gradient: [90, 170, 255],
+    // Brand gap: the guide has no 3D ink; #2B2936 is the asset-kit/brief outline colour.
+    outline: { enabled: true, color: "#2B2936", thickness: 0.0028 },
+  },
+  /**
+   * Fill light for Athena (MeshToon) materials; legacy cel shaders light themselves and
+   * ignore it. Fog uses `--athena-sky-horizon`.
+   */
+  athenaLight: { color: athenaBrand.colors.skyMid, intensity: 1.2 },
+  fog: { color: athenaBrand.colors.skyHorizon },
   camera: { relativePosition: [0, 1, 5], relativeOffset: [-0.65, 0, 1], initialRadius: 2 },
   materials: {
     terrain: {

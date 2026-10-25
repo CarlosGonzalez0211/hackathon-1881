@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "predev": "pnpm --filter @athena/engine3d build:assets",
     "dev": "next dev --turbopack",
+    "prebuild": "pnpm --filter @athena/engine3d build:assets",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit"
