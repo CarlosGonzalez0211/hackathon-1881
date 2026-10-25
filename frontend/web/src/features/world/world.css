@@ -1,5 +1,60 @@
 /* World UI styles (Person 3): learning-state icons and sound controls. Tokens only. */
 
+.village-scene {
+  background: linear-gradient(180deg, #7c9fb7 0%, #adc9ce 58%, #e5e4cf 100%);
+}
+.village-scene canvas {
+  touch-action: none;
+  outline-offset: -4px;
+}
+.engine-host > .village-touch-controls {
+  display: none;
+  position: absolute;
+  inset: auto;
+  right: 1.2rem;
+  bottom: 6rem;
+  gap: 0.6rem;
+  z-index: 15;
+}
+.village-touch-controls[hidden] {
+  display: none;
+}
+.village-touch-controls button {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--athena-border);
+  border-radius: 999px;
+  background: var(--athena-veil);
+  color: var(--athena-ink);
+  font: inherit;
+  touch-action: manipulation;
+}
+.engine-host > .village-interaction-hint {
+  position: absolute;
+  inset: auto;
+  width: max-content;
+  max-width: calc(100% - 2rem);
+  left: 50%;
+  bottom: 6rem;
+  transform: translateX(-50%);
+  padding: 0.7rem 1.2rem;
+  border: 1px solid var(--athena-border);
+  border-radius: 999px;
+  background: var(--athena-veil);
+  color: var(--athena-ink);
+  font-size: 0.9rem;
+  box-shadow: 0 4px 20px #344a4020;
+  pointer-events: none;
+}
+@media (pointer: coarse) {
+  .engine-host > .village-touch-controls:not([hidden]) {
+    display: flex;
+  }
+  .engine-host > .village-interaction-hint {
+    bottom: 10rem;
+    white-space: nowrap;
+  }
+}
+
 /* Learning-state icons (brand guide 05): kit shape on the state token, always with text. */
 .state-icon {
   display: block;
@@ -74,4 +129,466 @@
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+/* Illustrated paper and ink, shared by controls, conversation and world feedback. */
+.world-app {
+  --toon-paper: #f4f0e3;
+  --toon-ink: #514b40;
+  --toon-edge: #847d6b;
+  --toon-shadow: #514b4030;
+}
+.toon-paper {
+  position: relative;
+  color: var(--toon-ink, #514b40);
+  background:
+    radial-gradient(ellipse at 18% 10%, #fffdf2a8, transparent 65%), var(--toon-paper, #f4f0e3);
+  border: 1.6px solid var(--toon-edge, #847d6b);
+  border-radius: 17px 21px 16px 19px / 19px 15px 20px 17px;
+  box-shadow:
+    0 3px 0 #655c4430,
+    0 8px 20px #3d493b16,
+    inset 0 0 0 3px #fff9e666;
+}
+.world-app:has(.village-scene) .world-controls {
+  top: 18px;
+  right: 22px;
+  gap: 12px;
+  align-items: flex-start;
+}
+.world-app .world-controls .world-tool {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  min-height: 0;
+  padding: 9px;
+  background: #f4f0e3;
+  border: 1.7px solid #817a6a;
+  border-radius: 19px 22px 18px 21px / 22px 17px 23px 18px;
+  box-shadow:
+    0 3px 1px #655c443d,
+    0 5px 12px #354a3c1c,
+    inset 0 0 0 3px #fff9e68c;
+  color: #514b40;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.world-app .world-controls .world-tool:nth-child(2) {
+  border-radius: 22px 17px 20px 17px / 18px 22px 17px 20px;
+}
+.world-app .world-controls .world-tool:hover {
+  transform: translateY(-2px) rotate(-1deg);
+  background: #fff8e8;
+}
+.world-app .world-controls .world-tool:active {
+  transform: translateY(2px);
+}
+.world-app .world-controls .world-tool[aria-pressed="true"],
+.world-app .world-controls .world-tool[aria-expanded="true"],
+.world-app .world-controls .world-tool:focus-visible {
+  outline: 3px solid #567ba7;
+  outline-offset: 2px;
+  background: #f7f3e7;
+  box-shadow:
+    0 4px 0 #53729c33,
+    inset 0 0 0 2px #fefbef;
+}
+.world-sketch-icon {
+  width: 100%;
+  height: 100%;
+  max-width: 58px;
+  max-height: 58px;
+  overflow: visible;
+  pointer-events: none;
+}
+.sound-controls {
+  position: relative;
+}
+.sound-mixer {
+  position: absolute;
+  top: 90px;
+  right: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  width: 235px;
+  padding: 16px;
+}
+.sound-mixer label {
+  background: transparent;
+  color: #514b40;
+  font-size: 13px;
+  padding: 0;
+}
+.sound-mixer input[type="range"] {
+  width: 140px;
+  accent-color: #8b9b77;
+}
+.world-app:has(.village-scene) .world-footer {
+  bottom: 20px;
+  left: 22px;
+  right: 22px;
+  color: #514b40;
+  text-shadow: none;
+  align-items: flex-end;
+}
+.world-key-guide {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  padding: 12px 18px 10px;
+  width: max-content;
+}
+.key-command {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11px;
+  color: #665e4e;
+  letter-spacing: 0.025em;
+}
+.world-app .world-key-guide kbd,
+.npc-dialogue kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 5px;
+  border: 1.5px solid #6b6659;
+  border-radius: 7px 6px 8px 6px;
+  background: linear-gradient(145deg, #fff9ec, #e5e1d5);
+  color: #514b40;
+  box-shadow:
+    0 3px 0 #9d9785,
+    0 4px 0 #6b6659,
+    inset 0 0 0 2px #fff9ed;
+  font-family: var(--athena-font-body);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1;
+}
+.movement-keys {
+  display: grid;
+  grid-template-columns: repeat(3, 32px);
+  gap: 5px;
+}
+.movement-keys kbd:first-child {
+  grid-column: 2;
+}
+.movement-keys kbd:nth-child(2) {
+  grid-row: 2;
+}
+.world-app .world-key-guide .wide-key {
+  min-width: 100px;
+  font-size: 17px;
+}
+.world-app .world-key-guide .shift-key {
+  min-width: 61px;
+  font-size: 17px;
+}
+.world-app:has(.village-scene) .runtime-note {
+  color: #6a6757;
+  background: #f4f0e3d9;
+  border: 1px solid #99917a70;
+  border-radius: 9px 11px 8px 10px;
+  font-size: 10px;
+  padding: 8px 12px;
+  text-shadow: none;
+}
+.world-app.is-overview .world-key-guide {
+  display: none;
+}
+.engine-host > .village-interaction-hint {
+  background: #f4f0e3f0;
+  color: #514b40;
+  border: 1.5px solid #847d6b;
+  border-radius: 11px 14px 10px 13px;
+  box-shadow: 0 3px 0 #655c4430;
+  font-size: 12px;
+}
+.world-app .topic-panel {
+  background: #f4f0e3f7;
+  border: 1.5px solid #847d6b;
+  border-radius: 19px 16px 22px 17px;
+  box-shadow:
+    0 4px 0 #655c4430,
+    0 12px 30px #34433124;
+}
+.world-app .house-marker {
+  background: #f4f0e3f0;
+  color: #514b40;
+  border: 1.3px solid #847d6b;
+  border-radius: 9px 12px 10px 11px;
+  box-shadow: 0 3px 0 #655c4426;
+}
+.npc-dialogue {
+  display: none;
+  position: fixed;
+  top: auto;
+  bottom: clamp(128px, 17vh, 175px);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 28px 32px 24px;
+  width: min(600px, calc(100vw - 32px));
+  max-width: none;
+  overflow: visible;
+  color: #514b40;
+}
+.npc-dialogue[open] {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.npc-dialogue::backdrop {
+  background: #36483b21;
+}
+.npc-dialogue::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid #c1b99e80;
+  border-radius: 13px 17px 11px 16px;
+  pointer-events: none;
+}
+.npc-dialogue-seal {
+  flex: 0 0 58px;
+  height: 67px;
+  padding: 5px;
+  border-bottom: 2px solid #baa880;
+  transform: rotate(-5deg);
+}
+.npc-dialogue-content {
+  flex: 1;
+}
+.npc-dialogue-kicker {
+  color: #8a775a;
+  font-size: 11px;
+  letter-spacing: 0.07em;
+}
+.npc-dialogue h2 {
+  font-size: 25px;
+  font-weight: 650;
+  margin: 4px 0 12px;
+  color: #5c513c;
+}
+.npc-dialogue p {
+  margin: 0 0 20px;
+  font-size: 16px;
+  line-height: 1.65;
+}
+.toon-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 44px;
+  background: #dfd4b7;
+  color: #514b40;
+  border: 1.4px solid #8b8169;
+  border-radius: 10px 13px 9px 12px;
+  box-shadow: 0 3px 0 #968b6f;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.toon-action:hover {
+  background: #eadfc4;
+}
+.npc-dialogue kbd {
+  min-width: 23px;
+  height: 23px;
+  font-size: 13px;
+  box-shadow: 0 2px 0 #968b6f;
+}
+.toon-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  color: #7c725f;
+  font-size: 26px;
+  cursor: pointer;
+}
+.toon-action:focus-visible,
+.toon-close:focus-visible {
+  outline: 3px solid #567ba7;
+  outline-offset: 3px;
+}
+@media (min-width: 751px) {
+  .engine-host > .village-interaction-hint {
+    left: 24px;
+    bottom: 145px;
+    transform: none;
+  }
+}
+@media (max-width: 750px) {
+  .world-app:has(.village-scene) .world-controls {
+    top: 14px;
+    right: 14px;
+    gap: 8px;
+  }
+  .world-app .world-controls .world-tool {
+    width: 58px;
+    height: 58px;
+    padding: 7px;
+    border-radius: 15px 18px 14px 17px;
+  }
+  .world-key-guide {
+    display: none;
+  }
+  .sound-mixer {
+    top: 72px;
+  }
+  .npc-dialogue {
+    bottom: 165px;
+    padding: 23px 20px 20px;
+  }
+  .npc-dialogue[open] {
+    gap: 12px;
+  }
+  .npc-dialogue-seal {
+    flex-basis: 38px;
+    height: 46px;
+  }
+  .npc-dialogue p {
+    font-size: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .world-app .world-controls .world-tool {
+    transition: none;
+  }
+}
+
+/* Smaller field guide, with the keyboard laid out correctly. */
+.world-key-guide {
+  gap: 13px;
+  padding: 8px 11px 7px;
+}
+.key-command {
+  gap: 5px;
+  font-size: 10px;
+}
+.world-app .world-key-guide kbd {
+  min-width: 24px;
+  height: 24px;
+  font-size: 14px;
+  padding: 0 4px;
+  border-radius: 5px 6px 5px 6px;
+  box-shadow:
+    0 2px 0 #9d9785,
+    0 3px 0 #6b6659,
+    inset 0 0 0 1px #fff9ed;
+}
+.movement-keys {
+  grid-template-columns: repeat(3, 24px);
+  gap: 4px;
+}
+.movement-keys kbd:nth-child(2) {
+  grid-column: 1;
+  grid-row: 2;
+}
+.movement-keys kbd:nth-child(3) {
+  grid-column: 2;
+  grid-row: 2;
+}
+.movement-keys kbd:nth-child(4) {
+  grid-column: 3;
+  grid-row: 2;
+}
+.world-app .world-key-guide .wide-key {
+  min-width: 72px;
+  font-size: 13px;
+}
+.world-app .world-key-guide .shift-key {
+  min-width: 46px;
+  font-size: 13px;
+}
+.world-app .house-marker {
+  will-change: transform;
+  transition: none;
+}
+.world-app .house-marker[data-in-reach="false"] {
+  pointer-events: none;
+  opacity: 0.88;
+}
+.world-app .house-marker[data-in-reach="false"] kbd {
+  display: none;
+}
+.world-app .house-marker[data-in-reach="true"] {
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 2px #a8b68e,
+    0 3px 0 #655c4426;
+}
+@media (min-width: 751px) {
+  .engine-host > .village-interaction-hint {
+    bottom: 112px;
+  }
+}
+
+/* Only the badge's inner decoration pulses; its projected anchor stays exact. */
+.world-app .house-marker {
+  padding: 10px 14px;
+  gap: 9px;
+  border: 1.5px solid #81785f;
+  border-radius: 12px 17px 11px 15px;
+  background: #f7f1e3f5;
+  color: #514b40;
+  box-shadow:
+    0 3px 0 #6d62482b,
+    0 5px 16px #3b4d361a;
+  font-weight: 600;
+  font-size: 11px;
+}
+.world-app .house-marker::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  bottom: -6px;
+  left: calc(50% - 4px);
+  background: #f7f1e3;
+  border-right: 1.5px solid #81785f;
+  border-bottom: 1.5px solid #81785f;
+  transform: rotate(45deg);
+}
+.world-app .house-marker .state-icon {
+  color: #548575;
+  filter: drop-shadow(0 0 3px #d9c36b80);
+  animation: topic-beacon 2.8s ease-in-out infinite;
+}
+.world-app .house-marker[data-in-reach="true"] {
+  border-color: #437c72;
+  background: #fffaea;
+  box-shadow:
+    0 0 0 3px #b6c9a6a6,
+    0 4px 0 #6d62482b;
+}
+@keyframes topic-beacon {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px #dfbd6166);
+  }
+  50% {
+    transform: scale(1.16);
+    filter: drop-shadow(0 0 7px #dfbd61b0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .world-app .house-marker .state-icon {
+    animation: none;
+  }
 }

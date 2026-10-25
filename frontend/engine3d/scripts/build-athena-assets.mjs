@@ -11,6 +11,7 @@
 // Filenames are content-hashed. An input-hash cache (node_modules/.cache) skips unchanged
 // inputs so `predev`/`prebuild` stay fast. Individual failures are warnings (CI without
 // LFS objects or tools still builds); pass `--strict` to make them fatal.
+import { refineCharacters } from "./refine-characters.mjs";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -24,7 +25,12 @@ import {
   normalizeLegacyKey,
 } from "../src/assets/athena-keys.mjs";
 
-const PIPELINE_VERSION = 5;
+const PIPELINE_VERSION = 9;
+const CHARACTER_PASS_HASH = createHash("sha256")
+  .update(await fs.readFile(new URL("./refine-characters.mjs", import.meta.url)))
+  .update(await fs.readFile(new URL("./story-explorer.mjs", import.meta.url)))
+  .digest("hex")
+  .slice(0, 12);
 /**
  * Mesh simplification (meshoptimizer): the procedural kit tessellates every sphere/lathe
  * densely, which breaks the surface budget (≤ 250k tris) once ink hulls double it. Error is
@@ -38,7 +44,7 @@ const NO_SIMPLIFY = /models\/terrain\/|athena-space-(starfield|galaxy)\.glb$/;
  * nodes and their descendants are preserved by gltf-transform), so simplification works on
  * whole models instead of thousands of tiny parts.
  */
-const KEEP_HIERARCHY = /models\/(avatar|terrain)\//;
+const KEEP_HIERARCHY = /models\/(avatar|terrain|npcs|characters)\//;
 const ENGINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // ATHENA_KIT_DIR points at another checkout of the kit (e.g. one with LFS objects fetched).
 const KIT = process.env.ATHENA_KIT_DIR
@@ -152,16 +158,22 @@ const processors = {
     const { io, functions, MeshoptEncoder, MeshoptSimplifier, logger } = await gltfToolchain();
     const document = await io.readBinary(new Uint8Array(input));
     document.setLogger(logger);
+    const character = refineCharacters(document, posix(absolute));
     await document.transform(
       functions.dedup(),
       // Keep empty leaf nodes (rig sockets/attachment points) and unused attributes (UV/colour
       // may be used by the toon material later).
       functions.prune({ keepLeaves: true, keepAttributes: true }),
-      ...(KEEP_HIERARCHY.test(absolute) ? [] : [functions.flatten(), functions.join()]),
+      ...(KEEP_HIERARCHY.test(posix(absolute)) ? [] : [functions.flatten(), functions.join()]),
       functions.weld(),
-      ...(NO_SIMPLIFY.test(absolute)
+      ...(NO_SIMPLIFY.test(posix(absolute))
         ? []
-        : [functions.simplify({ simplifier: MeshoptSimplifier, ...SIMPLIFY })]),
+        : [
+            functions.simplify({
+              simplifier: MeshoptSimplifier,
+              ...(character ? { ratio: 0.35, error: 0.003 } : SIMPLIFY),
+            }),
+          ]),
       functions.meshopt({ encoder: MeshoptEncoder, level: "medium" }),
     );
     return {
@@ -233,7 +245,7 @@ const processors = {
   },
 };
 const signature = (kind) =>
-  `${PIPELINE_VERSION}:${kind}:${
+  `${PIPELINE_VERSION}:${CHARACTER_PASS_HASH}:${kind}:${
     kind === "texture"
       ? tools.toktx
         ? "toktx"

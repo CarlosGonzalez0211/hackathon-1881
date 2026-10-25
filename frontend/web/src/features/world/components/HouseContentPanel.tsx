@@ -13,11 +13,13 @@ export function HouseContentPanel({
   studentId,
   cta,
   onStart,
+  showStart = true,
 }: {
   topicId: string;
   studentId: string;
   cta: string;
   onStart: () => void;
+  showStart?: boolean;
 }) {
   const [content, setContent] = useState<HouseContent | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,9 +88,11 @@ export function HouseContentPanel({
           {resource.body && <p>{resource.body}</p>}
         </article>
       ))}
-      <button className={styles.primary} onClick={onStart}>
-        {cta}
-      </button>
+      {showStart && (
+        <button className={styles.primary} onClick={onStart}>
+          {cta}
+        </button>
+      )}
     </div>
   );
 }

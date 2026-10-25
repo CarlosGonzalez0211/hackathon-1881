@@ -92,7 +92,10 @@ export const toonOptions: AthenaToonOptions = renderingDefinition.toon;
  * Their screen-space outline weight is 0: Athena meshes are inked by the hull instead.
  */
 export function legacyPipelineChunks(scope: LegacyContext) {
-  const ready = typeof scope.encoding_default === "string" && typeof scope.fog_default === "string";
+  const ready =
+    !scope.athenaStandardPipeline &&
+    typeof scope.encoding_default === "string" &&
+    typeof scope.fog_default === "string";
   return {
     ready,
     header: ready

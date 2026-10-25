@@ -1,4 +1,5 @@
 "use client";
+import { WorldSketchIcon } from "./WorldSketchIcon";
 import { useId } from "react";
 import "../world.css";
 
@@ -27,15 +28,17 @@ export function SoundControls({
     <fieldset className="sound-controls">
       <legend className="visually-hidden">Sonido</legend>
       <button
+        className="world-tool"
+        title={muted ? "Activar sonido" : "Silenciar sonido"}
         type="button"
         onClick={() => onMutedChange(!muted)}
         aria-pressed={!muted}
         aria-label={muted ? "Activar sonido" : "Silenciar sonido"}
       >
-        {muted ? "Sonido: apagado" : "Sonido: encendido"}
+        <WorldSketchIcon kind="sound" muted={muted} />
       </button>
       {!muted && (
-        <>
+        <div className="sound-mixer toon-paper">
           <label htmlFor={`${id}-music`}>Música</label>
           <input
             id={`${id}-music`}
@@ -58,7 +61,7 @@ export function SoundControls({
               onVolumesChange({ ...volumes, effects: Number(event.target.value) })
             }
           />
-        </>
+        </div>
       )}
     </fieldset>
   );

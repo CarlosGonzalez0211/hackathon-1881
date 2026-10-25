@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useWorld, type WorldToast } from "../WorldProvider";
 import styles from "./WorldToasts.module.css";
 
@@ -10,7 +10,9 @@ const symbols: Record<WorldToast["tone"], string> = {
   info: "ⓘ",
 };
 
-function Toast({ toast, onDismiss }: { toast: WorldToast; onDismiss: () => void }) {
+function Toast({ toast }: { toast: WorldToast }) {
+  const { dismissToast } = useWorld();
+  const onDismiss = useCallback(() => dismissToast(toast.id), [dismissToast, toast.id]);
   useEffect(() => {
     const timer = window.setTimeout(onDismiss, 6000);
     return () => window.clearTimeout(timer);
@@ -28,11 +30,11 @@ function Toast({ toast, onDismiss }: { toast: WorldToast; onDismiss: () => void 
 
 /** 2D mirror of every world change (unlocks, completions, badges). Always shown. */
 export function WorldToasts() {
-  const { toasts, dismissToast } = useWorld();
+  const { toasts } = useWorld();
   return (
     <ol className={styles.region} aria-live="polite" aria-label="Avisos del mundo">
       {toasts.map((toast) => (
-        <Toast key={toast.id} toast={toast} onDismiss={() => dismissToast(toast.id)} />
+        <Toast key={toast.id} toast={toast} />
       ))}
     </ol>
   );

@@ -1,35 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible_Next, IBM_Plex_Mono, Newsreader } from "next/font/google";
-
+import localFont from "next/font/local";
 import { athenaBrand } from "@athena/brand";
 import "@athena/brand/tokens.css";
-
 import "./globals.css";
 
-// Brand guide 03: display Newsreader 400/500, body Atkinson Hyperlegible Next 400/600/700,
-// mono IBM Plex Mono 400/500. Exposed as CSS variables consumed by --athena-font-*.
-const display = Newsreader({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500"],
+// Comfortaa is locally served with the app. The variable font covers weights 300–700.
+const comfortaa = localFont({
+  src: "./fonts/Comfortaa-Variable.ttf",
   display: "swap",
-  variable: "--font-athena-display",
-});
-
-const body = Atkinson_Hyperlegible_Next({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "600", "700"],
-  display: "swap",
-  variable: "--font-athena-body",
-  // next/font has no fallback metrics for this family (build warning); use explicit fallbacks.
-  adjustFontFallback: false,
-  fallback: ["Atkinson Hyperlegible", "system-ui", "sans-serif"],
-});
-
-const mono = IBM_Plex_Mono({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500"],
-  display: "swap",
-  variable: "--font-athena-mono",
+  weight: "300 700",
+  variable: "--font-comfortaa",
+  fallback: ["Arial Rounded MT Bold", "system-ui", "sans-serif"],
 });
 
 export const metadata: Metadata = {
@@ -45,7 +26,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    <html lang="es" className={comfortaa.variable}>
       <body>{children}</body>
     </html>
   );

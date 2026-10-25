@@ -30,7 +30,7 @@ import {
   fitToBounds,
   snapToGround,
 } from "../placement/athena-placement";
-import { createAthenaToon } from "../materials/athena-toon-material";
+import { createAthenaToon, toonOptions } from "../materials/athena-toon-material";
 import { ensureAthenaThreeClasses } from "../materials/three-shims";
 import type { AthenaToon } from "../materials/athena-toon-material";
 import type { LegacyContext } from "../runtime/legacy-context";
@@ -95,7 +95,7 @@ function unavailableGltfLoader(cause: unknown): AthenaGltfLoader {
  */
 export async function installAthena(
   scope: LegacyContext,
-  options: { lifecycle: EngineLifecycle; athenaAssets: boolean },
+  options: { lifecycle: EngineLifecycle; athenaAssets: boolean; installLegacySystems?: boolean },
 ): Promise<AthenaInstallation> {
   if (scope.athena) return scope.athena as AthenaInstallation;
   const disposers: (() => void)[] = [];
@@ -111,7 +111,15 @@ export async function installAthena(
   }
   const installed: string[] = [];
   ensureAthenaThreeClasses(scope);
-  const toon = createAthenaToon(scope);
+  const toon = createAthenaToon(
+    scope,
+    scope.athenaStandardPipeline
+      ? {
+          ...toonOptions,
+          outline: { ...toonOptions.outline, color: "#444d40", thickness: 0.00065 },
+        }
+      : toonOptions,
+  );
   disposers.push(() => toon.dispose());
   const installation: AthenaInstallation = {
     scope,
@@ -137,7 +145,7 @@ export async function installAthena(
     },
   };
   scope.athena = installation;
-  for (const [name, system] of systems) {
+  for (const [name, system] of options.installLegacySystems === false ? [] : systems) {
     try {
       await system(installation);
       installed.push(name);
