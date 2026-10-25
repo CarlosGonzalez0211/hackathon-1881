@@ -29,28 +29,81 @@ export interface PlanetProps {
   world?: WorldState;
   overview?: boolean;
   onOverviewChange?: (overview: boolean) => void;
+  /** Orbit: the name the class sees (defaults to the student id). */
+  label?: string;
+  /** Orbit: this planet belongs to the signed-in student. */
+  own?: boolean;
 }
-const OrbitContext = createContext<{ positions: ProjectedPlanet[] } | null>(null);
+/** Orbit labels register their node; the canvas moves them every frame, outside React. */
+const OrbitContext = createContext<{
+  register: (studentId: string, node: HTMLElement | null) => void;
+} | null>(null);
+function placeOrbitLabel(node: HTMLElement, point: ProjectedPlanet, clear = true) {
+  node.style.transform = `translate3d(${point.x}px, ${point.y + point.radius + 6}px, 0) translateX(-50%)`;
+  node.style.visibility = point.visible ? "visible" : "hidden";
+  node.classList.toggle("is-crowded", !clear);
+}
+/**
+ * Declutter: the signed-in student's label and nearer planets claim space first; a label that
+ * would overlap one already placed fades out until its planet moves clear.
+ */
+function placeOrbitLabels(
+  points: ProjectedPlanet[],
+  labels: Map<string, HTMLElement>,
+  sizes: Map<string, { width: number; height: number }>,
+) {
+  const placed: { left: number; right: number; top: number; bottom: number }[] = [];
+  const order = [...points].sort(
+    (a, b) =>
+      Number(labels.get(b.studentId)?.classList.contains("is-own")) -
+        Number(labels.get(a.studentId)?.classList.contains("is-own")) || a.depth - b.depth,
+  );
+  for (const point of order) {
+    const node = labels.get(point.studentId);
+    if (!node) continue;
+    let size = sizes.get(point.studentId);
+    if (!size || !size.width) {
+      size = { width: node.offsetWidth, height: node.offsetHeight };
+      sizes.set(point.studentId, size);
+    }
+    const top = point.y + point.radius + 6;
+    const box = {
+      left: point.x - size.width / 2 - 4,
+      right: point.x + size.width / 2 + 4,
+      top: top - 2,
+      bottom: top + size.height + 2,
+    };
+    const clear =
+      !point.visible ||
+      !placed.some(
+        (other) =>
+          box.left < other.right &&
+          box.right > other.left &&
+          box.top < other.bottom &&
+          box.bottom > other.top,
+      );
+    if (clear && point.visible) placed.push(box);
+    placeOrbitLabel(node, point, clear);
+  }
+}
 export function Planet(props: PlanetProps) {
   return props.mode === "orbit" ? <OrbitPlanet {...props} /> : <SurfacePlanet {...props} />;
 }
-function OrbitPlanet({ state, onPlanetClick }: PlanetProps) {
+function OrbitPlanet({ state, onPlanetClick, label, own }: PlanetProps) {
   const context = useContext(OrbitContext);
   if (!context) throw new Error('Planet mode="orbit" requiere un OrbitCanvas compartido.');
-  const position = context.positions.find((item) => item.studentId === state.studentId);
+  const { register } = context;
+  const name = label ?? state.studentId;
   return (
     <button
-      className="planet-label"
-      style={{
-        left: position?.x ?? -1000,
-        top: (position?.y ?? -1000) + 55,
-        visibility: position?.visible ? "visible" : "hidden",
-      }}
+      ref={(node) => register(state.studentId, node)}
+      className={`planet-label${own ? " is-own" : ""}`}
+      style={{ visibility: "hidden" }}
       onClick={() => onPlanetClick?.(state)}
-      aria-label={`Abrir planeta ${state.studentId}, ${Math.round(state.growth * 100)}% de progreso simulado`}
+      aria-label={own ? `Tu planeta, ${name}: volver a tu mundo` : `Planeta de ${name}`}
     >
-      <span>{state.studentId.replace("student-", "Estudiante ")}</span>
-      <strong>{Math.round(state.growth * 100)}%</strong>
+      {own && <span className="planet-label-badge">Tu planeta</span>}
+      <span>{name}</span>
     </button>
   );
 }
@@ -211,16 +264,31 @@ export function OrbitCanvas({
   children,
   onPlanetClick,
   onStats,
+  focus = null,
 }: {
   states: PlanetState[];
   children: React.ReactNode;
   onPlanetClick?: (planet: PlanetState) => void;
   onStats?: (stats: EngineStats) => void;
+  /** Student whose planet the camera visits; `null` frames the whole class. */
+  focus?: string | null;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const callbacks = useRef({ onPlanetClick, onStats });
   callbacks.current = { onPlanetClick, onStats };
-  const [positions, setPositions] = useState<ProjectedPlanet[]>([]);
+  const engine = useRef<{ focus(studentId: string | null): void } | null>(null);
+  const labels = useRef(new Map<string, HTMLElement>());
+  const latest = useRef(new Map<string, ProjectedPlanet>());
+  const sizes = useRef(new Map<string, { width: number; height: number }>());
+  const register = useRef((studentId: string, node: HTMLElement | null) => {
+    if (!node) {
+      labels.current.delete(studentId);
+      return;
+    }
+    labels.current.set(studentId, node);
+    const point = latest.current.get(studentId);
+    if (point) placeOrbitLabel(node, point);
+  }).current;
   const [phase, setPhase] = useState("loading");
   const [error, setError] = useState("");
   useEffect(() => {
@@ -237,10 +305,13 @@ export function OrbitCanvas({
           onPlanetClick: (planet) => callbacks.current.onPlanetClick?.(planet),
           onStats: (stats) => callbacks.current.onStats?.(stats),
           onProjection: (next) => {
-            if (!abort.signal.aborted) setPositions(next);
+            if (abort.signal.aborted) return;
+            for (const point of next) latest.current.set(point.studentId, point);
+            placeOrbitLabels(next, labels.current, sizes.current);
           },
         });
         dispose = instance.dispose;
+        engine.current = instance;
         if (abort.signal.aborted) {
           dispose();
           return;
@@ -255,13 +326,19 @@ export function OrbitCanvas({
     });
     return () => {
       abort.abort();
+      engine.current = null;
       dispose?.();
     };
   }, []);
+  useEffect(() => engine.current?.focus(focus), [focus, phase]);
   return (
-    <OrbitContext.Provider value={{ positions }}>
+    <OrbitContext.Provider value={{ register }}>
       <div className="scene orbit-scene" data-engine-status={phase} data-renderer="shared-orbit">
-        <div ref={host} className="engine-host" aria-label="Sistema de ocho planetas 3D" />
+        <div
+          ref={host}
+          className="engine-host"
+          aria-label={`Sistema de ${states.length} planetas de la clase`}
+        />
         {phase === "loading" && (
           <div className="scene-status" role="status">
             <span className="loader-orbit" />
