@@ -36,6 +36,7 @@ export {
   type WorldLearningSessionStart,
   type WorldLearningSessionStartRequest,
 } from "./contracts/learning-world.js";
+export * from "./content.js";
 export * from "./mocks.js";
 export * from "./mocks/index.js";
 export * from "./mocks/demo-curriculum.js";
