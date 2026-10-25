@@ -161,6 +161,7 @@ test("glazed tile and lacquer opt into the sheen; every other material compiles 
   assert.equal(isGlazeSource({ name: "wall", userData: { athenaGlaze: true } }), true);
   assert.equal(isGlazeSource({ name: "wall", userData: { athenaGlaze: "yes" } }), false);
   assert.equal(isGlazeSource({ name: "wall" }), false);
+  assert.equal(isGlazeSource({ name: "roof_tile", userData: { athenaGlaze: false } }), false);
 
   const plain = toon.toonMaterial(new s.MeshStandardMaterial({ name: "wall_f4e9d8" }));
   const byName = toon.toonMaterial(new s.MeshStandardMaterial({ name: "roof_tile_teal" }));

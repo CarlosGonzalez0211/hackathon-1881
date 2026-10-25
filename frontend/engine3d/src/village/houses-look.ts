@@ -18,16 +18,16 @@ export const HOUSE_WIND: Record<string, number> = {
 /**
  * Per-house finishing after the toon pass (the topic houses of `models/buildings`):
  *
- * - glazed roofs (`/tile|glaze|lacquer/`, here `roof_tile`) are flagged for the sheen. The toon
- *   material already does this from the name; flagging here keeps it explicit and recompiles the
- *   program when a house is assembled by another path.
+ * - roofs (`roof_tile`) opt out of the glaze sheen (`athenaGlaze = false`): the specular streaks
+ *   read as plastic on a tiled roof. The name is kept, so the materials stay findable. The toon
+ *   conversion already ran, so the flag is set and the program recompiled here.
  * - banners (cloth) stream from the mast: the bend grows with the distance from the mast edge of
  *   the mesh, so the flag stays attached to its pole. Leaves (`garden_leaf`, `vine_leaf`) only
  *   flutter a few millimetres, so a garden never slides off its roof.
  *
  * Materials are matched by name, which survives the runtime merge because those materials are
  * not plain (cloth and leaves are double sided, the roof carries a faint emissive). The wind is
- * driven by `breeze`, the village clock; without it only the glaze flag is applied.
+ * driven by `breeze`, the village clock; without it only the glaze opt-out is applied.
  */
 export function dressHouse(model: AthenaModel, status: string, breeze?: { value: number }) {
   const amplitude = HOUSE_WIND[status] ?? 0.7;
@@ -35,8 +35,8 @@ export function dressHouse(model: AthenaModel, status: string, breeze?: { value:
     if (!part.isMesh || part.userData.athenaInk) return;
     for (const material of Array.isArray(part.material) ? part.material : [part.material]) {
       if (!material?.name) continue;
-      if (GLAZE_NAME.test(material.name) && material.userData.athenaGlaze !== true) {
-        material.userData.athenaGlaze = true;
+      if (GLAZE_NAME.test(material.name) && material.userData.athenaGlaze !== false) {
+        material.userData.athenaGlaze = false;
         material.needsUpdate = true;
       }
       if (!breeze || !amplitude || !HOUSE_WIND_NAME.test(material.name)) continue;

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { NodeIO, getBounds, type Document } from "@gltf-transform/core";
@@ -272,7 +273,7 @@ test("the six roofs have six different silhouettes (front view, 64 columns)", as
     }
 });
 
-test("dressHouse flags glazed roofs and only wind-moves cloth and leaves", () => {
+test("dressHouse takes the glaze off roofs and only wind-moves cloth and leaves", () => {
   const roof = { name: "roof_tile", userData: {} as Record<string, unknown>, needsUpdate: false };
   const wall = { name: "wall_plaster", userData: {} as Record<string, unknown> };
   const banner = {
@@ -294,9 +295,16 @@ test("dressHouse flags glazed roofs and only wind-moves cloth and leaves", () =>
     url: "test",
   };
   dressHouse(model as never, "done", { value: 0 });
-  assert.equal(roof.userData.athenaGlaze, true, "roof_tile is flagged for the sheen");
+  assert.equal(roof.userData.athenaGlaze, false, "roof_tile opts out of the sheen");
   assert.equal(wall.userData.athenaGlaze, undefined, "plaster is not glazed");
   assert.equal(banner.userData.athenaHouseWind, true, "banner gets the wind");
   assert.equal(wall.userData.athenaHouseWind, undefined, "plaster does not move");
   dressHouse(model as never, "locked", { value: 0 });
+});
+
+test("lightWindows weights: lanterns and gilt carry more of the lamp, done keeps its base", () => {
+  const source = readFileSync(path.join(engineRoot, "src", "village", "scene.ts"), "utf8");
+  assert.match(source, /lantern_glow\/\.test\(name\)\s*\?\s*0\.8\b/, "lantern_glow weight is 0.8");
+  assert.match(source, /gilt\/\.test\(name\)\s*\?\s*0\.5\b/, "gilt weight is 0.5");
+  assert.match(source, /done:\s*\{\s*base:\s*2\.2\b/, "LAMP.done.base stays 2.2");
 });

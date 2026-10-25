@@ -14,7 +14,8 @@
  *   the +X gable, v4 on the axis, v5 on the axis); one chimney placed off the axis and rotated;
  *   the middle step is nudged sideways and the half-ring of flagstones is uneven; moss only on the
  *   back-left of the plinth; the second step is 3 cm off the door axis; the flag always flies
- *   towards -X; the loom frame and garden clumps sit on one side of the roof.
+ *   towards -X; the A-frame loom and its yarn basket sit on one side of the front eave; the eave
+ *   tufts and the single trailing vine of done houses sit at different eave corners.
  *
  * Runtime notes (see src/village/houses-look.ts, src/athena/merge.ts):
  *   - Plain opaque materials are merged into one vertex-coloured mesh at load time, so a material
@@ -301,7 +302,7 @@ export const ASYMMETRY = [
   "one off-axis chimney per house",
   "middle step shifted 3 cm off the door axis, uneven half-ring of flagstones",
   "moss on the back-left of the plinth only",
-  "flag flies towards -X; loom frame and garden clumps on one side of the roof",
+  "flag flies towards -X; the A-frame loom with its yarn basket sits on one side of the front eave (theta per variant), the eave blossom tufts and the one trailing vine at their own eave corners",
   "v3: ridge sags 6 percent towards the middle, chimney off centre, crossed beams on the front gable only",
   "each chimney leans 4 degrees in its own direction and has its own girth",
   "flagstones: six of different size and turn, clustered towards the door, none on the back half",
@@ -636,6 +637,13 @@ async function buildHouse(THREE, T, v, status) {
   const plinthLight = locked ? "#A3B1B7" : C.sandLight;
   const timberColor = locked ? C.timberDark : C.timber;
   const wallMat = locked ? "wall_stone" : "wall_plaster";
+  const mixHex = (a, b, t) => "#" + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
+  // Weight at the ground (rule 4): the plinth is darker than the walls and darkest at the foot,
+  // the steps and flagstones a touch darker than the plinth top.
+  const plinthFoot = mixHex(plinthDark, locked ? C.slateDark : C.timberDark, locked ? 0.35 : 0.55);
+  const plinthTop = mixHex(plinthLight, plinthDark, locked ? 0.4 : 0.62);
+  const stepTop = mixHex(plinthLight, plinthDark, locked ? 0.6 : 0.8);
+  const contactDark = mixHex(plinthFoot, C.ink, 0.4);
 
   // ---- geometry constants -------------------------------------------------------------------
   const P = 0.22; // plinth top
@@ -716,8 +724,8 @@ async function buildHouse(THREE, T, v, status) {
     toPlan(plinth);
     T.bake.fill(plinth, C.white);
     T.bake.gradient(plinth, {
-      bottom: plinthDark,
-      top: plinthLight,
+      bottom: plinthFoot,
+      top: plinthTop,
       curve: 1.3,
       from: 0,
       to: 0.24,
@@ -738,6 +746,20 @@ async function buildHouse(THREE, T, v, status) {
         lerp(pc.getY(i), moss.g, w),
         lerp(pc.getZ(i), moss.b, w),
       );
+    }
+    // thin dark contact band where the plinth meets the ground
+    {
+      const contact = new THREE.Color(contactDark);
+      for (let i = 0; i < pp.count; i++) {
+        const w = (1 - smoothstep(0.004, 0.05, pp.getY(i))) * 0.9;
+        if (w <= 0) continue;
+        pc.setXYZ(
+          i,
+          lerp(pc.getX(i), contact.r, w),
+          lerp(pc.getY(i), contact.g, w),
+          lerp(pc.getZ(i), contact.b, w),
+        );
+      }
     }
     put("plinth", plinth, "stone_plinth");
 
@@ -766,8 +788,8 @@ async function buildHouse(THREE, T, v, status) {
       place(g, { x: s.dx, z: frontZ - 0.25 });
       T.bake.fill(g, C.white);
       T.bake.gradient(g, {
-        bottom: plinthDark,
-        top: plinthLight,
+        bottom: plinthFoot,
+        top: stepTop,
         curve: 1.1,
         from: 0,
         to: s.top + 0.01,
@@ -800,7 +822,7 @@ async function buildHouse(THREE, T, v, status) {
       T.smoothNormals(g, 60);
       place(g, { x: x * stoneX, z, ry: rot });
       T.bake.fill(g, C.white);
-      T.bake.gradient(g, { bottom: plinthDark, top: plinthLight, from: -0.01, to: 0.06 });
+      T.bake.gradient(g, { bottom: plinthFoot, top: stepTop, from: -0.01, to: 0.06 });
       put(`flag${i}`, g, "stone_step");
     });
 
@@ -1030,7 +1052,6 @@ async function buildHouse(THREE, T, v, status) {
   }
 
   // ============================================================================= ROOF
-  const mixHex = (a, b, t) => "#" + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
   const roofEdge = mixHex(tone.dark, C.ink, 0.4); // the visible thickness of an eave, and the course lines
   const LIP = 0.026;
   let scallopParams = { folds: lobeFolds, depth: 0.14, lift: 0.075, r0: 0.9, r1: 1.2 };
@@ -1165,34 +1186,68 @@ async function buildHouse(THREE, T, v, status) {
     }
   }
 
-  /** Paper lantern, 0.22 m tall: thin iron caps, a paper body that is itself the light. Hangs from y = yTop. */
+  /**
+   * Paper lantern, 0.22 m tall: the paper body is 70 percent of the height (0.154 m), the iron cap
+   * and foot are a centimetre thin, two thin ribs run round the paper. Hangs from y = yTop.
+   */
   function paperLantern(x, yTop, z, lit, tag = "lantern") {
     const y0 = yTop - 0.03 - 0.22;
+    const bodyY0 = 0.01;
+    const bodyH = 0.154;
+    const rad = (y) => 0.05 * Math.pow(Math.sin((Math.PI * (y - bodyY0)) / bodyH), 0.55);
+    const ribs = [0.06, 0.11];
+    const ys = [0.01, 0.025, 0.045, 0.085, 0.135, 0.152, 0.164];
+    for (const rb of ribs) ys.push(rb - 0.004, rb, rb + 0.004);
+    ys.sort((p, q) => p - q);
     const bodyGeo = T.lathe(
-      [
-        [0, 0.02],
-        [0.026, 0.022],
-        [0.047, 0.07],
-        [0.052, 0.11],
-        [0.045, 0.15],
-        [0.025, 0.188],
-        [0, 0.19],
-      ],
+      ys.map((y) => [y <= bodyY0 + 1e-6 || y >= bodyY0 + bodyH - 1e-6 ? 0 : rad(y), y]),
       { segments: 10, divisions: 1 },
     );
+    const paper = locked ? C.stoneCoolLight : C.warmWhite;
+    const rib = locked ? C.stoneCoolDark : C.sandDark;
+    if (!lit) {
+      T.bake.fill(bodyGeo, paper);
+      const pos = bodyGeo.attributes.position;
+      const col = bodyGeo.attributes.color;
+      const ribColor = new THREE.Color(rib);
+      for (let i = 0; i < pos.count; i++)
+        if (ribs.some((rb) => Math.abs(pos.getY(i) - rb) < 0.0045))
+          col.setXYZ(i, ribColor.r, ribColor.g, ribColor.b);
+    }
     place(bodyGeo, { x, y: y0, z });
-    put(
-      tag,
-      bodyGeo,
-      lit ? "lantern_glow" : "lantern_paper",
-      lit ? undefined : locked ? C.stoneCoolLight : C.warmWhite,
-    );
+    put(tag, bodyGeo, lit ? "lantern_glow" : "lantern_paper", lit ? undefined : undefined);
+    if (lit)
+      for (const rb of ribs) {
+        // a glowing body cannot carry baked colour: thin ribs round it instead
+        const n = 10;
+        const ring = [];
+        for (let k = 0; k < n; k++) {
+          const t = (k / n) * TAU;
+          ring.push(
+            new THREE.Vector3(
+              x + Math.sin(t) * (rad(rb) + 0.003),
+              y0 + rb,
+              z + Math.cos(t) * (rad(rb) + 0.003),
+            ),
+          );
+        }
+        put(
+          `${tag}_rib`,
+          T.sweep(new THREE.CatmullRomCurve3(ring, true), {
+            radius: 0.0045,
+            tubular: 20,
+            radial: 3,
+          }),
+          "lantern_paper",
+          rib,
+        );
+      }
     const baseCap = T.lathe(
       [
         [0, 0],
-        [0.034, 0.002],
-        [0.038, 0.016],
-        [0.0, 0.022],
+        [0.03, 0.001],
+        [0.03, 0.01],
+        [0.0, 0.011],
       ],
       { segments: 8, divisions: 1 },
     );
@@ -1200,10 +1255,10 @@ async function buildHouse(THREE, T, v, status) {
     put(`${tag}_foot`, baseCap, "iron", C.slateDark);
     const topCap = T.lathe(
       [
-        [0.058, 0.186],
-        [0.04, 0.2],
-        [0.014, 0.218],
-        [0.006, 0.23],
+        [0.03, 0.163],
+        [0.024, 0.174],
+        [0.008, 0.18],
+        [0.004, 0.186],
       ],
       { segments: 8, divisions: 1 },
     );
@@ -1211,7 +1266,7 @@ async function buildHouse(THREE, T, v, status) {
     put(`${tag}_cap`, topCap, "iron", C.slateDark);
     if (lit) {
       const halo = K.blob(0.105, 0.13, 0.105, 10);
-      place(halo, { x, y: y0 + 0.105, z });
+      place(halo, { x, y: y0 + 0.09, z });
       put(`${tag}_halo`, halo, "halo");
     }
   }
@@ -1417,6 +1472,7 @@ async function buildHouse(THREE, T, v, status) {
       result.apex = [0, apexY, 0];
       result.surface = (r) => t.prof.yAt(Math.min(r, 0.98)) + 0.02;
       result.skirtY = result.surface;
+      result.eave = { r: rim, y: yT + 0.14, depth: 0.03, tuftR: rim * 0.97 - 0.1 };
     } else if (v === 1) {
       // two-tier pagoda: lower roof, timber drum with glowing slits, upper roof at 61 %
       const rim = 1.24;
@@ -1528,6 +1584,8 @@ async function buildHouse(THREE, T, v, status) {
       result.surface = (r) => lowerProf.yAt(Math.min(0.98, Math.max(r, 0.57))) + 0.02;
       result.skirtY = (r) => lowerProf.yAt(Math.min(0.98, r)) + 0.02;
       result.gardenY = result.skirtY;
+      result.eave = { r: rim, y: yT + 0.16, depth: 0.03, tuftR: rim * 0.97 - 0.12 };
+      result.drum = { r: 0.55, y: y1 + 0.06 };
     } else if (v === 2) {
       // onion dome, 12 folds, four gilt meridians
       const rim = 1.04;
@@ -1589,6 +1647,7 @@ async function buildHouse(THREE, T, v, status) {
       result.bead = true;
       result.surface = (r) => prof.yAt(r);
       result.gardenY = (r) => yT + 0.06 + (r > 0.99 ? 0 : 0.0);
+      result.eave = { r: rim, y: yT + 0.07, depth: 0.0, tuftR: 1.02 };
     } else if (v === 3) {
       // saddle gable: a 9 cm slab with tile courses, a ridge that sags 6 percent in the middle and
       // eaves that lift about 10 percent. Built with the ridge along local X, then turned so the
@@ -2004,6 +2063,7 @@ async function buildHouse(THREE, T, v, status) {
       result.prof = t.prof;
       result.surface = (r) => t.prof.yAt(Math.min(r, 0.62)) + 0.015;
       result.balcony = { y: yB + 0.012, r: railR };
+      result.eave = { r: rim, y: yU + 0.13, depth: 0.035, tuftR: rim * 0.965 - 0.08 };
     } else {
       // garden dome with a terrace in front, low stone parapet
       const yF = yT + 0.07; // terrace floor
@@ -2177,79 +2237,129 @@ async function buildHouse(THREE, T, v, status) {
     });
   }
 
-  // loom frame on the roof edge with three glowing threads (in progress)
+  // loom (in progress): a wooden A-frame, 0.6 m wide and 0.5 m tall, on the front eave; three
+  // glowing threads run from its crossbar to a peg on the wall behind it, a basket of yarn beside it
   if (progress) {
     const c = cfg.loom;
-    let lx, ly, lz, lry;
+    let lx, ly, lz, lry, pegDz, pegDy;
+    const radial = (theta, r) => {
+      lx = Math.sin(theta) * r;
+      lz = zc + Math.cos(theta) * r;
+      lry = theta;
+    };
     if (v === 3) {
       lx = c.x;
       lz = zc + c.z;
-      ly = roof.surface(c.x, c.z) + 0.02;
+      ly = roof.surface(c.x, c.z);
       lry = 0;
+      pegDz = -0.42;
+      pegDy = roof.surface(c.x, c.z - 0.42) - ly + 0.04;
     } else if (v === 5) {
       lx = c.x;
       lz = zc + c.z;
-      ly = roof.terrace.y + 0.01;
-      lry = 0.2;
+      ly = roof.terrace.y;
+      lry = -0.58; // faces away from the dome, towards the path
+      pegDz = -0.3;
+      pegDy = 0.2;
     } else if (v === 4) {
-      lx = Math.sin(c.theta) * c.r;
-      lz = zc + Math.cos(c.theta) * c.r;
+      radial(c.theta, c.r);
       ly = roof.balcony.y;
-      lry = c.theta;
+      pegDz = -(c.r - 0.54);
+      pegDy = 0.2;
+    } else if (v === 2) {
+      radial(c.theta, 1.0);
+      ly = yT + 0.04;
+      pegDz = -0.05;
+      pegDy = 0.26;
+    } else if (v === 1) {
+      radial(c.theta, c.r);
+      ly = roof.skirtY(c.r);
+      pegDz = -(c.r - roof.drum.r);
+      pegDy = roof.drum.y - ly;
     } else {
-      lx = Math.sin(c.theta) * c.r;
-      lz = zc + Math.cos(c.theta) * c.r;
-      ly = v === 2 ? yT + 0.06 : roof.skirtY(c.r);
-      lry = c.theta;
+      radial(c.theta, c.r);
+      ly = roof.skirtY(c.r);
+      pegDz = -(c.r - 0.62);
+      pegDy = roof.surface(0.62) - ly + 0.05;
     }
-    const w = 0.4;
-    const h = 0.42;
-    const frame = [];
-    const post = (x) =>
+    const at = (g) => place(g, { x: lx, y: ly, z: lz, ry: lry });
+    const leg = (side) =>
       K.tube(
         [
-          [x, 0, 0],
-          [x, h, 0],
+          [side * 0.3, -0.02, 0],
+          [side * 0.15, 0.24, 0],
+          [0, 0.5, 0],
         ],
-        0.022,
-        { tubular: 1, radial: 5, caps: "round" },
+        0.028,
+        { tubular: 6, radial: 5, caps: "round" },
       );
-    frame.push(post(-w / 2), post(w / 2));
-    frame.push(
-      K.tube(
-        [
-          [-w / 2 - 0.03, h, 0],
-          [w / 2 + 0.03, h, 0],
-        ],
-        0.02,
-        { tubular: 1, radial: 5, caps: "round" },
-      ),
-    );
-    frame.push(
-      K.tube(
-        [
-          [-w / 2 - 0.02, 0.07, 0],
-          [w / 2 + 0.02, 0.07, 0],
-        ],
-        0.018,
-        { tubular: 1, radial: 5, caps: "round" },
-      ),
-    );
-    frame.forEach((g, i) => {
-      place(g, { x: lx, y: ly, z: lz, ry: lry });
-      put(`loom${i}`, g, "timber", timberColor);
+    [-1, 1].forEach((side, i) => {
+      put(`loom_leg${i}`, at(leg(side)), "timber", timberColor);
     });
-    [-0.11, 0, 0.11].forEach((dx, i) => {
+    put(
+      "loom_bar",
+      at(
+        K.tube(
+          [
+            [-0.17, 0.22, 0],
+            [0.17, 0.22, 0],
+          ],
+          0.024,
+          { tubular: 2, radial: 5, caps: "round" },
+        ),
+      ),
+      "timber",
+      timberColor,
+    );
+    put(
+      "loom_peg",
+      at(
+        K.tube(
+          [
+            [0, pegDy, pegDz],
+            [0, pegDy, pegDz + 0.07],
+          ],
+          0.016,
+          { tubular: 1, radial: 5, caps: "round" },
+        ),
+      ),
+      "timber",
+      timberColor,
+    );
+    [-0.1, 0, 0.1].forEach((dx, i) => {
       const g = K.tube(
         [
-          [dx, 0.08, 0.004],
-          [dx, h - 0.02, 0.004],
+          [dx, 0.22, 0.02],
+          [dx * 0.5, 0.22 + (pegDy - 0.22) * 0.5 + 0.02, pegDz * 0.5],
+          [0, pegDy, pegDz + 0.035],
         ],
-        0.011,
-        { tubular: 1, radial: 4, caps: "round" },
+        0.0085,
+        { tubular: 8, radial: 4, caps: "round" },
       );
-      place(g, { x: lx, y: ly, z: lz, ry: lry });
-      put(`thread${i}`, g, "window_glow");
+      put(`thread${i}`, at(g), "window_glow");
+    });
+    // basket of yarn beside the frame
+    const basket = T.lathe(
+      [
+        [0.0, 0.0],
+        [0.07, 0.0],
+        [0.1, 0.04],
+        [0.105, 0.085],
+        [0.09, 0.09],
+        [0.0, 0.07],
+      ],
+      { segments: 9, divisions: 1 },
+    );
+    basket.translate(0.46, 0, 0.05);
+    put("yarn_basket", at(basket), "timber", C.timberDark);
+    [
+      [0.43, 0.095, 0.04, C.blossom],
+      [0.5, 0.1, 0.07, C.ginkgo],
+      [0.47, 0.115, 0.1, C.tealLight],
+    ].forEach(([x, y, z, hex], i) => {
+      const b = K.blob(0.04, 0.036, 0.04, 6);
+      b.translate(x, y, z);
+      put(`yarn${i}`, at(b), "timber", hex);
     });
   }
 
@@ -2334,20 +2444,73 @@ async function buildHouse(THREE, T, v, status) {
   // done: roof garden in bloom, floating motes
   if (done) {
     const spots = [];
-    if (v === 3) {
+    if (roof.eave) {
+      // v0, v1, v2, v4: two low blossom tufts tucked into eave corners and one trailing vine with
+      // pink buds, none rising above the thickness of the eave
+      const e = roof.eave;
+      const step = TAU / folds;
+      const corner = (n) => (n + 0.5) * step; // eave corners sit between the lobes
+      let k = 0;
+      for (const [n, sc] of [
+        [-2, 1],
+        [0, 0.8],
+      ]) {
+        const theta = corner(n);
+        const x = Math.sin(theta) * e.tuftR;
+        const z = zc + Math.cos(theta) * e.tuftR;
+        const y = e.y - 0.03;
+        const g = await clump("bush", bushLobes);
+        place(g, { x, y, z, sx: 0.85 * sc, sy: 0.5 * sc, sz: 0.85 * sc, ry: n });
+        T.bake.fill(g, C.white);
+        T.bake.gradient(g, { bottom: C.foliageDeep, top: C.foliageMid, from: y, to: y + 0.07 });
+        put(`tuft${k}`, g, "garden_leaf");
+        [0, 1, 2, 3, 4].forEach((i) => {
+          const a = i * 1.7 + n;
+          const b = K.blob(0.046 * sc, 0.036 * sc, 0.046 * sc, 6);
+          place(b, {
+            x: x + Math.sin(a) * 0.1 * sc,
+            y: y + 0.09,
+            z: z + Math.cos(a) * 0.1 * sc,
+          });
+          put(`tuft_bloom${k}_${i}`, b, "garden_bloom", C.blossom);
+        });
+        k++;
+      }
+      // one trailing vine hanging from the eave, pink buds along it
+      {
+        const theta = corner(1);
+        const pts = [];
+        const rr = e.r * (1 - e.depth) - 0.04;
+        for (let i = 0; i <= 7; i++) {
+          const t = i / 7;
+          const a = theta + Math.sin(t * 3.1) * 0.035;
+          const r = rr + t * 0.015;
+          pts.push([Math.sin(a) * r, e.y - 0.04 - t * 0.4, zc + Math.cos(a) * r]);
+        }
+        put(
+          "hanging_vine",
+          K.tube(pts, 0.013, { tubular: 14, radial: 4, caps: "round" }),
+          "vine",
+          C.foliageMid,
+        );
+        [2, 4, 6].forEach((i, j) => {
+          const [px, py, pz] = pts[i];
+          const b = K.blob(0.034, 0.038, 0.034, 6);
+          place(b, { x: px + (j % 2 ? 0.03 : -0.03), y: py - 0.01, z: pz });
+          put(`vine_bud${j}`, b, "garden_bloom", C.blossom);
+          const leaf = K.leaf(0.08, 0.034);
+          place(leaf, { x: px, y: py - 0.02, z: pz, ry: theta + j * 2.1, rx: -0.6 });
+          put(`vine_leaf${j}`, leaf, "garden_leaf", C.foliageMid);
+        });
+        const tip = pts[7];
+        const bud = K.blob(0.03, 0.032, 0.03, 6);
+        place(bud, { x: tip[0], y: tip[1] - 0.02, z: tip[2] });
+        put("vine_bud_tip", bud, "garden_bloom", C.blossom);
+      }
+    } else if (v === 3) {
       for (const g of cfg.garden) {
         spots.push([0, roof.surface(0, g.x) + 0.0, zc + g.x, g.s]);
       }
-    } else if (v === 4) {
-      // balcony planters, on the ring between the turret and the rail
-      [
-        [0.9, 0.5, 0.9],
-        [-1.1, 0.4, 0.8],
-        [2.1, 0.5, 0.85],
-      ].forEach(([theta, , s]) => {
-        const rr = 0.72;
-        spots.push([Math.sin(theta) * rr, roof.balcony.y, zc + Math.cos(theta) * rr, s * 0.55]);
-      });
     } else if (v === 5) {
       // the terrace: three beds in front of the dome, on the left of the door axis
       [
@@ -2355,11 +2518,6 @@ async function buildHouse(THREE, T, v, status) {
         [0.15, 0.8, 0.9],
         [0.68, 0.7, 0.8],
       ].forEach(([x, z, s]) => spots.push([x, roof.terrace.y, zc + z, s]));
-    } else {
-      for (const g of cfg.garden) {
-        const y = v === 2 ? yT + 0.06 : roof.surface(g.r);
-        spots.push([Math.sin(g.theta) * g.r, y - 0.02, zc + Math.cos(g.theta) * g.r, g.s]);
-      }
     }
     let i = 0;
     for (const [x, y, z, s] of spots) {

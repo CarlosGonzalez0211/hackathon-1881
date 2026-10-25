@@ -147,11 +147,11 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
         const weight = /window_glow/.test(name)
           ? 1
           : /lantern_glow/.test(name)
-            ? 0.6
+            ? 0.8
             : /beacon/.test(name)
               ? 0.35
               : /gilt/.test(name)
-                ? 0.2
+                ? 0.5
                 : /vine_bloom/.test(name)
                   ? 0.15
                   : 0;
