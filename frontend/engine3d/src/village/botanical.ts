@@ -302,19 +302,31 @@ export function createMeadows(
   }
 }
 
-/** Painted cloud sprites orbit in 3D and face the camera in both walking and aerial views. */
+/**
+ * Soft cumulus orbit the globe and face the camera in both walking and aerial views. Each
+ * cloud is a cluster of sphere impostors shaded from the shared sun: violet bellies, warm
+ * tops and HDR silver linings when backlit. A tilted ring of larger banks reads as a sea of
+ * cloud around the floating world from above.
+ */
 export function createCloudBelt(ctx: AthenaInstallContext, root: LegacyContext) {
   const s = ctx.scope,
     group = new s.Group();
   group.name = "athena-drifting-cloud-belt";
+  const uniforms = {
+    uSun: ctx.toon?.lighting?.uAthenaSun ?? { value: new s.Vector3(0, 0.3, 0.95) },
+  };
   const material = new s.ShaderMaterial({
+    uniforms,
     transparent: true,
     depthWrite: false,
     vertexShader: `
-      varying vec2 vUv;
+      uniform vec3 uSun;
+      varying vec2 vUv; varying float vSeed; varying vec3 vSunView;
       void main(){
         vUv=uv;
         vec4 center=modelMatrix*instanceMatrix*vec4(0.0,0.0,0.0,1.0);
+        vSeed=dot(center.xyz,vec3(.131,.173,.117));
+        vSunView=normalize((viewMatrix*vec4(uSun,0.0)).xyz);
         vec4 view=viewMatrix*center;
         float scale=length(instanceMatrix[0].xyz);
         view.xy+=position.xy*scale;
@@ -322,34 +334,62 @@ export function createCloudBelt(ctx: AthenaInstallContext, root: LegacyContext) 
       }
     `,
     fragmentShader: `
-      varying vec2 vUv;
+      varying vec2 vUv; varying float vSeed; varying vec3 vSunView;
+      float h(float n){return fract(sin(n)*43758.5453);}
+      vec3 lin(vec3 c){return pow(c,vec3(2.2));}
       void main(){
         vec2 p=(vUv-.5)*vec2(2.8,1.5);
-        float d=length(p-vec2(-.73,-.06))-.35;
-        d=min(d,length(p-vec2(-.28,.12))-.5);
-        d=min(d,length(p-vec2(.25,.08))-.44);
-        d=min(d,length(p-vec2(.69,-.08))-.32);
-        d=max(d,-p.y-.28);
-        if(d>0.0)discard;
-        float light=smoothstep(-.26,.38,p.y);
-        vec3 c=mix(vec3(.70,.83,.84),vec3(1.0,.97,.86),light);
-        c=mix(c,vec3(1.0,.98,.89),smoothstep(-.08,-.015,d)*light*.6);
-        gl_FragColor=vec4(c,1.0);
-        #include <colorspace_fragment>
+        float alpha=0.0, front=-1.0;
+        vec3 n=vec3(0.0,0.0,1.0);
+        for(int i=0;i<6;i++){
+          float fi=float(i), tall=step(1.5,fi)*step(fi,3.5);
+          vec2 c=vec2(-.95+fi*.38+(h(vSeed+fi)-.5)*.18,-.12+tall*.2+(h(vSeed*1.7+fi)-.5)*.14);
+          float r=.27+h(vSeed*1.3+fi)*.2+tall*.13;
+          vec2 d=(p-c)/r;
+          float q=dot(d,d);
+          if(q<1.0){
+            float z=sqrt(1.0-q)*r;
+            if(z>front){front=z;n=normalize(vec3(d,sqrt(1.0-q)));}
+          }
+          alpha=max(alpha,1.0-smoothstep(.62,1.0,q));
+        }
+        alpha*=smoothstep(-.44,-.24,p.y);
+        if(alpha<.01) discard;
+        float lit=dot(n,vSunView)*.5+.5;
+        vec3 c=mix(lin(vec3(.68,.70,.90)),lin(vec3(1.0,.97,.93)),smoothstep(.12,.95,lit));
+        float back=clamp(-vSunView.z,0.0,1.0);
+        float rim=pow(1.0-n.z,2.4);
+        c+=lin(vec3(1.0,.8,.55))*rim*(.25+1.7*back*back);
+        c*=mix(.82,1.0,smoothstep(-.42,.25,p.y));
+        gl_FragColor=vec4(c,alpha*.96);
       }
     `,
   });
-  const mesh = new s.InstancedMesh(new s.PlaneGeometry(6.0, 2.8), material, 12);
+  const high = 18,
+    banks = 14;
+  const mesh = new s.InstancedMesh(new s.PlaneGeometry(6.0, 2.8), material, high + banks);
   mesh.name = "athena-painted-cloud-banks";
   const obj = new s.Object3D();
-  for (let i = 0; i < 12; i++) {
-    const lon = (i * TAU) / 12,
-      lat = 0.25 + Math.sin(i * 2.4) * 0.8,
+  for (let i = 0; i < high; i++) {
+    const lon = (i * TAU) / high + Math.sin(i * 1.3) * 0.2,
+      lat = 0.25 + Math.sin(i * 2.4) * 0.85,
       up = direction(lon, lat);
     obj.position.set(...mul(up, RADIUS + 12 + (i % 3) * 1.8));
-    obj.scale.setScalar(0.85 + (i % 4) * 0.12);
+    obj.scale.setScalar(0.9 + (i % 4) * 0.18);
     obj.updateMatrix();
     mesh.setMatrixAt(i, obj.matrix);
+  }
+  // The bank ring is tilted so it crosses the aerial view as a soft diagonal belt.
+  const tilt = 0.42;
+  for (let i = 0; i < banks; i++) {
+    const a = (i * TAU) / banks;
+    const x = Math.cos(a),
+      z = Math.sin(a);
+    const v: [number, number, number] = [x, z * Math.sin(tilt), z * Math.cos(tilt)];
+    obj.position.set(...mul(v, RADIUS + 10.5 + (i % 2) * 1.6));
+    obj.scale.setScalar(2.1 + (i % 3) * 0.45);
+    obj.updateMatrix();
+    mesh.setMatrixAt(high + i, obj.matrix);
   }
   mesh.computeBoundingSphere();
   group.add(mesh);

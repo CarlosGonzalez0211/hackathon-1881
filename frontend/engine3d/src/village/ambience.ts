@@ -51,7 +51,7 @@ export async function buildAmbience(ctx: AthenaInstallContext, root: LegacyConte
   for (const load of loads)
     if (load.status === "rejected")
       console.warn("[Athena] ambient creature unavailable", load.reason);
-  const points = scatter(180, 701);
+  const points = scatter(320, 701);
   const positions = points.flatMap((up, i) => [...surfacePoint(up, 0.6 + (i % 13) * 0.2)]);
   const geometry = new s.BufferGeometry();
   geometry.setAttribute("position", new s.Float32BufferAttribute(positions, 3));
@@ -65,14 +65,17 @@ export async function buildAmbience(ctx: AthenaInstallContext, root: LegacyConte
       uniform float uTime; varying float vGlow;
       void main(){
         float phase=dot(position,vec3(4.1,5.3,7.7));
+        // Motes rise slowly along local up and fade in and out, like light leaving flowers.
+        float rise=fract(uTime*.045+fract(phase*.137));
         vec3 drift=vec3(sin(uTime*.34+phase),cos(uTime*.5+phase)*.5,sin(uTime*.4+phase))*.22;
+        drift+=normalize(position)*rise*1.6;
         vec4 mv=modelViewMatrix*vec4(position+drift,1.0);
-        gl_PointSize=clamp(22.0/max(1.0,-mv.z),1.0,5.0);
-        vGlow=.35+.25*sin(uTime*.7+phase);
+        gl_PointSize=clamp(34.0/max(1.0,-mv.z),1.5,7.0);
+        vGlow=(.55+.35*sin(uTime*.7+phase))*sin(rise*3.14159);
         gl_Position=projectionMatrix*mv;
       }
     `,
-    fragmentShader: `varying float vGlow; void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;gl_FragColor=vec4(1.0,.85,.42,(1.0-smoothstep(.06,.5,d))*vGlow);}`,
+    fragmentShader: `varying float vGlow; void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;gl_FragColor=vec4(vec3(2.4,1.8,.95),(1.0-smoothstep(.04,.5,d))*vGlow);}`,
   });
   const motes = new s.Points(geometry, material);
   motes.name = "athena-sunlit-motes";
