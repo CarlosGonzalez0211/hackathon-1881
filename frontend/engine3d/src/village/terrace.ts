@@ -33,6 +33,9 @@ export function createTerrace(
     z0: number;
     z1: number;
   }[] = [];
+  // The foundation top is walkable: with colliders fitted to the walls, the student can
+  // step onto the stone platform and stand right against the house instead of sinking in.
+  floors.push({ up, forward, side, radius: baseRadius - 0.035, x0, x1, z0, z1 });
   const world = (x: number, y: number, z: number) =>
     add(base, add(mul(up, y), add(mul(side, x), mul(forward, z))));
   const corner = 0.34;

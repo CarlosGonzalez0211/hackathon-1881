@@ -36,7 +36,8 @@ totalEmissiveRadiance *= vColor.rgb * vColor.rgb;
       const hsl = { h: 0, s: 0, l: 0 };
       lit.color.getHSL(hsl);
       lit.emissive.copy(lit.color).lerp(glow, 0.5);
-      lit.emissiveIntensity = hsl.l > 0.55 ? 0.42 : 0.12;
+      // Subtle: strong uniform glow flattens the muzzle and cheeks into a pale "mask".
+      lit.emissiveIntensity = hsl.l > 0.55 ? 0.13 : 0.05;
       ctx.onDispose(() => lit.dispose());
       return lit;
     });

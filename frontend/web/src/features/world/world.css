@@ -592,3 +592,161 @@
     animation: none;
   }
 }
+
+/* Quest waypoint towards the next topic house (village/waypoint.ts). */
+.engine-host > .village-waypoint {
+  --wp-gold: #f6c25c;
+  --wp-glow: #ffd98a;
+  position: absolute;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.engine-host > .village-waypoint[hidden] {
+  display: none;
+}
+.village-waypoint .wp-medallion {
+  position: absolute;
+  left: -23px;
+  top: -23px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 38%, #fff7df 0%, #f9dc96 45%, #e5a64a 100%);
+  box-shadow:
+    0 0 0 2px #fff4d6,
+    0 0 0 3.5px #9a6a2c,
+    0 0 18px 4px #ffcf6f99,
+    0 4px 10px #3a2a1240;
+}
+.village-waypoint .wp-glyph {
+  width: 22px;
+  height: 22px;
+  fill: #7a4b1c;
+  filter: drop-shadow(0 1px 0 #fff3cf);
+}
+.village-waypoint .wp-glyph .wp-spine {
+  fill: none;
+  stroke: #f9dc96;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.village-waypoint .wp-runes {
+  position: absolute;
+  inset: -9px;
+  width: 64px;
+  height: 64px;
+  fill: none;
+  stroke: var(--wp-gold);
+  stroke-width: 2;
+  stroke-dasharray: 3 6 10 6;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px var(--wp-glow));
+  animation: wp-spin 9s linear infinite;
+}
+.village-waypoint .wp-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--wp-glow);
+  animation: wp-ripple 2.2s ease-out infinite;
+}
+.village-waypoint .wp-compass {
+  position: absolute;
+  inset: 0;
+  transition: transform 140ms ease-out;
+}
+.village-waypoint .wp-chevrons {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  width: 22px;
+  height: 36px;
+  transform: translateX(-50%) scaleY(-1);
+  fill: none;
+  stroke: var(--wp-gold);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 4px var(--wp-glow)) drop-shadow(0 1px 1px #3a2a1266);
+}
+.village-waypoint .wp-chevrons path {
+  animation: wp-flow 1.2s ease-in-out infinite;
+}
+.village-waypoint .wp-c2 {
+  animation-delay: 0.2s !important;
+}
+.village-waypoint .wp-c3 {
+  animation-delay: 0.4s !important;
+}
+.village-waypoint .wp-tag {
+  position: absolute;
+  left: 0;
+  bottom: 34px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.28rem 0.7rem 0.3rem;
+  border: 1.5px solid #9a7a45;
+  border-radius: 11px 14px 10px 13px;
+  background: linear-gradient(#fbf6e8f5, #f1e7cff5);
+  color: #514b40;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  box-shadow: 0 3px 12px #3a2a1230;
+}
+.village-waypoint .wp-tag strong {
+  font-weight: 700;
+}
+.village-waypoint .wp-tag span {
+  color: #a0681f;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+/* Off screen: smaller, the chevrons orbit the medallion to point the way. */
+.engine-host > .village-waypoint.is-edge .wp-medallion {
+  transform: scale(0.82);
+}
+.engine-host > .village-waypoint.is-edge .wp-tag {
+  bottom: auto;
+  top: 30px;
+  font-size: 0.72rem;
+}
+@keyframes wp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes wp-ripple {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+@keyframes wp-flow {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .village-waypoint .wp-runes,
+  .village-waypoint .wp-ripple,
+  .village-waypoint .wp-chevrons path {
+    animation: none;
+  }
+  .village-waypoint .wp-compass {
+    transition: none;
+  }
+}

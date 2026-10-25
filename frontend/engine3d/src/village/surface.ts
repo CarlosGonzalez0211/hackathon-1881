@@ -10,6 +10,7 @@ import { interactionTarget } from "./interaction";
 import { SphericalWalker } from "./walker";
 import { createAtmosphere } from "./atmosphere";
 import { createLuminousGrade, type LuminousGrade } from "./grade";
+import { createWaypoint } from "./waypoint";
 import { detectTier, sunDirection, LUMINOUS } from "./light";
 import {
   add,
@@ -239,6 +240,8 @@ export async function createSurfaceEngine(
     hint.className = "village-interaction-hint";
     hint.setAttribute("aria-live", "polite");
     host.appendChild(hint);
+    const waypoint = createWaypoint(assets, scene, host);
+    assets.onDispose(() => waypoint.dispose());
     const point = new s.Vector3(),
       targetCamera = new s.Vector3(),
       targetLook = new s.Vector3(),
@@ -486,6 +489,24 @@ export async function createSurfaceEngine(
           };
         });
       options.onProjection?.(points);
+      // Quest waypoint: the same "next house" Lumen waits beside.
+      const nextHouse =
+        [...state.houses].sort((a, b) => a.slot - b.slot).find((h) => h.status === "available") ??
+        state.houses.find((h) => h.status === "in_progress");
+      waypoint.tick(
+        camera,
+        nextHouse && plots[nextHouse.slot]
+          ? {
+              door: village!.door(nextHouse.slot),
+              up: doorDirection(nextHouse.slot),
+              title: nextHouse.title,
+              distance: arcDistance(walker.up, doorDirection(nextHouse.slot)),
+            }
+          : undefined,
+        reduced ? 0 : now / 1000,
+        paused,
+        overview,
+      );
       if (now - uiAt > 120) {
         uiAt = now;
         const target = currentInteraction();
