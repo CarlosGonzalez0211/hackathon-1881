@@ -46,7 +46,7 @@ const SEGMENT_FAMILY = {
 export const ATHENA_AVATAR_OUTFIT = Object.freeze({
   hair: "bob",
   top: "poncho",
-  bottom: "shorts",
+  bottom: "trousers",
   shoes: "boots",
   accessories: Object.freeze(["scarf-satchel"]),
 });

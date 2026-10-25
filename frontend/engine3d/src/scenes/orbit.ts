@@ -1,18 +1,25 @@
 import type { PlanetState } from "@athena/shared";
 import { buildAthenaOrbit } from "../athena/orbit";
 import type { AthenaInstallation } from "../athena/install";
-import { orbitLayout } from "../config/orbit";
+import { orbitExtent, orbitLayout } from "../config/orbit";
 import type { PlanetKind } from "../config/orbit";
 import { createEngineContext, disposeEngineContext } from "../runtime/context";
 import type { LegacyContext } from "../runtime/legacy-context";
+import { prefersReducedMotion } from "../athena/models";
 import type { EngineStats } from "./surface";
 
 export interface ProjectedPlanet {
   studentId: string;
   x: number;
   y: number;
+  /** On-screen planet radius in CSS pixels (labels sit just below it). */
+  radius: number;
+  /** Normalised depth (smaller is nearer the camera); used to declutter labels. */
+  depth: number;
   visible: boolean;
 }
+/** Kit-sized frame the original camera was tuned for (outer ring + margin). */
+const FRAME_REFERENCE = 12.25;
 export interface OrbitOptions {
   signal?: AbortSignal;
   onPlanetClick?: (planet: PlanetState) => void;
@@ -61,8 +68,12 @@ export async function createOrbitEngine(
         0.1,
         200,
       );
-      camera.position.set(0, 9.5, 19);
-      camera.lookAt(0, orbitLayout.sunHeight, 0);
+      // Frame the whole class: the camera backs off as more rings are needed.
+      const frame = (orbitExtent(initial.length) + 2.2) / FRAME_REFERENCE;
+      const home = new scope.Vector3(0, 9.5 * frame + 1.2, 19 * frame + 1);
+      const homeLook = new scope.Vector3(0, orbitLayout.sunHeight, 0);
+      camera.position.copy(home);
+      camera.lookAt(homeLook);
       scope.global$1.renderPass.scene = scene;
       scope.global$1.renderPass.camera = camera;
       const orbit = await buildAthenaOrbit(athena, initial, { planetKind: options.planetKind });
@@ -71,6 +82,15 @@ export async function createOrbitEngine(
       const raycaster = new scope.Raycaster();
       const mouse = new scope.Vector2();
       const point = new scope.Vector3();
+      const edge = new scope.Vector3();
+      const cameraRight = new scope.Vector3();
+      // Visit: the camera glides to circle one classmate's planet, then back to the class.
+      let focusId: string | null = null;
+      const look = homeLook.clone();
+      const targetPosition = new scope.Vector3();
+      const targetLook = new scope.Vector3();
+      const outward = new scope.Vector3();
+      let previous = 0;
       lifecycle.listen(scope.global$1.renderer.domElement, "pointerup", ((event: PointerEvent) => {
         const rect = host.getBoundingClientRect();
         mouse.set(
@@ -88,20 +108,48 @@ export async function createOrbitEngine(
       });
       let last = 0;
       scope.events$1.on("prerender", () => {
-        orbit.tick(scope.renderInfo.time);
-        if (scope.renderInfo.time - last < 0.1) return;
-        last = scope.renderInfo.time;
+        const time = scope.renderInfo.time;
+        const dt = Math.min(0.1, Math.max(0, time - previous));
+        previous = time;
+        orbit.tick(time);
+        const focused = focusId ? orbit.positions.get(focusId) : undefined;
+        if (focused) {
+          const r = orbit.radii.get(focusId!) ?? 0.5;
+          outward.set(focused.x, 0, focused.z).normalize();
+          targetPosition
+            .copy(focused)
+            .addScaledVector(outward, r * 5 + 1.4)
+            .add(new scope.Vector3(0, r * 2.2 + 0.7, 0));
+          targetLook.copy(focused);
+        } else {
+          targetPosition.copy(home);
+          targetLook.copy(homeLook);
+        }
+        const ease = prefersReducedMotion() ? 1 : 1 - Math.exp(-dt * 3.2);
+        camera.position.lerp(targetPosition, ease);
+        look.lerp(targetLook, ease);
+        camera.lookAt(look);
+        camera.updateMatrixWorld();
+        // Labels follow every frame (no throttling), positioned by the UI without re-renders.
+        cameraRight.setFromMatrixColumn(camera.matrixWorld, 0);
         options.onProjection?.(
           states.map((state) => {
-            point.copy(orbit.positions.get(state.studentId) ?? point).project(camera);
+            const centre = orbit.positions.get(state.studentId) ?? point;
+            edge.copy(centre).addScaledVector(cameraRight, orbit.radii.get(state.studentId) ?? 0.5);
+            point.copy(centre).project(camera);
+            edge.project(camera);
             return {
               studentId: state.studentId,
               x: ((point.x + 1) * host.clientWidth) / 2,
               y: ((1 - point.y) * host.clientHeight) / 2,
+              radius: (Math.abs(edge.x - point.x) * host.clientWidth) / 2,
+              depth: point.z,
               visible: point.z < 1,
             };
           }),
         );
+        if (time - last < 0.5) return;
+        last = time;
         options.onStats?.({
           fps: scope.renderInfo.averageFPS || 0,
           drawCalls: scope.global$1.renderer.info.render.calls,
@@ -114,6 +162,10 @@ export async function createOrbitEngine(
         update(next: PlanetState[]) {
           states = next;
           orbit.update(next);
+        },
+        /** Glide to a student's planet (`null` returns to the whole class). */
+        focus(studentId: string | null) {
+          focusId = studentId && orbit.positions.has(studentId) ? studentId : null;
         },
         dispose,
         get resourceCounts() {
@@ -222,6 +274,8 @@ export async function createOrbitEngine(
             studentId: group.userData.studentId,
             x: ((point.x + 1) * host.clientWidth) / 2,
             y: ((1 - point.y) * host.clientHeight) / 2,
+            radius: 28,
+            depth: point.z,
             visible: point.z < 1,
           };
         }),
@@ -242,6 +296,7 @@ export async function createOrbitEngine(
           if (state) group.scale.setScalar(0.085 + state.growth * 0.025);
         });
       },
+      focus() {},
       dispose,
       get resourceCounts() {
         return lifecycle.counts;

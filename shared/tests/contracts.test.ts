@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   aiEventSchema,
+  classOrbitSchema,
   classSummarySchema,
+  DEMO_STUDENT_ID,
   houseStateSchema,
+  mockClassOrbit,
   mockClassPlanets,
   mockPlanet,
   mockSummary,
@@ -48,4 +51,17 @@ test("AI events require known kinds and an ISO timestamp", () => {
     }).success,
     true,
   );
+});
+
+test("the mock class orbit has one valid planet per student at any class size", () => {
+  for (const count of [0, 1, 8, 12, 31]) {
+    const orbit = classOrbitSchema.parse(mockClassOrbit(count));
+    assert.equal(orbit.students.length, count);
+    const ids = orbit.students.map((student) => student.studentId);
+    assert.equal(new Set(ids).size, count, "student ids are unique");
+    for (const student of orbit.students) assert.equal(student.planet.studentId, student.studentId);
+  }
+  // The demo student (the world's viewer) is in the class, so their planet is theirs.
+  assert.equal(mockClassOrbit().students[0]!.studentId, DEMO_STUDENT_ID);
+  assert.equal(mockClassOrbit().students[0]!.displayName, "Lucía");
 });

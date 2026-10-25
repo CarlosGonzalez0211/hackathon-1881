@@ -1,0 +1,20 @@
+[AUTHORED DEMO] Slide outline: comparing revolutions
+Format: slides; representation: slide_outline; locale: en
+Script/outline only. No playable media or presentation file.
+
+Slide 1: 1776, American Declaration of Independence
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: 1776, American Declaration of Independence
+
+Slide 2: 1789–1799, French Revolution
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: 1789–1799, French Revolution
+
+Slide 3: 1791–1804, Haitian Revolution
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: 1791–1804, Haitian Revolution
+
+Slide 4: overlapping dates: The French and Haitian revolutions overlapped.
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: The French and Haitian revolutions overlapped.
+
+Slide 5: comparing rights: Political independence and equal participation are different questions: compare a document's claims with evidence about who could exercise rights.
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: Political independence and equal participation are different questions: compare a document's claims with evidence about who could exercise rights.
+
+Discussion prompt: What evidence would you look for to extend the comparison?

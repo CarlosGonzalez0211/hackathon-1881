@@ -1,4 +1,6 @@
 "use client";
+import { appLocale, t } from "@/lib/i18n";
+
 import {
   achievementCatalogue,
   type HouseState,
@@ -26,14 +28,14 @@ export function HouseProgressPanel({
     <div className={styles.stack}>
       <dl className={styles.facts}>
         <div>
-          <dt>Progreso demostrado</dt>
+          <dt>{t("Demonstrated progress")}</dt>
           <dd>{Math.round(house.progress * 100)}%</dd>
         </div>
         {mastery?.totalConcepts !== undefined && (
           <div>
-            <dt>Conceptos</dt>
+            <dt>{t("Concepts")}</dt>
             <dd>
-              {mastery.demonstratedConcepts ?? 0} de {mastery.totalConcepts}
+              {mastery.demonstratedConcepts ?? 0} {t("of")} {mastery.totalConcepts}
             </dd>
           </div>
         )}
@@ -54,24 +56,24 @@ export function HouseProgressPanel({
         </section>
       ))}
       <section>
-        <h3 className={styles.subheading}>Insignias</h3>
+        <h3 className={styles.subheading}>{t("Badges")}</h3>
         {badges.length === 0 ? (
           <p className={styles.muted}>
-            Aún no tienes insignias. Llegan cuando demuestras lo aprendido.
+            {t("No badges yet. Earn them by showing what you’ve learned.")}
           </p>
         ) : (
           <ul className={styles.badges}>
             {badges.map(({ achievement, definition }) => (
-              <li key={achievement.id} title={definition.accessibleDescription.es}>
-                <strong>{definition.shortLabel.es}</strong>
-                <small>{definition.longLabel.es}</small>
+              <li key={achievement.id} title={definition.accessibleDescription[appLocale]}>
+                <strong>{definition.shortLabel[appLocale]}</strong>
+                <small>{definition.longLabel[appLocale]}</small>
               </li>
             ))}
           </ul>
         )}
       </section>
       <p className={styles.muted}>
-        Tu progreso sube con puntos de control, no por el tiempo ni por usar la IA.
+        {t("Your progress grows through checkpoints, not time spent or AI usage.")}
       </p>
     </div>
   );

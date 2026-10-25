@@ -1,0 +1,19 @@
+[AUTHORED DEMO] Estribillo de la cronología
+Format: music; representation: lyrics; locale: es
+Script/outline only. No playable media or presentation file.
+
+Estribillo original: Lee, recuerda, vuelve a repasar.
+
+Verso: 1776, Declaración de Independencia estadounidense
+Source: material-topic-comparing-rights-timeline; Cronología comparada; material-topic-comparing-rights-timeline-chunk-1; excerpt: 1776, Declaración de Independencia estadounidense
+
+Verso: 1789–1799, Revolución francesa
+Source: material-topic-comparing-rights-timeline; Cronología comparada; material-topic-comparing-rights-timeline-chunk-1; excerpt: 1789–1799, Revolución francesa
+
+Verso: 1791–1804, Revolución haitiana
+Source: material-topic-comparing-rights-timeline; Cronología comparada; material-topic-comparing-rights-timeline-chunk-1; excerpt: 1791–1804, Revolución haitiana
+
+Repetición: Lee, recuerda, vuelve a repasar.
+
+Cierre: Las revoluciones francesa y haitiana coincidieron en el tiempo.
+Source: material-topic-comparing-rights-timeline; Cronología comparada; material-topic-comparing-rights-timeline-chunk-1; excerpt: Las revoluciones francesa y haitiana coincidieron en el tiempo.

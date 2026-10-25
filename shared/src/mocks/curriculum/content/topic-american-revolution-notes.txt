@@ -1,0 +1,9 @@
+[DEMO] American Revolution — notes
+
+Authored Athena teaching fixture attributed to a fictional demo instructor. Not a real upload or primary historical source. The storage key is illustrative; text lives in source chunks.
+
+[en] Declaration in 1776
+The American Declaration of Independence is dated July 4, 1776. It announced separation from Britain and argued that governments derive legitimate power from the consent of the governed. This describes the declaration's claims, not proof that equal rights were available to everyone.
+
+[es] Declaración de 1776
+La Declaración de Independencia estadounidense tiene fecha del 4 de julio de 1776. Anunció la separación de Gran Bretaña y defendió el consentimiento de los gobernados. Una afirmación de derechos no demuestra por sí sola igualdad en la práctica.
