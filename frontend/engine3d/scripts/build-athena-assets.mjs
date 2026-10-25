@@ -26,7 +26,7 @@ import {
   normalizeLegacyKey,
 } from "../src/assets/athena-keys.mjs";
 
-const PIPELINE_VERSION = 11;
+const PIPELINE_VERSION = 12;
 const CHARACTER_PASS_HASH = createHash("sha256")
   .update(await fs.readFile(new URL("./refine-characters.mjs", import.meta.url)))
   .update(await fs.readFile(new URL("./story-explorer.mjs", import.meta.url)))

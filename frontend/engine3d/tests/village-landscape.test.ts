@@ -117,13 +117,21 @@ test("welcome courtyard has upward paving, clear central passage and no black gr
     cameraObjects: LegacyContext[] = [];
   const gate = createWelcomeCourtyard(ctx, root, obstacles, cameraObjects, { value: 0 });
   assert.equal(cameraObjects.length, 1);
-  assert.equal(obstacles.length, 2);
-  const forward = tangent([1, 0, 0], welcomeCenter);
-  for (let d = -6; d <= 6; d += 0.25)
-    assert.ok(
-      canOccupy(advance(welcomeCenter, forward, d).up, obstacles),
-      "arch centre stays open",
+  assert.equal(obstacles.length, 0, "the floating halo gate has no ground footprint");
+  // Every path meeting the round plaza stays open, in all directions.
+  for (let k = 0; k < 16; k++) {
+    const angle = (k / 16) * Math.PI * 2;
+    const heading = tangent(
+      [Math.cos(angle), Math.sin(angle) * 0.3, Math.sin(angle)],
+      welcomeCenter,
     );
+    for (let d = 0; d <= 6; d += 0.25)
+      assert.ok(
+        canOccupy(advance(welcomeCenter, heading, d).up, obstacles),
+        "courtyard perimeter stays open",
+      );
+  }
+  assert.ok(gate.getObjectByName("halo_gate_crest"), "the crest stays animatable");
   let floorMeshes = 0;
   gate.traverse((o: LegacyContext) => {
     if (!o.isMesh || o.userData.athenaInk) return;

@@ -91,3 +91,38 @@ export function roundedBox(
   geometry.computeVertexNormals();
   return geometry;
 }
+
+/** Smooth ring (the recovered bundle has no TorusGeometry), lying in the XZ plane. */
+export function ring(
+  s: LegacyContext,
+  radius: number,
+  tube: number,
+  radial = 16,
+  tubular = 96,
+  /** Vertical squash of the tube profile: 1 is round, larger is a taller band. */
+  stretch = 1,
+) {
+  const positions: number[] = [],
+    uvs: number[] = [],
+    indices: number[] = [];
+  for (let j = 0; j <= radial; j++)
+    for (let i = 0; i <= tubular; i++) {
+      const u = (i / tubular) * Math.PI * 2,
+        v = (j / radial) * Math.PI * 2;
+      const r = radius + tube * Math.cos(v);
+      positions.push(Math.cos(u) * r, tube * stretch * Math.sin(v), Math.sin(u) * r);
+      uvs.push(i / tubular, j / radial);
+    }
+  for (let j = 0; j < radial; j++)
+    for (let i = 0; i < tubular; i++) {
+      const a = j * (tubular + 1) + i,
+        b = a + tubular + 1;
+      indices.push(a, a + 1, b, a + 1, b + 1, b);
+    }
+  const geometry = new s.BufferGeometry();
+  geometry.setAttribute("position", new s.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new s.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}

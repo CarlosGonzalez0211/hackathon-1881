@@ -1,11 +1,10 @@
 import type { AthenaInstallContext } from "../athena/install";
 import type { LegacyContext } from "../runtime/legacy-context";
 import { mergeStaticMeshes } from "../athena/merge";
-import { roundedBox, taperedTube } from "./geometry";
+import { ring, roundedBox, taperedTube } from "./geometry";
 import { paintMaterial } from "./look";
 import {
   add,
-  buildingObstacle,
   cross,
   dot,
   mul,
@@ -17,11 +16,12 @@ import {
   type Vec,
 } from "./layout";
 
-/** A grand entrance with a ground-conforming courtyard and a genuinely clear archway. */
+/** A floating halo gate over a ground-conforming courtyard; no footprint blocks the paths. */
 export function createWelcomeCourtyard(
   ctx: AthenaInstallContext,
   root: LegacyContext,
-  obstacles: Obstacle[],
+  // The halo floats: it adds no ground obstacles, but keeps the shared signature.
+  _obstacles: Obstacle[],
   cameraObstacles: LegacyContext[],
   time: { value: number },
 ) {
@@ -83,139 +83,68 @@ export function createWelcomeCourtyard(
     y: number,
     z: number,
   ) => mesh(name, taperedTube(s, top, bottom, h, 24, 6), material, x, y, z);
-  const arch = (inner: number, outer: number, depth: number) => {
-    const p: number[] = [],
-      ix: number[] = [];
-    const count = 64;
-    for (let i = 0; i <= count; i++) {
-      const a = (i / count) * Math.PI;
-      for (const z of [-depth / 2, depth / 2])
-        for (const r of [inner, outer]) p.push(Math.cos(a) * r, Math.sin(a) * r + 4.7, z);
-      if (i < count) {
-        const q = i * 4;
-        ix.push(
-          q,
-          q + 4,
-          q + 1,
-          q + 1,
-          q + 4,
-          q + 5,
-          q + 2,
-          q + 3,
-          q + 6,
-          q + 3,
-          q + 7,
-          q + 6,
-          q,
-          q + 2,
-          q + 4,
-          q + 2,
-          q + 6,
-          q + 4,
-          q + 1,
-          q + 5,
-          q + 3,
-          q + 3,
-          q + 5,
-          q + 7,
-        );
-      }
-    }
-    ix.push(
-      0,
-      1,
-      2,
-      1,
-      3,
-      2,
-      count * 4,
-      count * 4 + 2,
-      count * 4 + 1,
-      count * 4 + 1,
-      count * 4 + 2,
-      count * 4 + 3,
-    );
-    const g = new s.BufferGeometry();
-    g.setAttribute("position", new s.Float32BufferAttribute(p, 3));
-    g.setIndex(ix);
-    g.computeVertexNormals();
-    return g;
-  };
-  for (const sign of [-1, 1]) {
-    const x = sign * 3.45;
-    tube("gate_plinth", 0.76, 0.83, 0.3, trim, x, 0.0, 0);
-    tube("gate_base", 0.58, 0.72, 0.42, stone, x, 0.32, 0);
-    tube("carved_pillar", 0.48, 0.57, 3.94, stone, x, 2.5, 0);
-    tube("pillar_capital", 0.74, 0.55, 0.26, trim, x, 4.59, 0);
-    tube("capital_crown", 0.77, 0.74, 0.16, stone, x, 4.8, 0);
-    box("pillar_inlay", 0.11, 2.6, 0.025, teal, x, 2.5, 0.525);
-    box("pillar_inlay_back", 0.11, 2.6, 0.025, teal, x, 2.5, -0.525);
-    tube("pillar_gold_band", 0.576, 0.576, 0.065, gold, x, 1.02, 0);
-    const pillar = buildingObstacle(
-      { min: [x - 0.8, 0, -0.82], max: [x + 0.8, 5, 0.82] },
-      up,
-      forward,
-      1,
-    );
-    obstacles.push(pillar);
+  // A floating halo gate: a circular ring hovering over the round plaza. Nothing stands on
+  // the ground, so every path that meets the courtyard stays open.
+  const HALO = 5.4;
+  mesh("halo_gate_stone", ring(s, 3.9, 0.34, 20, 128, 1.35), stone, 0, HALO, 0);
+  mesh("halo_gate_copper_crown", ring(s, 3.9, 0.12, 12, 128), clay, 0, HALO + 0.44, 0);
+  mesh("halo_gate_gold_inlay_outer", ring(s, 4.25, 0.05, 10, 128), gold, 0, HALO, 0);
+  mesh("halo_gate_gold_inlay_inner", ring(s, 3.55, 0.05, 10, 128), gold, 0, HALO, 0);
+  // Teal keystones around the ring, like the old arch's masonry joints.
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const key = box("halo_keystone", 0.34, 0.62, 0.2, i % 3 ? trim : teal, 0, HALO, 0);
+    key.position.set(Math.cos(a) * 3.9, HALO, Math.sin(a) * 3.9);
+    key.rotation.y = -a;
   }
-  mesh("carved_stone_arch", arch(2.98, 3.87, 0.85), stone);
-  mesh("arch_copper_coping", arch(3.88, 4.02, 0.96), clay);
-  mesh("arch_front_inlay", arch(3.2, 3.26, 0.03), gold, 0, 0, 0.449);
-  mesh("arch_back_inlay", arch(3.2, 3.26, 0.03), gold, 0, 0, -0.449);
-  // Radial masonry joints read as one connected arch rather than separate floating pieces.
-  for (let i = 1; i < 16; i++) {
-    const a = (i / 16) * Math.PI;
-    const joint = box(
-      "arch_masonry_joint",
-      0.018,
-      0.83,
-      0.015,
-      trim,
-      Math.cos(a) * 3.45,
-      4.7 + Math.sin(a) * 3.45,
-      0.438,
-    );
-    joint.rotation.z = a - Math.PI / 2;
-  }
-  const disc = tube("welcome_compass_seal", 0.71, 0.71, 0.16, teal, 0, 8.35, 0.57);
-  disc.rotation.x = Math.PI / 2;
-  const rim = tube("seal_backing", 0.8, 0.8, 0.09, gold, 0, 8.35, 0.47);
-  rim.rotation.x = Math.PI / 2;
-  const p: number[] = [0, 8.35, 0.67],
+  const glow = new s.MeshStandardMaterial({
+    color: "#fff1c8",
+    emissive: "#ffcf7a",
+    emissiveIntensity: 1.6,
+    roughness: 1,
+  });
+  const crest = new s.Group();
+  crest.name = "halo_gate_crest";
+  crest.position.set(0, HALO + 0.2, 0);
+  gate.add(crest);
+  const seal = new s.Mesh(taperedTube(s, 0.62, 0.62, 0.12, 32, 1), teal);
+  const sealRim = new s.Mesh(ring(s, 0.66, 0.06, 10, 48), gold);
+  const p: number[] = [0, 0.08, 0],
     ix: number[] = [];
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2,
-      r = i % 2 ? 0.16 : i % 4 === 0 ? 0.58 : 0.4;
-    p.push(Math.sin(a) * r, 8.35 + Math.cos(a) * r, 0.68);
-    if (i) ix.push(0, i + 1, i);
+      r = i % 2 ? 0.14 : i % 4 === 0 ? 0.55 : 0.36;
+    p.push(Math.sin(a) * r, 0.08, Math.cos(a) * r);
+    if (i) ix.push(0, i, i + 1);
   }
-  ix.push(0, 1, 16);
+  ix.push(0, 16, 1);
   const star = new s.BufferGeometry();
   star.setAttribute("position", new s.Float32BufferAttribute(p, 3));
   star.setIndex(ix);
   star.computeVertexNormals();
-  mesh("golden_welcome_compass", star, gold);
-  for (const sign of [-1, 1]) {
-    tube("banner_mast", 0.035, 0.05, 4.6, gold, sign * 4.85, 2.1, -0.15);
-    box("banner_crossbar", 1.04, 0.055, 0.055, gold, sign * 4.85, 4.35, -0.15);
-    mesh("banner_finial", new s.SphereGeometry(0.11, 16, 12), gold, sign * 4.85, 4.55, -0.15);
-    const x = sign * 4.5,
-      z = 1.65;
-    const height = groundHeight(x, z);
-    tube("lantern_base", 0.28, 0.38, 0.26, stone, x, height + 0.13, z);
-    tube("lantern_post", 0.045, 0.065, 2.0, metal, x, height + 1.15, z);
-    tube("lantern_foot", 0.2, 0.23, 0.13, metal, x, height + 2.18, z);
-    const lamp = new s.MeshStandardMaterial({
-      color: "#ffe5a1",
-      emissive: "#e8b95d",
-      emissiveIntensity: 0.35,
-      roughness: 1,
-    });
-    mesh("warm_welcome_lantern", new s.SphereGeometry(0.17, 16, 12), lamp, x, height + 2.4, z);
-    tube("lantern_roof", 0.01, 0.3, 0.25, gold, x, height + 2.63, z);
-    for (const edge of [-1, 1])
-      tube("lantern_guard", 0.012, 0.012, 0.37, metal, x + edge * 0.18, height + 2.4, z);
+  const starMesh = new s.Mesh(star, glow);
+  starMesh.name = "golden_welcome_compass";
+  crest.add(seal, sealRim, starMesh);
+  // The crest turns slowly with the shared breeze clock (frozen under reduced motion).
+  starMesh.onBeforeRender = () => {
+    crest.rotation.y = time.value * 0.22;
+  };
+  // Slender spokes tie the floating crest to the halo.
+  for (let i = 0; i < 4; i++) {
+    const spoke = box("halo_spoke", 3.1, 0.06, 0.06, gold, 0, 0, 0);
+    gate.remove(spoke);
+    spoke.position.set(Math.cos((i * Math.PI) / 2) * 2.25, 0, Math.sin((i * Math.PI) / 2) * 2.25);
+    spoke.rotation.y = -(i * Math.PI) / 2;
+    crest.add(spoke);
+  }
+  // Four floating lanterns ride the ring at its quarter points.
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const x = Math.cos(a) * 3.9,
+      z = Math.sin(a) * 3.9;
+    tube("lantern_hanger", 0.02, 0.02, 0.5, metal, x, HALO - 0.55, z);
+    mesh("warm_welcome_lantern", new s.SphereGeometry(0.2, 20, 14), glow, x, HALO - 0.95, z);
+    tube("lantern_roof", 0.01, 0.28, 0.2, gold, x, HALO - 0.7, z);
   }
   // Courtyard stones follow the very same terrain sample as the walking controller.
   function groundPoint(x: number, z: number, offset = 0.045): Vec {
@@ -282,7 +211,7 @@ export function createWelcomeCourtyard(
   mosaic.material.side = s.DoubleSide;
   mosaic.userData.athenaNoInk = true;
   mosaic.castShadow = false;
-  mergeStaticMeshes(s, gate, new Set());
+  mergeStaticMeshes(s, gate, new Set(["halo_gate_crest"]));
   ctx.toon.apply(gate);
   gate.traverse((o: LegacyContext) => {
     if (o.isMesh && !o.userData.athenaInk) paintMaterial(o.material, "architecture");
@@ -290,7 +219,7 @@ export function createWelcomeCourtyard(
   // Banners remain separate from the static batching so their free lower hems can sway.
   for (const sign of [-1, 1]) {
     const flag = new s.Mesh(
-      new s.PlaneGeometry(0.88, 1.8, 8, 20),
+      new s.PlaneGeometry(0.7, 1.5, 8, 20),
       new s.MeshStandardMaterial({
         color: sign === 1 ? "#487e6c" : "#cda058",
         side: s.DoubleSide,
@@ -298,7 +227,7 @@ export function createWelcomeCourtyard(
       }),
     );
     flag.name = "welcome_wind_banner";
-    flag.position.set(sign * 4.85, 3.37, -0.1);
+    flag.position.set(sign * 3.9, HALO - 1.25, 0);
     gate.add(flag);
     ctx.toon.apply(flag);
     const previous = flag.material.onBeforeCompile.bind(flag.material);

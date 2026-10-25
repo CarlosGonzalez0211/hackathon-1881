@@ -78,6 +78,8 @@ const SOFT_FRAGMENT = /* glsl */ `
   float athenaSide = 1.0 - smoothstep(0.72, 0.97, athenaH);
   outgoingLight += uAthenaRim * athenaFresnel * athenaSide * (0.15 + 1.4 * athenaBack * athenaBack)
     * uAthenaRimStrength;
+  // A degenerate normal must never reach the HDR buffer: bloom would spread its NaN.
+  if (any(isnan(outgoingLight)) || any(isinf(outgoingLight))) outgoingLight = diffuseColor.rgb * 0.5;
 }`;
 
 export interface MeshShape {

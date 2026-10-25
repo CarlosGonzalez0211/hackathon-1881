@@ -47,6 +47,17 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   outputColor = vec4(color, inputColor.a);
 }`;
 
+/**
+ * One stray NaN/Inf pixel (a degenerate normal, a divide in a custom shader) would be
+ * smeared by the mipmap bloom into large black blocks. Scrub and clamp before any blur.
+ */
+const SANITIZE = /* glsl */ `
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  vec3 c = inputColor.rgb;
+  bool bad = any(isnan(c)) || any(isinf(c));
+  outputColor = vec4(bad ? vec3(0.0) : clamp(c, 0.0, 48.0), inputColor.a);
+}`;
+
 /** Post-tonemap painterly grade: split toning, gentle saturation, vignette and dither. */
 const GRADE = /* glsl */ `
 uniform vec3 uShadowTint, uHighlightTint;
@@ -138,6 +149,8 @@ export function createLuminousGrade(
   });
   let bloom: LegacyContext, pass: LegacyContext;
   const toneMapping = new s.ToneMappingEffect({ mode: s.ToneMappingMode.ACES_FILMIC });
+  const sanitize = new s.Effect("LuminousSanitize", SANITIZE);
+  composer.addPass(new s.EffectPass(camera, sanitize));
 
   function build() {
     if (pass) {
@@ -196,6 +209,7 @@ export function createLuminousGrade(
       composer.dispose();
       haze.dispose();
       grade.dispose();
+      sanitize.dispose();
       toneMapping.dispose();
       bloom?.dispose();
     },

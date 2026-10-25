@@ -71,7 +71,15 @@ export function smoothNormals(document, creaseDegrees = 55) {
           oy += faceNormal[f * 3 + 1];
           oz += faceNormal[f * 3 + 2];
         }
-        const ol = Math.hypot(ox, oy, oz) || 1;
+        const ol = Math.hypot(ox, oy, oz);
+        // Degenerate (zero-area) faces have no direction: never emit a zero normal, which
+        // becomes NaN in shading and is smeared into black blocks by the bloom.
+        if (ol < 1e-12) {
+          const old = primitive.getAttribute("NORMAL");
+          const kept = old ? old.getElement(v, []) : [0, 1, 0];
+          normals.set(Math.hypot(...kept) > 1e-6 ? kept : [0, 1, 0], v * 3);
+          continue;
+        }
         const reference = [ox / ol, oy / ol, oz / ol];
         let nx = 0,
           ny = 0,
