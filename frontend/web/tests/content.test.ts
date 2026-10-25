@@ -4,6 +4,7 @@ import test from "node:test";
 import { athenaDemoIds, CONTENT_LIMITS } from "@athena/shared";
 import { MockContentClient } from "../src/features/content/api/mock-content-client";
 import { ContentApiError } from "../src/features/content/api/types";
+import { objectivesInScope, upcomingMilestones } from "../src/features/content/coverage";
 import { contentStrings, fill } from "../src/features/content/strings";
 import {
   contentMimeFor,
@@ -107,4 +108,36 @@ test("the mock client mirrors conflicts and abstains on uncovered questions", as
   assert.equal(answered.citations.length, 1);
   const flags = await client.listFlags();
   assert.equal(flags.find((flag) => flag.category === "self_harm")?.excerpt, undefined);
+});
+
+test("the student aside shows objectives in scope and the next milestones", async () => {
+  const client = new MockContentClient();
+  const objectives = await client.listObjectives();
+  assert.equal(objectivesInScope(objectives, athenaDemoIds.topics.geometry).length, 2);
+  assert.equal(objectivesInScope(objectives, athenaDemoIds.topics.fractions).length, 0);
+  assert.equal(objectivesInScope(objectives, "").length, objectives.length);
+
+  const milestone = (id: string, dueAt?: string, position = 0) => ({
+    id,
+    classId: athenaDemoIds.class,
+    title: { es: id, en: id },
+    position,
+    objectiveIds: [],
+    updatedAt: "2026-10-24T00:00:00.000Z",
+    ...(dueAt && { dueAt }),
+  });
+  const now = new Date("2026-11-01T00:00:00.000Z");
+  const shown = upcomingMilestones(
+    [
+      milestone("past", "2026-10-01T00:00:00.000Z"),
+      milestone("undated"),
+      milestone("later", "2026-12-01T00:00:00.000Z"),
+      milestone("soon", "2026-11-05T00:00:00.000Z"),
+    ],
+    now,
+  );
+  assert.deepEqual(
+    shown.map((item) => item.id),
+    ["soon", "later", "undated"],
+  );
 });

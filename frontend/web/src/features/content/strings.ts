@@ -124,6 +124,23 @@ const es = {
     refused: "No permitida",
   } satisfies Record<ContentChatOutcome, string>,
   languages: { es: "Español", en: "Inglés" } satisfies Record<Locale, string>,
+  student: {
+    classesTitle: "Mis clases",
+    classesIntro: "Elige una clase para hablar con su tutor.",
+    noClasses: "Aún no estás inscrito en ninguna clase.",
+    openTutor: "Abrir tutor",
+    backToClasses: "Mis clases",
+    coverageHeading: "Lo que cubre el tutor",
+    coverageIntro: "El tutor solo responde con el material que tu profesor subió.",
+    materials: "Material disponible",
+    noMaterials: "Tu profesor aún no ha publicado material.",
+    objectives: "Objetivos de aprendizaje",
+    objectivesFor: "Objetivos de {topic}",
+    noObjectives: "Sin objetivos para este tema.",
+    milestones: "Próximos hitos",
+    noMilestones: "No hay hitos próximos.",
+    honesty: "El tutor te ayuda a entender; no hace tareas ni exámenes por ti.",
+  },
 };
 
 export type ContentStrings = typeof es;
@@ -245,6 +262,23 @@ const en: ContentStrings = {
     refused: "Not allowed",
   },
   languages: { es: "Spanish", en: "English" },
+  student: {
+    classesTitle: "My classes",
+    classesIntro: "Choose a class to talk with its tutor.",
+    noClasses: "You are not enrolled in any class yet.",
+    openTutor: "Open tutor",
+    backToClasses: "My classes",
+    coverageHeading: "What the tutor covers",
+    coverageIntro: "The tutor only answers from the material your professor uploaded.",
+    materials: "Available material",
+    noMaterials: "Your professor hasn't published material yet.",
+    objectives: "Learning objectives",
+    objectivesFor: "{topic} objectives",
+    noObjectives: "No objectives for this topic.",
+    milestones: "Upcoming milestones",
+    noMilestones: "No upcoming milestones.",
+    honesty: "The tutor helps you understand; it doesn't do assignments or exams for you.",
+  },
 };
 
 const dictionaries: Record<Locale, ContentStrings> = { es, en };
