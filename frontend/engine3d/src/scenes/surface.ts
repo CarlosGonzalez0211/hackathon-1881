@@ -1,4 +1,8 @@
-import type { HouseState, PlanetState } from "@athena/shared";
+import type { HouseState, PlanetState, QuestState } from "@athena/shared";
+import { celebrate, celebrationModel } from "../athena/celebrations";
+import type { AthenaInstallation } from "../athena/install";
+import { setReducedMotion } from "../athena/models";
+import type { AthenaWorldEngine } from "../athena/world-engine";
 import { houseInteractionAnchors, renderingDefinition } from "../config";
 import { createEngineContext, disposeEngineContext } from "../runtime/context";
 import type { LegacyContext } from "../runtime/legacy-context";
@@ -27,8 +31,11 @@ export interface SurfaceOptions {
   /** Resolve assets through the Athena manifest first (default true). */
   athenaAssets?: boolean;
 }
-export interface SurfaceHandle {
+export interface SurfaceHandle extends AthenaWorldEngine {
+  /** Same as `updatePlanet`. */
   update(state: PlanetState): void;
+  /** Latest quest state given to `updateQuests`. */
+  readonly quests: readonly QuestState[];
   setPaused(paused: boolean): void;
   setMuted(muted: boolean): void;
   /** Music (score + ambient bed) and effects volumes, 0-1 (brand guide 07). */
@@ -181,10 +188,40 @@ export async function createSurfaceEngine(
     scope.events$1.emit("render_active", true);
     controller!.audioController.camera = scene.camera;
     options.onReady?.();
+    const athena = scope.athena as AthenaInstallation | undefined;
+    let quests: QuestState[] = [];
+    const updatePlanet = (next: PlanetState) => {
+      state = next;
+      scene.userData.planetState = state;
+    };
+    const show = (key: string) => {
+      if (!athena?.enabled) return;
+      celebrate(athena, scene, key).catch((error) =>
+        console.warn("[Athena] celebration skipped", error),
+      );
+    };
     return {
-      update(next) {
-        state = next;
-        scene.userData.planetState = state;
+      update: updatePlanet,
+      updatePlanet,
+      updateQuests(next) {
+        quests = next;
+        scene.userData.quests = next;
+      },
+      get quests() {
+        return quests;
+      },
+      showAchievement(achievement) {
+        show(celebrationModel("achievement", achievement.code));
+      },
+      showEasterEgg() {
+        show(celebrationModel("easter-egg"));
+      },
+      setAccessibility(settings) {
+        setReducedMotion(settings.reducedMotion);
+        scope.athenaAudio?.setVolumes({
+          music: settings.musicVolume,
+          effects: settings.sfxVolume,
+        });
       },
       setPaused(paused) {
         if (paused) scene.characters.disable();

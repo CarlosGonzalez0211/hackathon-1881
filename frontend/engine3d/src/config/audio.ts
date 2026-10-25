@@ -1,3 +1,4 @@
+import { defaultWorldAccessibilitySettings } from "@athena/shared";
 import { assetCatalog } from "../assets/catalog";
 import kit from "../../athena-assets/asset-manifest.json";
 
@@ -44,8 +45,11 @@ export const audioDefinition = {
     understandingShown: athena("ui/quest-complete"),
   },
   autoplay: false,
-  /** Default bus volumes (0-1); the UI exposes both as sliders. */
-  volumes: { music: 0.8, effects: 0.8 } as Record<AudioBus, number>,
+  /** Default bus volumes (0-1), from the shared world accessibility defaults. */
+  volumes: {
+    music: defaultWorldAccessibilitySettings.musicVolume,
+    effects: defaultWorldAccessibilitySettings.sfxVolume,
+  } as Record<AudioBus, number>,
   policy:
     "Off until the first user gesture (the engine starts muted); dispose sources on route exit. Original spatial positions and gains remain in the extracted runtime; bus volumes scale them.",
 } as const;

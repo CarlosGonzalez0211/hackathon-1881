@@ -220,9 +220,8 @@ export async function buildAthenaOrbit(
   const spin = new scope.Matrix4();
   const euler = new scope.Euler();
   const scale = new scope.Vector3();
-  const reduced = prefersReducedMotion();
   const tick = (time: number) => {
-    const t = reduced ? 0 : time;
+    const t = prefersReducedMotion() ? 0 : time;
     for (const batch of batches) {
       batch.students.forEach((studentId, index) => {
         const slot = slots.get(studentId)!;
@@ -258,7 +257,7 @@ export async function buildAthenaOrbit(
     tick,
     update(next) {
       states = next;
-      tick(reduced ? 0 : (performance.now() / 1000) % 1e5);
+      tick(prefersReducedMotion() ? 0 : (performance.now() / 1000) % 1e5);
     },
     pick(raycaster) {
       const meshes = batches.flatMap((batch) => batch.meshes);

@@ -165,7 +165,17 @@ export function localBounds(scope: LegacyContext, object: Object3D) {
   return box;
 }
 
-/** True when the user asked the OS for less motion (brand guide 07/08). */
+let reducedMotionOverride: boolean | undefined;
+/**
+ * In-app reduced-motion toggle (WorldAccessibilitySettings.reducedMotion); `undefined`
+ * follows the OS setting.
+ */
+export function setReducedMotion(value: boolean | undefined) {
+  reducedMotionOverride = value;
+}
+/** True when the student or the OS asked for less motion (brand guide 07/08). */
 export function prefersReducedMotion() {
-  return !!globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  return (
+    reducedMotionOverride ?? !!globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  );
 }

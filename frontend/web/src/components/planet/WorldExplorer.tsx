@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { defaultWorldAccessibilitySettings } from "@athena/shared";
 import type { HouseState, PlanetState } from "@athena/shared";
 import type { EngineStats } from "@athena/engine3d";
 import { Planet } from "./Planet";
@@ -8,11 +10,21 @@ import { HouseSession } from "../house/HouseSession";
 import { SoundControls } from "@/features/world/components/SoundControls";
 import type { Volumes } from "@/features/world/components/SoundControls";
 import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
+import { useWorldShortcuts } from "@/features/world/use-world-shortcuts";
 export function WorldExplorer({ state, simulated }: { state: PlanetState; simulated: boolean }) {
   const [house, setHouse] = useState<HouseState | null>(null);
   const [topics, setTopics] = useState(false);
   const [muted, setMuted] = useState(true);
-  const [volumes, setVolumes] = useState<Volumes>({ music: 0.8, effects: 0.8 });
+  const [volumes, setVolumes] = useState<Volumes>({
+    music: defaultWorldAccessibilitySettings.musicVolume,
+    effects: defaultWorldAccessibilitySettings.sfxVolume,
+  });
+  const router = useRouter();
+  useWorldShortcuts({
+    onList: () => setTopics((open) => !open),
+    onOrbit: () => router.push("/orbit"),
+    onEscape: () => setTopics(false),
+  });
   const [stats, setStats] = useState<EngineStats | null>(null);
   return (
     <main className="world-app">

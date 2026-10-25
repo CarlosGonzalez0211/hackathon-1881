@@ -4,3 +4,5 @@ export type { SurfaceHandle, SurfaceOptions, ProjectedHouse, EngineStats } from 
 export type { OrbitOptions, ProjectedPlanet } from "./scenes/orbit";
 export type * from "./types";
 export * from "./config";
+export type { AthenaWorldEngine } from "./athena/world-engine";
+export { celebrationModel } from "./athena/celebrations";

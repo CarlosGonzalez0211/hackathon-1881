@@ -6,6 +6,8 @@
 import { installAthenaSky } from "./sky";
  *   registerAthenaSystem("npcs", installAthenaNpcs);
  */
+import type { LegacyContext } from "../runtime/legacy-context";
+import { celebrate } from "./celebrations";
 import { registerAthenaSystem } from "./install";
 import { installAthenaAudio } from "./audio";
 import { installAthenaAvatar } from "./avatar";
@@ -28,8 +30,11 @@ registerAthenaSystem("debug", (ctx) => {
   global.__athena = ctx;
   // The surface scene too, for inspecting the live graph from devtools.
   const planetInit = ctx.scope.planet.prototype._init;
-  ctx.scope.planet.prototype._init = function (this: unknown, ...args: unknown[]) {
+  ctx.scope.planet.prototype._init = function (this: LegacyContext, ...args: unknown[]) {
     global.__athenaPlanet = this;
+    // `__athenaCelebrate("slot:emote/star")` previews a reward celebration.
+    (global as { __athenaCelebrate?: unknown }).__athenaCelebrate = (key: string) =>
+      celebrate(ctx, this, key);
     return planetInit.apply(this, args);
   };
   // …and every batched geometry by request path (terrain chunks, building batches).
