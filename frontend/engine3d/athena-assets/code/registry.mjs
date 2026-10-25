@@ -17,13 +17,14 @@
  */
 import { entries as spike } from "./families/spike.mjs";
 import { entries as houses } from "./families/houses.mjs";
+import { entries as natureEntries } from "./families/nature.mjs";
 
 // TODO(world art): one module per family, same names as the committed kit folders.
 /** models/buildings: topic houses (`athena-house-<status>-v<slot>.glb`, families/houses.mjs) and civic buildings. */
 export { houses };
 export const buildings = [];
 /** models/nature: trees, rocks, grass, flowers, clouds. */
-export const nature = [];
+export const nature = natureEntries;
 /** models/avatar, models/npcs, models/characters: rigs keep the documented node names. */
 export const characters = [];
 /** models/props: lamp posts, benches, signs, crates. */

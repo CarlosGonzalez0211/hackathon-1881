@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { graphics } from "./helpers/recovered-graphics";
-import { createGroves, createMeadows, createCloudBelt } from "../src/village/botanical";
+import { pathToFileURL } from "node:url";
+import {
+  createGroves,
+  createMeadows,
+  createCloudBelt,
+  ATLAS_RECTS,
+} from "../src/village/botanical";
+import { engineRoot } from "./helpers/kit-path";
 import { createWelcomeCourtyard } from "../src/village/welcome";
 import { createAtmosphere } from "../src/village/atmosphere";
 import { createLivingLandmarks } from "../src/village/landscape-life";
@@ -47,7 +54,15 @@ test("authored landscape uses recovered primitives, finite instance transforms, 
     }
   });
   assert.ok(instances > 1000, "the environment has real geometric detail");
-  assert.equal(groves.canopy.count, 16 * 6);
+  const total = (meshes: LegacyContext[]) => meshes.reduce((sum, mesh) => sum + mesh.count, 0);
+  assert.equal(total(groves.crowns), 16, "one crown per tree, split over the species");
+  assert.equal(total(groves.trunks), 16, "one trunk per tree");
+  assert.equal(groves.fringe.count, 16 * 6, "six painted fringe cards around each crown");
+  assert.equal(groves.shadows.count, 16, "one shadow proxy per tree");
+  assert.ok(
+    groves.crowns.every((mesh) => !mesh.castShadow),
+    "crowns cast no shadow of their own",
+  );
   assert.ok(root.getObjectByName("athena-working-windmill"), "the moving landmark is placed");
   for (const bridge of bridges)
     for (let meters = -6; meters <= 6; meters += 0.5)
@@ -163,4 +178,22 @@ test("welcome courtyard has upward paving, clear central passage and no black gr
   });
   assert.ok(floorMeshes >= 2, "courtyard and inset stone bindings are real geometry");
   toon.dispose();
+});
+
+test("foliage atlas rectangles match the painter that draws the atlas", async () => {
+  const painter = (await import(
+    pathToFileURL(`${engineRoot}/athena-assets/code/sculpt/paint/foliage.mjs`).href
+  )) as {
+    FOLIAGE_ATLAS_SIZE: number;
+    FOLIAGE_RECTS: Record<string, { x: number; y: number; w: number; h: number }>;
+  };
+  const size = painter.FOLIAGE_ATLAS_SIZE;
+  assert.deepEqual(Object.keys(ATLAS_RECTS).sort(), Object.keys(painter.FOLIAGE_RECTS).sort());
+  for (const [name, [u, v, du, dv]] of Object.entries(ATLAS_RECTS)) {
+    const rect = painter.FOLIAGE_RECTS[name]!;
+    assert.ok(Math.abs(u - rect.x / size) < 1e-9, `${name} u`);
+    assert.ok(Math.abs(v - rect.y / size) < 1e-9, `${name} v`);
+    assert.ok(Math.abs(du - rect.w / size) < 1e-9, `${name} width`);
+    assert.ok(Math.abs(dv - rect.h / size) < 1e-9, `${name} height`);
+  }
 });

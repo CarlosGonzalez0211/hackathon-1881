@@ -112,7 +112,7 @@ export const CARD_TOKENS = {
  */
 export function toonCardMaterial(
   ctx: AthenaInstallContext,
-  texture: LegacyContext,
+  texture: LegacyContext | null,
   { tint, sphericalNormals = false, wind, alphaTest = 0.45 }: ToonCardOptions = {},
 ) {
   const s = ctx.scope;
