@@ -12,7 +12,7 @@ import { useWorld } from "@/features/world/WorldProvider";
 import { PresenterControls } from "@/features/world/components/PresenterControls";
 import { WorldToasts } from "@/features/world/components/WorldToasts";
 import { useMocks } from "@/lib/mode";
-import { Planet } from "./Planet";
+import { Planet, type PlanetControls } from "./Planet";
 import { SoundControls } from "@/features/world/components/SoundControls";
 import type { Volumes } from "@/features/world/components/SoundControls";
 import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
@@ -22,7 +22,8 @@ import { useWorldShortcuts } from "@/features/world/use-world-shortcuts";
 
 /**
  * Student world. The 3D planet and the 2D topic list both go through `activate`, which opens
- * the routed house page (`/world/house/[topicId]`) over the paused world.
+ * the routed house page (`/world/house/[topicId]`) over the paused world. The list first hops
+ * the avatar to the house's door.
  */
 export function WorldExplorer() {
   const { world, houses, activate, houseOpen, error, notify, client, studentId } = useWorld();
@@ -44,6 +45,23 @@ export function WorldExplorer() {
     onEscape: () => !houseOpen && setTopics(false),
   });
   const [stats, setStats] = useState<EngineStats | null>(null);
+  const planet = useRef<PlanetControls>(null);
+  const travelling = useRef(false);
+  // A topic with a house on the planet hops the avatar to its door first, then opens it;
+  // 2D-only overflow topics (or a 3D world that failed to load) open straight away.
+  const openTopic = async (topicId: string) => {
+    const placed = world?.planet.houses.find((house) => house.topicId === topicId);
+    if (!placed) return activate({ topicId });
+    if (travelling.current) return;
+    travelling.current = true;
+    setTopics(false);
+    try {
+      await planet.current?.travelToHouse(placed.slot);
+    } finally {
+      travelling.current = false;
+    }
+    activate({ slot: placed.slot });
+  };
 
   if (!world)
     return (
@@ -70,6 +88,7 @@ export function WorldExplorer() {
         overview={overview}
         onOverviewChange={setOverview}
         mode="surface"
+        controls={planet}
         onHouseClick={(house) => {
           if (!houseOpen) activate({ slot: house.slot });
         }}
@@ -193,7 +212,7 @@ export function WorldExplorer() {
             {houses.map((item) => (
               <button
                 className={`topic-row ${item.status}`}
-                onClick={() => activate({ topicId: item.topicId })}
+                onClick={() => void openTopic(item.topicId)}
                 key={item.topicId}
               >
                 <span className="status-symbol" aria-hidden="true">
