@@ -96,7 +96,12 @@ for (const entry of entries) {
 const selected = args.only.length
   ? entries.filter((e) =>
       args.only.some(
-        (key) => key === e.id || key === e.family || key === e.file || `${key}.glb` === e.file,
+        (key) =>
+          key === e.id ||
+          key === e.family ||
+          key === e.group ||
+          key === e.file ||
+          `${key}.glb` === e.file,
       ),
     )
   : entries;
@@ -112,11 +117,14 @@ const toolkit = await hashFiles(
 const version = await threeVersion();
 const familyHash = new Map();
 async function hashOf(entry) {
-  if (!familyHash.has(entry.family)) {
-    const file = path.join(CODE, "families", `${entry.family}.mjs`);
-    familyHash.set(entry.family, existsSync(file) ? sha(await fs.readFile(file)) : "none");
+  // `source` names the module under families/ when it differs from the output folder `family`
+  // (the houses are written to models/buildings but live in families/houses.mjs).
+  const source = entry.source ?? entry.family;
+  if (!familyHash.has(source)) {
+    const file = path.join(CODE, "families", `${source}.mjs`);
+    familyHash.set(source, existsSync(file) ? sha(await fs.readFile(file)) : "none");
   }
-  return sha([toolkit, familyHash.get(entry.family), entry.id, entry.file, version].join("|"));
+  return sha([toolkit, familyHash.get(source), entry.id, entry.file, version].join("|"));
 }
 
 const cacheFile = path.join(args.out, "kit-cache.json");

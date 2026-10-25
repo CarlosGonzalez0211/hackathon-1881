@@ -56,9 +56,13 @@ export function createSoftLighting(scope: LegacyContext): SoftLighting {
   };
 }
 
-/** Materials named like glazed tile or lacquer, or flagged `userData.athenaGlaze`, get the sheen. */
+/**
+ * Materials named like glazed tile or lacquer, or flagged `userData.athenaGlaze`, get the sheen.
+ * An explicit `athenaGlaze === false` opts a material out whatever its name says.
+ */
 export const GLAZE_NAME = /tile|glaze|lacquer/i;
 export function isGlazeSource(material: { name?: string; userData?: Record<string, unknown> }) {
+  if (material.userData?.athenaGlaze === false) return false;
   return GLAZE_NAME.test(material.name ?? "") || material.userData?.athenaGlaze === true;
 }
 

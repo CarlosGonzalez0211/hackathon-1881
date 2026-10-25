@@ -16,10 +16,11 @@
  * committed ones (`athena-house-done-v0.glb`, ...) so the build replaces them per file.
  */
 import { entries as spike } from "./families/spike.mjs";
+import { entries as houses } from "./families/houses.mjs";
 
 // TODO(world art): one module per family, same names as the committed kit folders.
-/** models/buildings: topic houses (`athena-house-<status>-v<slot>.glb`) and civic buildings. */
-export const houses = [];
+/** models/buildings: topic houses (`athena-house-<status>-v<slot>.glb`, families/houses.mjs) and civic buildings. */
+export { houses };
 export const buildings = [];
 /** models/nature: trees, rocks, grass, flowers, clouds. */
 export const nature = [];
