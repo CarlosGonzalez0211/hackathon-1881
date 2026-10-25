@@ -222,9 +222,9 @@ export const contentAiCallOutcomeSchema = z.enum([
 ]);
 export type ContentAiCallOutcome = z.infer<typeof contentAiCallOutcomeSchema>;
 
-export const contentCitationSchema = citationSchema.extend({
-  excerpt: z.string().max(CONTENT_LIMITS.maxCitationExcerpt),
-});
+export const contentCitationSchema = citationSchema.and(
+  z.object({ excerpt: z.string().max(CONTENT_LIMITS.maxCitationExcerpt) }),
+);
 export type ContentCitation = z.infer<typeof contentCitationSchema>;
 
 export const contentChatResponseSchema = z
