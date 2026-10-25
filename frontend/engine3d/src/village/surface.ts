@@ -67,7 +67,7 @@ export async function createSurfaceEngine(
     paused = false,
     disposed = false,
     reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let overview = false,
+  let overview = options.overview ?? false,
     focusSlot: number | undefined;
   // Render-review hook (`?shot=<id>`, see shots.mjs): poses the student and the camera and
   // freezes the clock so a frame is reproducible. Inert unless the parameter is present.
@@ -373,6 +373,11 @@ export async function createSurfaceEngine(
       }
       const dt = Math.min((now - previous) / 1000, 0.05);
       previous = now;
+      // Built offscreen ahead of time (a 1px host): one frame compiles it, then it idles.
+      if (cameraReady && host.clientWidth <= 1) {
+        lifecycle.requestAnimationFrame(render);
+        return;
+      }
       // In a shot the clock is frozen and nothing animates: same pose, same frame, every run.
       const clock = shot ? (shot.time ?? 0) : now / 1000;
       const sdt = shot ? 0 : dt;

@@ -1,7 +1,7 @@
 import type { PlanetState } from "@athena/shared";
 import { buildAthenaOrbit } from "../athena/orbit";
 import type { AthenaInstallation } from "../athena/install";
-import { orbitExtent, orbitLayout } from "../config/orbit";
+import { diveDistance, orbitDive, orbitExtent, orbitLayout } from "../config/orbit";
 import type { PlanetKind } from "../config/orbit";
 import { createEngineContext, disposeEngineContext } from "../runtime/context";
 import type { LegacyContext } from "../runtime/legacy-context";
@@ -20,6 +20,9 @@ export interface ProjectedPlanet {
 }
 /** Kit-sized frame the original camera was tuned for (outer ring + margin). */
 const FRAME_REFERENCE = 12.25;
+const CLASS_FOV = 42;
+const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2);
+const easeOut = (x: number) => 1 - (1 - Math.min(1, x)) ** 3;
 export interface OrbitOptions {
   signal?: AbortSignal;
   onPlanetClick?: (planet: PlanetState) => void;
@@ -27,6 +30,8 @@ export interface OrbitOptions {
   onStats?: (stats: EngineStats) => void;
   /** Resolve assets through the Athena manifest first (default true). */
   athenaAssets?: boolean;
+  /** Open already dived into this student's planet (returning from their world). */
+  focus?: string;
   /** Student planet look for the class (Athena only). Default `earth`. */
   planetKind?: PlanetKind | ((state: PlanetState, index: number) => PlanetKind);
 }
@@ -63,7 +68,7 @@ export async function createOrbitEngine(
       const scene = new scope.Scene();
       scene.background = new scope.Color(orbitLayout.background);
       const camera = new scope.PerspectiveCamera(
-        42,
+        CLASS_FOV,
         host.clientWidth / host.clientHeight,
         0.1,
         200,
@@ -84,11 +89,22 @@ export async function createOrbitEngine(
       const point = new scope.Vector3();
       const edge = new scope.Vector3();
       const cameraRight = new scope.Vector3();
-      // Visit: the camera glides to circle one classmate's planet, then back to the class.
-      let focusId: string | null = null;
-      const look = homeLook.clone();
-      const targetPosition = new scope.Vector3();
-      const targetLook = new scope.Vector3();
+      // Visit dive: `weight` runs 0 → 1 as the camera dives from the class to one planet (and
+      // back). Orbits pause under it, the rest of the class shrinks away, the planet turns into
+      // full view, and the dive ends on the world's overview framing (config/orbit.ts).
+      let focusId = options.focus && orbit.positions.has(options.focus) ? options.focus : null;
+      let diveId = focusId;
+      let weight = focusId ? 1 : 0;
+      let orbitClock = 0;
+      let settled: (() => void)[] = [];
+      const settle = () => {
+        const pending = settled;
+        settled = [];
+        for (const resolve of pending) resolve();
+      };
+      const look = new scope.Vector3();
+      const away = new scope.Vector3();
+      const turned = new scope.Vector3();
       const outward = new scope.Vector3();
       let previous = 0;
       lifecycle.listen(scope.global$1.renderer.domElement, "pointerup", ((event: PointerEvent) => {
@@ -97,6 +113,8 @@ export async function createOrbitEngine(
           ((event.clientX - rect.left) / rect.width) * 2 - 1,
           (-(event.clientY - rect.top) / rect.height) * 2 + 1,
         );
+        // A visit owns the view: planets are not picked until the camera is back with the class.
+        if (focusId || weight > 0) return;
         raycaster.setFromCamera(mouse, camera);
         const studentId = orbit.pick(raycaster);
         const selected = states.find((state) => state.studentId === studentId);
@@ -108,28 +126,51 @@ export async function createOrbitEngine(
       });
       let last = 0;
       scope.events$1.on("prerender", () => {
-        const time = scope.renderInfo.time;
-        const dt = Math.min(0.1, Math.max(0, time - previous));
+        // Wall-clock time: the runtime's render clock is shared with a world being built
+        // alongside (prepared during the dive) and drifts. The dive follows real elapsed time
+        // even through a long frame; orbits keep the clamped step.
+        const time = performance.now() / 1000;
+        const elapsed = previous ? Math.min(0.5, Math.max(0, time - previous)) : 0;
+        const dt = Math.min(0.1, elapsed);
         previous = time;
-        orbit.tick(time);
-        const focused = focusId ? orbit.positions.get(focusId) : undefined;
-        if (focused) {
-          const r = orbit.radii.get(focusId!) ?? 0.5;
-          outward.set(focused.x, 0, focused.z).normalize();
-          targetPosition
-            .copy(focused)
-            .addScaledVector(outward, r * 5 + 1.4)
-            .add(new scope.Vector3(0, r * 2.2 + 0.7, 0));
-          targetLook.copy(focused);
+        // Switching planets climbs out to the class first, then dives into the next one.
+        if (weight === 0) diveId = focusId;
+        const goal = focusId && focusId === diveId ? 1 : 0;
+        if (prefersReducedMotion()) weight = goal;
+        else if (weight < goal) weight = Math.min(1, weight + elapsed / orbitDive.inSeconds);
+        else weight = Math.max(goal, weight - elapsed / orbitDive.outSeconds);
+        if (weight === 0) diveId = focusId;
+        const e = easeInOut(weight);
+        orbitClock += dt * (1 - e);
+        orbit.stage(diveId, 1 - easeOut(weight / 0.6), e * orbitDive.turn);
+        orbit.tick(orbitClock, time);
+        const planet = diveId && weight > 0 ? orbit.positions.get(diveId) : undefined;
+        let fov = CLASS_FOV;
+        if (planet) {
+          // Dolly in log-distance (steady perceived speed) and swing a little towards the
+          // planet's sunlit face; the look leads so the planet centres before it fills the view.
+          away.copy(home).sub(planet);
+          const from = away.length();
+          away.normalize();
+          outward.set(planet.x, 0, planet.z).normalize();
+          turned.copy(away).addScaledVector(outward, -0.45).normalize();
+          away.lerp(turned, e).normalize();
+          const to = diveDistance(orbit.radii.get(diveId!) ?? 0.5);
+          camera.position.copy(planet).addScaledVector(away, from * (to / from) ** e);
+          look.lerpVectors(homeLook, planet, easeOut(weight * 1.6));
+          fov =
+            CLASS_FOV + (orbitDive.fov - CLASS_FOV) * e + orbitDive.fovRush * Math.sin(Math.PI * e);
         } else {
-          targetPosition.copy(home);
-          targetLook.copy(homeLook);
+          camera.position.copy(home);
+          look.copy(homeLook);
         }
-        const ease = prefersReducedMotion() ? 1 : 1 - Math.exp(-dt * 3.2);
-        camera.position.lerp(targetPosition, ease);
-        look.lerp(targetLook, ease);
+        if (camera.fov !== fov) {
+          camera.fov = fov;
+          camera.updateProjectionMatrix();
+        }
         camera.lookAt(look);
         camera.updateMatrixWorld();
+        if (!focusId || (weight === 1 && diveId === focusId)) settle();
         // Labels follow every frame (no throttling), positioned by the UI without re-renders.
         cameraRight.setFromMatrixColumn(camera.matrixWorld, 0);
         options.onProjection?.(
@@ -163,9 +204,13 @@ export async function createOrbitEngine(
           states = next;
           orbit.update(next);
         },
-        /** Glide to a student's planet (`null` returns to the whole class). */
+        /**
+         * Dive to a student's planet (`null` climbs back to the whole class). Resolves once the
+         * camera has settled on the planet in the world's overview framing.
+         */
         focus(studentId: string | null) {
           focusId = studentId && orbit.positions.has(studentId) ? studentId : null;
+          return new Promise<void>((resolve) => settled.push(resolve));
         },
         dispose,
         get resourceCounts() {
@@ -296,7 +341,9 @@ export async function createOrbitEngine(
           if (state) group.scale.setScalar(0.085 + state.growth * 0.025);
         });
       },
-      focus() {},
+      focus() {
+        return Promise.resolve();
+      },
       dispose,
       get resourceCounts() {
         return lifecycle.counts;

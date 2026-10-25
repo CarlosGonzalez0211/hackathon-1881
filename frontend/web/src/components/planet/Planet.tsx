@@ -25,6 +25,8 @@ import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
 import type { Volumes } from "@/features/world/components/SoundControls";
 import { appLocale, t } from "@/lib/i18n";
 import { WorldSketchIcon } from "@/features/world/components/WorldSketchIcon";
+import { holdArrival, reducedMotion } from "./arrival";
+import { takePreparedWorld, type WorldSink } from "./prepared-world";
 export interface PlanetProps {
   state: PlanetState;
   mode: "surface" | "orbit";
@@ -39,6 +41,14 @@ export interface PlanetProps {
   world?: WorldState;
   overview?: boolean;
   onOverviewChange?: (overview: boolean) => void;
+  /** Surface: the engine has started rendering (first frame is next). */
+  onReady?: () => void;
+  /**
+   * Surface: leave for the class orbit. The camera rises to the overview, then the live canvas
+   * is handed to the arrival veil (./arrival) and `onLeft` should navigate to the orbit.
+   */
+  leaving?: boolean;
+  onLeft?: () => void;
   /** Orbit: the name the class sees (defaults to the student id). */
   label?: string;
   /** Orbit: this planet belongs to the signed-in student. */
@@ -148,6 +158,9 @@ function SurfacePlanet({
   world,
   overview = false,
   onOverviewChange,
+  onReady,
+  leaving = false,
+  onLeft,
   controls,
 }: PlanetProps) {
   const host = useRef<HTMLDivElement>(null);
@@ -155,8 +168,12 @@ function SurfacePlanet({
   useImperativeHandle(controls, () => ({
     travelToHouse: async (slot) => (handle.current ? handle.current.travelToHouse(slot) : false),
   }));
-  const callbacks = useRef({ onHouseClick, onStats, onEvent, onOverviewChange });
-  callbacks.current = { onHouseClick, onStats, onEvent, onOverviewChange };
+  // The engine draws into its own node so a prepared world can be adopted and the live canvas
+  // handed to the arrival veil without moving React-owned elements.
+  const engineNode = useRef<HTMLElement | null>(null);
+  const handedOff = useRef(false);
+  const callbacks = useRef({ onHouseClick, onStats, onEvent, onOverviewChange, onReady, onLeft });
+  callbacks.current = { onHouseClick, onStats, onEvent, onOverviewChange, onReady, onLeft };
   const celebrated = useRef(new Set<string>());
   const [phase, setPhase] = useState("loading");
   const [error, setError] = useState("");
@@ -189,27 +206,55 @@ function SurfacePlanet({
     const abort = new AbortController();
     queueMicrotask(async () => {
       if (abort.signal.aborted || !host.current) return;
+      const sink: WorldSink = {
+        onHouseClick: (house) => callbacks.current.onHouseClick?.(house),
+        onStats: (stats) => callbacks.current.onStats?.(stats),
+        onEvent: (event) => callbacks.current.onEvent?.(event),
+        onOverviewChange: (value) => callbacks.current.onOverviewChange?.(value),
+        onProjection: (points) => {
+          if (abort.signal.aborted || handedOff.current) return;
+          latestProjection.current = points;
+          for (const point of points) {
+            const node = markerNodes.current.get(point.slot);
+            if (node) positionMarker(node, point);
+          }
+        },
+      };
       try {
-        const { createSurfaceEngine } = await import("@athena/engine3d");
-        if (abort.signal.aborted) return;
-        const instance = await createSurfaceEngine(host.current, {
-          state,
-          locale: appLocale,
-          signal: abort.signal,
-          athenaAssets: process.env.NEXT_PUBLIC_ATHENA_ASSETS !== "false",
-          onHouseClick: (house) => callbacks.current.onHouseClick?.(house),
-          onStats: (stats) => callbacks.current.onStats?.(stats),
-          onEvent: (event) => callbacks.current.onEvent?.(event),
-          onOverviewChange: (value) => callbacks.current.onOverviewChange?.(value),
-          onProjection: (points) => {
-            if (abort.signal.aborted) return;
-            latestProjection.current = points;
-            for (const point of points) {
-              const node = markerNodes.current.get(point.slot);
-              if (node) positionMarker(node, point);
-            }
-          },
-        });
+        let instance: SurfaceHandle | undefined;
+        // Arriving from the orbit dive: the world was built while the camera flew in.
+        const prepared = takePreparedWorld(state.studentId);
+        if (prepared) {
+          Object.assign(prepared.sink, sink);
+          host.current.appendChild(prepared.node);
+          engineNode.current = prepared.node;
+          instance = await prepared.engine.catch(() => {
+            prepared.node.remove();
+            return undefined;
+          });
+          if (instance && abort.signal.aborted) {
+            instance.dispose();
+            return;
+          }
+          if (instance) callbacks.current.onReady?.();
+        }
+        if (!instance) {
+          const { createSurfaceEngine } = await import("@athena/engine3d");
+          if (abort.signal.aborted) return;
+          const node = document.createElement("div");
+          node.className = "engine-host";
+          host.current.appendChild(node);
+          engineNode.current = node;
+          instance = await createSurfaceEngine(node, {
+            ...sink,
+            state,
+            locale: appLocale,
+            signal: abort.signal,
+            athenaAssets: process.env.NEXT_PUBLIC_ATHENA_ASSETS !== "false",
+            onReady: () => callbacks.current.onReady?.(),
+            overview,
+          });
+        }
         if (abort.signal.aborted) {
           instance.dispose();
           return;
@@ -224,11 +269,27 @@ function SurfacePlanet({
       }
     });
     return () => {
+      if (handedOff.current) return;
       abort.abort();
       handle.current?.dispose();
       handle.current = null;
     };
   }, []);
+  useEffect(() => {
+    const instance = handle.current;
+    if (!leaving || !instance) return;
+    const timer = window.setTimeout(
+      () => {
+        if (!engineNode.current || handedOff.current) return;
+        handedOff.current = true;
+        holdArrival("orbit", state.studentId, engineNode.current, instance.dispose);
+        callbacks.current.onLeft?.();
+      },
+      // Let the camera rise to the overview the orbit opens on.
+      reducedMotion() ? 0 : 1500,
+    );
+    return () => window.clearTimeout(timer);
+  }, [leaving, phase]);
   useEffect(() => handle.current?.update(state), [state, phase]);
   useEffect(() => handle.current?.setPaused(paused), [paused, phase]);
   useEffect(() => handle.current?.setOverview(overview), [overview, phase]);
@@ -300,6 +361,10 @@ export function OrbitCanvas({
   onPlanetClick,
   onStats,
   focus = null,
+  landing = null,
+  onLanded,
+  start = null,
+  onReady,
 }: {
   states: PlanetState[];
   children: React.ReactNode;
@@ -307,11 +372,26 @@ export function OrbitCanvas({
   onStats?: (stats: EngineStats) => void;
   /** Student whose planet the camera visits; `null` frames the whole class. */
   focus?: string | null;
+  /**
+   * Student whose world opens next: the camera dives to their planet, then the live canvas is
+   * handed to the arrival veil (./arrival) and `onLanded` should navigate to the world.
+   */
+  landing?: string | null;
+  onLanded?: () => void;
+  /** Open dived into this student's planet (the shot a world just handed back). */
+  start?: string | null;
+  /** The orbit has started rendering. */
+  onReady?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
-  const callbacks = useRef({ onPlanetClick, onStats });
-  callbacks.current = { onPlanetClick, onStats };
-  const engine = useRef<{ focus(studentId: string | null): void } | null>(null);
+  const callbacks = useRef({ onPlanetClick, onStats, onLanded, onReady });
+  callbacks.current = { onPlanetClick, onStats, onLanded, onReady };
+  const engine = useRef<{
+    focus(studentId: string | null): Promise<void>;
+    dispose(): void;
+  } | null>(null);
+  // Once the veil owns the engine, this page no longer draws labels or disposes it.
+  const handedOff = useRef(false);
   const labels = useRef(new Map<string, HTMLElement>());
   const latest = useRef(new Map<string, ProjectedPlanet>());
   const sizes = useRef(new Map<string, { width: number; height: number }>());
@@ -344,10 +424,13 @@ export function OrbitCanvas({
         const instance = await createOrbitEngine(host.current, states, {
           signal: abort.signal,
           athenaAssets: process.env.NEXT_PUBLIC_ATHENA_ASSETS !== "false",
+          focus: start ?? undefined,
           onPlanetClick: (planet) => callbacks.current.onPlanetClick?.(planet),
-          onStats: (stats) => callbacks.current.onStats?.(stats),
+          onStats: (stats) => {
+            if (!handedOff.current) callbacks.current.onStats?.(stats);
+          },
           onProjection: (next) => {
-            if (abort.signal.aborted) return;
+            if (abort.signal.aborted || handedOff.current) return;
             for (const point of next) latest.current.set(point.studentId, point);
             placeOrbitLabels(next, labels.current, sizes.current);
           },
@@ -359,6 +442,7 @@ export function OrbitCanvas({
           return;
         }
         setPhase("ready");
+        callbacks.current.onReady?.();
       } catch (cause) {
         if (!abort.signal.aborted) {
           setPhase("error");
@@ -367,12 +451,33 @@ export function OrbitCanvas({
       }
     });
     return () => {
-      abort.abort();
       engine.current = null;
+      if (handedOff.current) return;
+      abort.abort();
       dispose?.();
     };
   }, []);
-  useEffect(() => engine.current?.focus(focus), [focus, phase]);
+  useEffect(() => {
+    const instance = engine.current;
+    if (!instance) return;
+    if (!landing) {
+      void instance.focus(focus);
+      return;
+    }
+    let cancelled = false;
+    const land = () => {
+      if (cancelled || !host.current || handedOff.current) return;
+      handedOff.current = true;
+      holdArrival("world", landing, host.current, instance.dispose);
+      callbacks.current.onLanded?.();
+    };
+    // Reduced motion: no dive, the class view crossfades straight into the world.
+    if (reducedMotion()) land();
+    else void instance.focus(landing).then(land);
+    return () => {
+      cancelled = true;
+    };
+  }, [focus, landing, phase]);
   return (
     <OrbitContext.Provider value={{ register }}>
       <div className="scene orbit-scene" data-engine-status={phase} data-renderer="shared-orbit">
