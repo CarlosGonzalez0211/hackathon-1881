@@ -23,6 +23,13 @@ clips without constructing Messenger's world or replacing its scene objects.
 - `look.ts` adds subtle architectural wear and synchronised foliage/ink-hull wind.
 - `atmosphere.ts` supplies a gravity-aware illustrated sky, drifting cloud shapes,
   a sun disc, and a warm horizon. Surface lighting uses a warm key, cool fill, and haze.
+- `shade.ts` shares shading with the pieces the toon conversion cannot reach. `toonCardMaterial`
+  builds alpha-card materials (spherical per-instance normals via `aCardNormal`, lit on both
+  faces, optional wind) and `loadVillageTexture` loads their atlases. `SOFT_LIGHT_GLSL` and
+  `softUniforms` let a hand-written `ShaderMaterial` light like the toon program, and
+  `SKY_GLSL` is the sky palette `atmosphere.ts` splices into its shader. `geometry.ts` also
+  gained `lathe` (scalloped profile revolve), `sweep` (tube along a curve, moved out of
+  `lumen.ts`), `displace` and `bakeVertexColor` for the toolkit in `docs/art/ART_DIRECTION.md`.
 - `ambience.ts` animates the kit's butterfly and bird clips, floating mote sprites,
   and topic banners. These effects freeze under reduced motion and dispose with the world.
 - `surface.ts` connects walking, NPC intent, house intent, projected labels, sound,

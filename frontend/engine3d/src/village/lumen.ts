@@ -1,6 +1,6 @@
 import type { AthenaInstallContext } from "../athena/install";
 import type { LegacyContext } from "../runtime/legacy-context";
-import { ring, taperedTube } from "./geometry";
+import { ring, sweep, taperedTube } from "./geometry";
 
 /**
  * Lumen, the student's guide cat, sculpted from smooth forms: a sitting body, a round head
@@ -181,45 +181,4 @@ export function illuminateLumen(ctx: AthenaInstallContext, root: LegacyContext) 
       for (const lid of lids) lid.scale.y = closed ? 0.034 : 0.0001;
     },
   };
-}
-
-/** Tube swept along a polyline with a radius profile (no TubeGeometry in the bundle). */
-function sweep(
-  s: LegacyContext,
-  points: [number, number, number][],
-  radius: (t: number) => number,
-  radial = 18,
-) {
-  const positions: number[] = [],
-    indices: number[] = [];
-  const P = points.map((p) => new s.Vector3(...p));
-  let normal = new s.Vector3(1, 0, 0);
-  for (let i = 0; i < P.length; i++) {
-    const tangent = new s.Vector3()
-      .subVectors(P[Math.min(i + 1, P.length - 1)], P[Math.max(i - 1, 0)])
-      .normalize();
-    // Parallel transport keeps the ring frame from twisting along the curl.
-    normal = new s.Vector3()
-      .crossVectors(tangent, new s.Vector3().crossVectors(normal, tangent))
-      .normalize();
-    const binormal = new s.Vector3().crossVectors(tangent, normal);
-    const r = radius(i / (P.length - 1));
-    for (let j = 0; j <= radial; j++) {
-      const a = (j / radial) * Math.PI * 2;
-      const offset = normal
-        .clone()
-        .multiplyScalar(Math.cos(a) * r)
-        .addScaledVector(binormal, Math.sin(a) * r);
-      positions.push(P[i].x + offset.x, P[i].y + offset.y, P[i].z + offset.z);
-      if (i < P.length - 1 && j < radial) {
-        const q = i * (radial + 1) + j;
-        indices.push(q, q + radial + 1, q + 1, q + 1, q + radial + 1, q + radial + 2);
-      }
-    }
-  }
-  const geometry = new s.BufferGeometry();
-  geometry.setAttribute("position", new s.Float32BufferAttribute(positions, 3));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
 }

@@ -2,6 +2,7 @@ import type { LegacyContext } from "../runtime/legacy-context";
 import type { AthenaInstallContext } from "../athena/install";
 import { cross, norm, RADIUS, type Vec } from "./layout";
 import { sunDirection } from "./light";
+import { SKY_GLSL } from "./shade";
 
 /**
  * Camera-centred golden-hour sky. It follows local gravity on every side of the globe.
@@ -43,8 +44,7 @@ export function createAtmosphere(ctx: AthenaInstallContext, scene: LegacyContext
         float sunSide=dot(normalize(ray-uUp*h+1e-4),normalize(uSun-uUp*dot(uSun,uUp)+1e-4))*.5+.5;
         // Gradient: deep azure zenith, luminous turquoise middle, warm peach horizon on the sun side.
         // Palette authored in display values, converted to linear light for the HDR grade.
-        vec3 zenith=lin(vec3(.13,.36,.74)), middle=lin(vec3(.40,.70,.93));
-        vec3 horizon=mix(lin(vec3(.84,.89,.97)),lin(vec3(1.0,.80,.60))*1.02,pow(sunSide,2.2));
+        ${SKY_GLSL}
         float up=clamp(h,0.0,1.0);
         vec3 color=mix(horizon,middle,smoothstep(0.0,.28,up));
         color=mix(color,zenith,smoothstep(.22,1.0,up));
