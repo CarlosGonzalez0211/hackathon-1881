@@ -1,7 +1,11 @@
-.page {
+.page,
+.layout {
   --night: #1b2433;
   --night-deep: #121a27;
   --hairline: rgb(27 36 51 / 0.12);
+}
+
+.page {
   min-height: 100dvh;
   padding: clamp(16px, 4vw, 48px);
   background:
@@ -261,6 +265,28 @@ a.subjectInner:focus-visible {
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: color-mix(in srgb, var(--hue) 70%, var(--athena-ink));
+}
+
+/* Inside a house sheet: tighter type for the narrower panel. */
+.layout[data-compact] {
+  max-width: none;
+  gap: 20px;
+  font-family: var(--font-comfortaa), var(--athena-font-body);
+}
+.layout[data-compact] .sky {
+  border-radius: 26px;
+}
+.layout[data-compact] .subjectInner {
+  padding: 12px 10px;
+}
+.layout[data-compact] .subjectName {
+  font-size: 1rem;
+}
+.layout[data-compact] .subjectValue {
+  font-size: 1.4rem;
+}
+.layout[data-compact] .weekStats strong {
+  font-size: 1.05rem;
 }
 
 @media (max-width: 900px) {
