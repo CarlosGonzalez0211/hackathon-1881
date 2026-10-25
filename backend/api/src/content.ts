@@ -4,7 +4,8 @@ import {
   type ContentRoutesOptions,
 } from "@athena/content";
 import { env } from "./env.js";
-import { gemini, supabaseAdmin } from "./lib.js";
+import { anthropic, gemini, supabaseAdmin } from "./lib.js";
+import { AnthropicGuardrailClassifier, anthropicAnswerGenerator } from "./content-anthropic.js";
 import {
   GeminiEmbeddingProvider,
   GeminiGuardrailClassifier,
@@ -49,12 +50,19 @@ export function contentOptionsFor(
   }
   if (aiMode === "real") {
     const models: GenAiModels = gemini().models;
+    const claude = env.CONTENT_AI_PROVIDER === "anthropic" ? anthropic().messages : undefined;
     Object.assign(options, {
       embeddings: new GeminiEmbeddingProvider(models, env.CONTENT_EMBED_MODEL),
-      generator: geminiAnswerGenerator(models, env.CONTENT_CHAT_MODEL),
+      generator: claude
+        ? anthropicAnswerGenerator(claude, env.CONTENT_ANTHROPIC_CHAT_MODEL)
+        : geminiAnswerGenerator(models, env.CONTENT_CHAT_MODEL, {
+            fallbackModels: env.CONTENT_CHAT_FALLBACK_MODELS,
+          }),
       classifier: new LayeredGuardrailClassifier(
         new HeuristicGuardrailClassifier(),
-        new GeminiGuardrailClassifier(models, env.CONTENT_GUARD_MODEL),
+        claude
+          ? new AnthropicGuardrailClassifier(claude, env.CONTENT_ANTHROPIC_GUARD_MODEL)
+          : new GeminiGuardrailClassifier(models, env.CONTENT_GUARD_MODEL),
       ),
       retrieval: { minSimilarity: env.CONTENT_MIN_SIMILARITY },
     } satisfies ContentRoutesOptions);
