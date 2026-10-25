@@ -7,7 +7,10 @@ export interface AuthService {
 
 /** Decides what an authenticated caller may touch. Modules call this before reading data. */
 export interface AuthorizationService {
+  /** Member of the class: its professor, an enrolled student, or an admin. */
   canAccessClass(context: AuthContext, classId: string): boolean;
+  /** Teaches the class (or is an admin): analytics, interventions and roster management. */
+  canManageClass(context: AuthContext, classId: string): boolean;
   canAccessCourse(context: AuthContext, courseId: string): boolean;
   canAccessStudent(context: AuthContext, studentId: string): boolean;
 }
@@ -15,9 +18,11 @@ export interface AuthorizationService {
 /** The demo professor, who can see the demo class. */
 export const demoProfessorContext: AuthContext = {
   userId: athenaDemoIds.professorRuiz,
+  displayName: "Prof. Elena Ruiz",
   role: "admin",
   classIds: [athenaDemoIds.class],
   courseIds: [athenaDemoIds.course],
+  studentIds: Object.values(athenaDemoIds.students),
 };
 
 /**
@@ -35,6 +40,9 @@ export class AllowAllAuthService implements AuthService {
 /** STUB: allows everything. Replaced by role and class-membership checks. */
 export class AllowAllAuthorizationService implements AuthorizationService {
   canAccessClass() {
+    return true;
+  }
+  canManageClass() {
     return true;
   }
   canAccessCourse() {
