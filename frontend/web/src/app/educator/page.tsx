@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n";
 
 import { useEffect, useState } from "react";
 import type { Class } from "@athena/shared";
@@ -29,23 +30,23 @@ function ClassPicker() {
     };
   }, [attempt]);
 
-  if (classes.status === "loading") return <p role="status">Cargando clases… / Loading classes…</p>;
+  if (classes.status === "loading") return <p role="status">{t("Loading classes…")}</p>;
   if (classes.status === "error") {
     return (
       <div role="alert">
-        <p>No se pudieron cargar tus clases. / Could not load your classes.</p>
+        <p>{t("Could not load your classes.")}</p>
         <button
           type="button"
           onClick={() => setAttempt((n) => n + 1)}
           className="mt-2 min-h-[var(--athena-target-min)] rounded-[var(--athena-radius-small)] border border-[var(--athena-border)] px-4"
         >
-          Reintentar / Retry
+          {t("Retry")}
         </button>
       </div>
     );
   }
   if (classes.items.length === 0) {
-    return <p>Aún no tienes clases. / You have no classes yet.</p>;
+    return <p>{t("You have no classes yet.")}</p>;
   }
 
   const current = classes.items.find((item) => item.id === selected) ?? classes.items[0]!;
@@ -54,7 +55,7 @@ function ClassPicker() {
       {classes.items.length > 1 ? (
         <div>
           <label htmlFor="class-select" className="mb-1 block text-sm text-[var(--athena-muted)]">
-            Clase / Class
+            {t("Class")}
           </label>
           <select
             id="class-select"
@@ -85,7 +86,7 @@ export default function EducatorPage() {
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
       <h1 className="font-[family-name:var(--athena-font-display)] text-3xl">
-        Panel de la clase / Class dashboard
+        {t("Class dashboard")}
       </h1>
       <RoleGate allow={["professor"]}>
         <ClassPicker />

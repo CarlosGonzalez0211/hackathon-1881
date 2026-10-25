@@ -1,0 +1,6 @@
+[DEMO] Estadística — notes
+
+Authored Athena teaching fixture attributed to a fictional demo instructor. Not a real upload or primary historical source. The storage key is illustrative; text lives in source chunks.
+
+[es] Media aritmética
+La media aritmética se calcula sumando los datos y dividiendo entre su cantidad. Para 2, 4 y 6, la media es (2 + 4 + 6) / 3 = 4.
