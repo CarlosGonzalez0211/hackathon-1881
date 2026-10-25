@@ -17,6 +17,7 @@ import {
   revolve,
   ring,
   roundBox,
+  shell,
   thighProfile,
   tube,
   upperArmProfile,
@@ -1021,48 +1022,102 @@ export async function addShoes(F, shoes) {
 export function addMantle(F, mantle) {
   const { THREE, T, plan } = F;
   const L = plan.torsoLen / plan.hh;
-  const w = plan.w * (plan.heads < 4 ? 0.86 : 1);
+  const kid = plan.heads < 4;
+  const w = plan.w * (kid ? 0.86 : 1);
   const { kind = "capelet", color: hex, trim = GOLD } = mantle;
   const part = mantle.part ?? "top";
-  const drop = { shawl: 0.62, collar: 0.3, shoulder: 0.56 }[kind] ?? 0.46;
-  const hemY = L - drop;
-  // wide enough to lie over the rounded shoulder caps and the tops of the arms
-  const outside = [
-    [0.5 * w + (kind === "shawl" ? 0.05 : 0), hemY],
-    [0.515 * w, hemY + 0.07],
-    [0.5 * w, hemY + 0.2],
-    [0.47 * w, L - 0.28],
-    [0.4 * w, L - 0.14],
-    [0.28 * w, L - 0.05],
-    [0.2, L + 0.01],
-  ];
-  const g = sheet(T, outside, 0.02, {
-    rz: kind === "shawl" ? 0.74 : 0.82,
-    segments: F.detail < 0.7 ? 12 : 20,
-    divisions: 1,
-    scallop: {
-      folds: kind === "shawl" ? 5 : kind === "shoulder" ? 6 : 4,
-      depth: 0.1,
-      from: 0.55,
-      lift: 0,
-    },
-  });
-  // the trim band follows the hem, so colour by the height before the drape pulls it down
-  const flatY = Float32Array.from({ length: g.attributes.position.count }, (_, i) =>
-    g.attributes.position.getY(i),
-  );
-  if (kind !== "shawl" && kind !== "collar") {
-    // the hem dips at the front and the back and rides up over the arms, like a draped mantle
+  const cloth = kind !== "shawl";
+  const open = kind === "capelet" || kind === "shoulder";
+
+  let g;
+  let outside;
+  let hemY;
+  let rz;
+  let flatY;
+  if (cloth) {
+    // A short cape that sits on the shoulders: a soft dome over the neck and the tops of the arms,
+    // falling to mid-chest in front and the shoulder blades at the back, a little wider at the
+    // hem than at the shoulder, with a wavy (6 lobed) hem, 1.5 cm of cloth and a slit down the
+    // front that the clasp closes.
+    const drop = ({ shoulder: 0.4, collar: 0.25 }[kind] ?? 0.34) * (kid ? 0.85 : 1);
+    hemY = L - drop;
+    rz = 0.82;
+    outside = [
+      [0.56 * w, hemY],
+      [0.55 * w, hemY + drop * 0.18],
+      [0.5 * w, hemY + drop * 0.55],
+      [0.4 * w, L - 0.1],
+      [0.28 * w, L - 0.03],
+      [0.2, L + 0.01],
+    ];
+    const options = { rz, segments: F.detail < 0.7 ? 12 : 20, divisions: 1 };
+    g = open ? shell(T, outside, 0.04, options) : revolve(T, outside, options);
+    // a column of quads is centred on the front (the slit), not a seam
+    g.rotateY(Math.PI / options.segments);
+    flatY = Float32Array.from({ length: g.attributes.position.count }, (_, i) =>
+      g.attributes.position.getY(i),
+    );
     const p = g.attributes.position;
+    const dipFront = (kid ? 0.15 : 0.2) * (kind === "collar" ? 0.5 : 1);
+    const dipBack = 0.03;
     for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i);
       const y = p.getY(i);
-      const k = smooth(L - 0.26, hemY, y);
-      const z = Math.min(1, Math.abs(p.getZ(i)) / (0.45 * w));
-      p.setY(i, y - 0.16 * k * z * z);
+      const z = p.getZ(i);
+      const k = smooth(L - 0.12, hemY, y);
+      const theta = Math.atan2(x, z);
+      const front = Math.pow(Math.max(0, Math.cos(theta)), 2);
+      const back = Math.pow(Math.max(0, -Math.cos(theta)), 2);
+      // the hem hangs lower in front and a little at the back, and in six soft lobes
+      const lobe = Math.abs(Math.cos(3 * theta));
+      p.setY(i, y - k * (dipFront * front + dipBack * back + 0.06 * lobe));
+      // soft folds: the lobes also swing slightly outwards
+      const swing = 1 + 0.035 * k * lobe;
+      p.setX(i, x * swing);
+      p.setZ(i, z * swing);
+    }
+    if (open) {
+      // slit down the front, from the hem to just under the clasp: the quads around the front
+      const index = g.index;
+      const kept = [];
+      for (let t = 0; t < index.count; t += 3) {
+        let cx = 0;
+        let cy = 0;
+        let cz = 0;
+        for (let v = 0; v < 3; v++) {
+          const at = index.getX(t + v);
+          cx += p.getX(at);
+          cy += flatY[at];
+          cz += p.getZ(at);
+        }
+        const inSlit = cz > 0 && Math.abs(Math.atan2(cx, cz)) < 0.2 && cy / 3 < L - 0.11;
+        if (!inSlit) kept.push(index.getX(t), index.getX(t + 1), index.getX(t + 2));
+      }
+      g.setIndex(kept);
     }
     T.smoothNormals(g, 60);
-  }
-  if (kind === "shawl") {
+  } else {
+    // the long shawl keeps its own drape
+    hemY = L - 0.62;
+    rz = 0.74;
+    outside = [
+      [0.5 * w + 0.05, hemY],
+      [0.515 * w, hemY + 0.07],
+      [0.5 * w, hemY + 0.2],
+      [0.47 * w, L - 0.28],
+      [0.4 * w, L - 0.14],
+      [0.28 * w, L - 0.05],
+      [0.2, L + 0.01],
+    ];
+    g = sheet(T, outside, 0.02, {
+      rz,
+      segments: F.detail < 0.7 ? 12 : 20,
+      divisions: 1,
+      scallop: { folds: 5, depth: 0.1, from: 0.55, lift: 0 },
+    });
+    flatY = Float32Array.from({ length: g.attributes.position.count }, (_, i) =>
+      g.attributes.position.getY(i),
+    );
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const y = p.getY(i);
@@ -1072,6 +1127,7 @@ export function addMantle(F, mantle) {
     }
     T.smoothNormals(g, 60);
   }
+
   F.add("top_detail", "mantle", g, {
     part,
     style: STYLE.mantle,
@@ -1083,7 +1139,7 @@ export function addMantle(F, mantle) {
         low: 0.84,
         high: 1.06,
         trim,
-        band: kind === "shoulder" ? 0.07 : 0.05,
+        band: 0.035,
       });
       const at = new THREE.Vector3();
       return (p, n, i) => paintMantle(at.set(p.x, flatY[i], p.z));
@@ -1096,15 +1152,22 @@ export function addMantle(F, mantle) {
       F.add(
         "top_detail",
         `mantle_stud_${s}`,
-        ellipsoid(THREE, [0.05, 0.035, 0.05], { w: 8, h: 4 }).translate(s * 0.4 * w, L - 0.1, 0.08),
+        ellipsoid(THREE, [0.05, 0.035, 0.05], { w: 8, h: 4 }).translate(
+          s * 0.37 * w,
+          L - 0.1,
+          0.06,
+        ),
         { part, material: "gold", color: GOLD, group: "mantle" },
       );
   }
   if (mantle.clasp !== false) {
+    // the clasp joins the two front edges of the slit, just under the neck
+    const clasp = open ? L - 0.11 : L - 0.1;
+    const reach = (radiusAt(outside, clasp) * rz) / 1 + 0.03;
     F.add(
       "top_detail",
       "mantle_clasp",
-      ellipsoid(THREE, [0.06, 0.06, 0.035], { w: 8, h: 5 }).translate(0, L - 0.1, 0.34),
+      ellipsoid(THREE, [0.06, 0.06, 0.035], { w: 8, h: 5 }).translate(0, clasp, reach),
       { part, material: "gold", color: GOLD, group: "mantle" },
     );
     F.add(
@@ -1112,7 +1175,7 @@ export function addMantle(F, mantle) {
       "mantle_clasp_ring",
       ring(THREE, 0.068, 0.012, { tubular: 12, radial: 3 })
         .rotateX(Math.PI / 2)
-        .translate(0, L - 0.1, 0.345),
+        .translate(0, clasp, reach + 0.005),
       { part, material: "gold", color: GOLD, group: "mantle" },
     );
   }
