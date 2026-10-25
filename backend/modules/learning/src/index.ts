@@ -17,6 +17,7 @@ export {
 } from "./domain/knowledge-tracing.js";
 export {
   calculateStrategyReward,
+  initializeStrategyPosteriors,
   selectTeachingStrategy,
   updateStrategyPosterior,
 } from "./domain/strategy-selection.js";
@@ -40,6 +41,7 @@ export {
 } from "./misconception-classifier.js";
 export {
   GeminiTutorProvider,
+  getTeachingStrategyInstruction,
   MockCurriculumContextPort,
   MockTutorProvider,
   type GroundedTextGenerator,

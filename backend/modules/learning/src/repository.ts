@@ -15,6 +15,7 @@ import {
   type StudentTopicMastery,
   type StudentLearningPreferences,
 } from "@athena/shared";
+import { initializeStrategyPosteriors } from "./domain/strategy-selection.js";
 
 export interface LearningRepository {
   saveDiagnostic(value: DiagnosticResult): Promise<void>;
@@ -193,8 +194,8 @@ export class InMemoryLearningRepository implements LearningRepository {
 
   async getStrategyPosteriors(studentId: string, contextKey: string) {
     const seeded = demoStrategyPosteriors.filter((value) => value.contextKey === contextKey);
-    return seeded.map(
-      (value) => this.posteriors.get(posteriorKey(studentId, value)) ?? { ...value },
+    return initializeStrategyPosteriors(contextKey, seeded).map(
+      (value) => this.posteriors.get(posteriorKey(studentId, value)) ?? value,
     );
   }
 

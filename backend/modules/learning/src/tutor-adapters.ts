@@ -10,6 +10,33 @@ import {
 } from "@athena/shared";
 import type { CurriculumContextPort, TutorProvider } from "./ports.js";
 
+const teachingStrategyInstructions: Record<TeachingStrategy, string> = {
+  concise_text:
+    "Explain the key idea directly in no more than three short paragraphs, using only necessary detail.",
+  deep_explanation:
+    "Build a thorough step-by-step explanation that connects the idea, the reasoning, and why each step works.",
+  worked_example:
+    "Teach through a fully explained example, showing the reasoning at each step without inventing unsupported facts.",
+  visual_decomposition:
+    "Break the idea into labeled spatial or visual parts and provide equivalent text for accessibility.",
+  guided_questioning:
+    "Use short Socratic questions that help the student discover the next step instead of immediately giving it away.",
+  practice_first:
+    "Begin with a small practice task, invite an attempt, and then give feedback or explanation without revealing an assessed final answer.",
+  storytelling:
+    "Use a brief, age-appropriate narrative or analogy as a teaching frame; clearly distinguish the story from source-backed facts.",
+  audio_summary:
+    "Write a concise spoken-word summary script and do not claim that an audio file has been generated.",
+  podcast:
+    "Write a source-grounded podcast-style script and do not claim that an audio file has been generated.",
+  flashcards:
+    "Present compact question-and-answer study cards whose answers are supported by the supplied sources.",
+};
+
+export function getTeachingStrategyInstruction(strategy: TeachingStrategy) {
+  return teachingStrategyInstructions[strategy];
+}
+
 export class MockCurriculumContextPort implements CurriculumContextPort {
   async retrieve(input: CurriculumContextRequest): Promise<CurriculumContextResponse> {
     if (input.curriculumVersion !== 1) {
@@ -51,10 +78,11 @@ export class MockTutorProvider implements TutorProvider {
         unsupported: true,
       };
     }
+    const sourceText = input.evidence[0]?.text ?? "";
     const content =
       input.mode === "hint"
         ? "Piensa en cómo dos triángulos iguales pueden formar un rectángulo; identifica qué operación falta sin calcular la respuesta final."
-        : `Estrategia: ${input.strategy.replaceAll("_", " ")}. ${input.evidence[0]?.text ?? ""}`;
+        : formatMockLesson(input.strategy, sourceText);
     return {
       content,
       citations: input.evidence.map((item) => item.citation),
@@ -95,6 +123,7 @@ export class GeminiTutorProvider implements TutorProvider {
         `Mode: ${input.mode ?? "lesson"}`,
         `Objective: ${input.objective}`,
         `Strategy: ${input.strategy}`,
+        `Teaching approach: ${getTeachingStrategyInstruction(input.strategy)}`,
         input.studentMessage ? `Student message: ${input.studentMessage}` : "",
         evidence,
       ]
@@ -106,5 +135,20 @@ export class GeminiTutorProvider implements TutorProvider {
       citations: input.evidence.map((item) => item.citation),
       unsupported: false,
     };
+  }
+}
+
+function formatMockLesson(strategy: TeachingStrategy, sourceText: string) {
+  switch (strategy) {
+    case "concise_text":
+      return `En breve: ${sourceText}`;
+    case "deep_explanation":
+      return `Explicación profunda, paso a paso: ${sourceText}`;
+    case "practice_first":
+      return `Práctica primero: intenta aplicar esta idea antes de revisar la explicación. ${sourceText}`;
+    case "storytelling":
+      return `Historia de aprendizaje: imagina una situación que represente esta idea. ${sourceText}`;
+    default:
+      return `Estrategia: ${strategy.replaceAll("_", " ")}. ${sourceText}`;
   }
 }

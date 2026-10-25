@@ -1,4 +1,8 @@
-import type { StrategyPosterior, TeachingStrategy } from "@athena/shared";
+import {
+  automaticallySelectableTeachingStrategies,
+  type StrategyPosterior,
+  type TeachingStrategy,
+} from "@athena/shared";
 
 export interface StrategyRewardInput {
   beforeScore: number;
@@ -27,6 +31,23 @@ export function updateStrategyPosterior(
     beta: posterior.beta + 1 - boundedReward,
     observations: posterior.observations + 1,
   };
+}
+
+export function initializeStrategyPosteriors(
+  contextKey: string,
+  existing: readonly StrategyPosterior[] = [],
+): StrategyPosterior[] {
+  const existingByStrategy = new Map(existing.map((posterior) => [posterior.strategy, posterior]));
+  return automaticallySelectableTeachingStrategies.map(
+    (strategy) =>
+      existingByStrategy.get(strategy) ?? {
+        strategy,
+        contextKey,
+        alpha: 1,
+        beta: 1,
+        observations: 0,
+      },
+  );
 }
 
 export function selectTeachingStrategy(input: {

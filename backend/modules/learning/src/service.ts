@@ -1,4 +1,5 @@
 import {
+  automaticallySelectableTeachingStrategies,
   assessmentQuizSchema,
   checkpointResultSchema,
   curriculumContextResponseSchema,
@@ -355,12 +356,7 @@ export class LearningService {
     ) {
       throw new PlatformError("The requested strategy is blocked by learning preferences", 400);
     }
-    const defaultStrategies: TeachingStrategy[] = [
-      "worked_example",
-      "visual_decomposition",
-      "guided_questioning",
-    ];
-    const allowedStrategies = defaultStrategies.filter(
+    const allowedStrategies: TeachingStrategy[] = automaticallySelectableTeachingStrategies.filter(
       (strategy) => !preferences?.blockedStrategies.includes(strategy),
     );
     if (allowedStrategies.length === 0) {

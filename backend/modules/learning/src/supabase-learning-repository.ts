@@ -29,6 +29,7 @@ import {
   type StudentTopicMastery,
   type TutorMessage,
 } from "@athena/shared";
+import { initializeStrategyPosteriors } from "./domain/strategy-selection.js";
 import type { LearningRepository } from "./repository.js";
 import type { LearningRestClient } from "./supabase-rest.js";
 
@@ -247,18 +248,22 @@ export class SupabaseLearningRepository implements LearningRepository {
       context_key: contextKey,
     });
     if (rows.length === 0) {
-      return demoStrategyPosteriors
-        .filter((posterior) => posterior.contextKey === contextKey)
-        .map((posterior) => ({ ...posterior }));
+      return initializeStrategyPosteriors(
+        contextKey,
+        demoStrategyPosteriors.filter((posterior) => posterior.contextKey === contextKey),
+      );
     }
-    return rows.map((row) =>
-      strategyPosteriorSchema.parse({
-        strategy: row.strategy,
-        contextKey: row.context_key,
-        alpha: Number(row.alpha),
-        beta: Number(row.beta),
-        observations: Number(row.observations),
-      }),
+    return initializeStrategyPosteriors(
+      contextKey,
+      rows.map((row) =>
+        strategyPosteriorSchema.parse({
+          strategy: row.strategy,
+          contextKey: row.context_key,
+          alpha: Number(row.alpha),
+          beta: Number(row.beta),
+          observations: Number(row.observations),
+        }),
+      ),
     );
   }
 

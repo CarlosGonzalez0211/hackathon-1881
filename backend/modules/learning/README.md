@@ -22,6 +22,10 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 - Bayesian Knowledge Tracing as an advisory estimate
 - guarded contextual Thompson sampling primitives
 - student strategy overrides, accessibility blocks, explanations and repeated-failure intervention
+- automatic selection among concise text, deep explanations, worked examples, visual
+  decomposition, guided questioning, practice-first and storytelling
+- distinct grounded tutor instructions and deterministic mock rendering for each text-native
+  strategy; audio, podcast and flashcard production remain capability-gated
 - deterministic mastery calculation that excludes hinted attempts
 - prerequisite-filtered recommendation ranking
 - explainable recommendations with professor priority overrides

@@ -92,6 +92,17 @@ export const teachingStrategySchema = z.enum([
 ]);
 export type TeachingStrategy = z.infer<typeof teachingStrategySchema>;
 
+/** Strategies that the adaptive engine can select without requiring a rich-media renderer. */
+export const automaticallySelectableTeachingStrategies = [
+  "concise_text",
+  "deep_explanation",
+  "worked_example",
+  "visual_decomposition",
+  "guided_questioning",
+  "practice_first",
+  "storytelling",
+] as const satisfies readonly TeachingStrategy[];
+
 export const studentLearningPreferencesSchema = z
   .object({
     studentId: idSchema,
