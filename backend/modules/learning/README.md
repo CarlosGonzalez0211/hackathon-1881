@@ -8,6 +8,7 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 - `POST /api/learning/diagnostic`
 - `POST /api/learning/attempt`
 - `GET /api/learning/quiz/:topicId`
+- `POST /api/learning/retention-check`
 - `GET /api/learning/student/:studentId/state`
 - Bayesian Knowledge Tracing as an advisory estimate
 - guarded contextual Thompson sampling primitives

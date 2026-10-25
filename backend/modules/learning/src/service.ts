@@ -2,6 +2,7 @@ import {
   assessmentQuizSchema,
   checkpointResultSchema,
   diagnosticResultSchema,
+  retentionCheckResultSchema,
   studentLearningStateSchema,
   type AssessmentPurpose,
   type AssessmentQuiz,
@@ -13,6 +14,9 @@ import {
   type ConceptResult,
   type DiagnosticResult,
   type DiagnosticSubmission,
+  type RetentionCheckResult,
+  type RetentionCheckSubmission,
+  type RetentionEvidence,
   type StrategyObservation,
   type StudentLearningState,
   type StudentTopicMastery,
@@ -139,6 +143,22 @@ export class LearningService {
         payload: { topicId: submission.topicId, diagnosticAttemptId: result.attemptId },
       });
     }
+    await this.events.append({
+      id: this.ids.next(),
+      type: "TopicRecommended",
+      aggregateType: "student_topic_recommendation",
+      aggregateId: submission.topicId,
+      actorId: context.userId,
+      courseId: submission.courseId,
+      studentId: submission.studentId,
+      occurredAt: completedAt,
+      payload: {
+        topicId: result.recommendation.topicId,
+        conceptId: result.recommendation.conceptId,
+        reason: result.recommendation.reason,
+        suggestedStrategy: result.recommendation.suggestedStrategy,
+      },
+    });
     return result;
   }
 
@@ -147,6 +167,13 @@ export class LearningService {
     submission: CheckpointSubmission,
   ): Promise<CheckpointResult> {
     this.assertAccess(context, submission.studentId, submission.courseId);
+    if (submission.submissionId) {
+      const existing = await this.repository.getCheckpointResultBySubmissionId(
+        submission.studentId,
+        submission.submissionId,
+      );
+      if (existing) return existing;
+    }
     const graded = await this.assessments.grade(submission.questionId, submission.answer);
     if (!graded) throw notFound("Assessment question", submission.questionId);
     if (graded.question.purpose !== "checkpoint") {
@@ -182,6 +209,7 @@ export class LearningService {
 
     const evidence: CheckpointEvidence = {
       id: this.ids.next(),
+      submissionId: submission.submissionId,
       studentId: submission.studentId,
       topicId: submission.topicId,
       conceptId: submission.conceptId,
@@ -338,7 +366,7 @@ export class LearningService {
       });
     }
 
-    return checkpointResultSchema.parse({
+    const result = checkpointResultSchema.parse({
       evidence,
       mastery,
       activeMisconceptionIds: activeAfter,
@@ -346,6 +374,10 @@ export class LearningService {
       strategyChanged: recommendedStrategy !== submission.strategy,
       retention,
     });
+    if (submission.submissionId) {
+      await this.repository.saveCheckpointResult(submission.submissionId, result);
+    }
+    return result;
   }
 
   async getQuiz(
@@ -405,6 +437,95 @@ export class LearningService {
         selectionReason: reason,
       })),
     });
+  }
+
+  async submitRetentionCheck(
+    context: AuthContext,
+    submission: RetentionCheckSubmission,
+  ): Promise<RetentionCheckResult> {
+    this.assertAccess(context, submission.studentId, submission.courseId);
+    if (submission.submissionId) {
+      const existing = await this.repository.getRetentionResultBySubmissionId(
+        submission.studentId,
+        submission.submissionId,
+      );
+      if (existing) return existing;
+    }
+    const graded = await this.assessments.grade(submission.questionId, submission.answer);
+    if (!graded) throw notFound("Assessment question", submission.questionId);
+    if (graded.question.purpose !== "retention") {
+      throw new PlatformError("Question is not a retention item", 400);
+    }
+    if (
+      graded.question.topicId !== submission.topicId ||
+      graded.question.conceptId !== submission.conceptId
+    ) {
+      throw new PlatformError("Question does not match the requested topic and concept", 400);
+    }
+
+    const previousRetention = (await this.repository.listRetention(submission.studentId)).find(
+      (value) => value.conceptId === submission.conceptId,
+    );
+    if (!previousRetention) throw notFound("Retention schedule", submission.conceptId);
+
+    const checkedAt = this.clock.now().toISOString();
+    const evidence: RetentionEvidence = {
+      id: this.ids.next(),
+      submissionId: submission.submissionId,
+      studentId: submission.studentId,
+      topicId: submission.topicId,
+      conceptId: submission.conceptId,
+      questionId: submission.questionId,
+      correct: graded.correct,
+      score: graded.score,
+      scheduledFor: previousRetention.dueAt,
+      checkedAt,
+    };
+    await this.repository.saveRetentionEvidence(evidence);
+    await this.updateKnowledge(
+      submission.studentId,
+      submission.conceptId,
+      graded.correct,
+      checkedAt,
+    );
+    const retention = scheduleRetention({
+      studentId: submission.studentId,
+      conceptId: submission.conceptId,
+      recalledSuccessfully: graded.correct,
+      previousSuccessfulRecallStreak: previousRetention.successfulRecallStreak,
+      now: this.clock.now(),
+    });
+    await this.repository.saveRetention(retention);
+    const mastery = await this.repository.getMastery(submission.studentId, submission.topicId);
+
+    if (graded.correct) {
+      await this.events.append({
+        id: this.ids.next(),
+        type: "RetentionCheckPassed",
+        aggregateType: "retention_evidence",
+        aggregateId: evidence.id,
+        actorId: context.userId,
+        courseId: submission.courseId,
+        studentId: submission.studentId,
+        occurredAt: checkedAt,
+        payload: {
+          topicId: submission.topicId,
+          conceptId: submission.conceptId,
+          intervalDays: retention.intervalDays,
+        },
+      });
+    }
+
+    const result = retentionCheckResultSchema.parse({
+      evidence,
+      retention,
+      mastery,
+      masteryChanged: false,
+    });
+    if (submission.submissionId) {
+      await this.repository.saveRetentionResult(submission.submissionId, result);
+    }
+    return result;
   }
 
   async getStudentState(context: AuthContext, studentId: string): Promise<StudentLearningState> {

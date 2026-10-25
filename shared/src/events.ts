@@ -15,6 +15,7 @@ export const DOMAIN_EVENT_TYPES = [
   "CheckpointCompleted",
   "MasteryUpdated",
   "TopicRecommended",
+  "RetentionCheckPassed",
   "AchievementUnlocked",
   "TeamChallengeCompleted",
   "AiUsageRecorded",

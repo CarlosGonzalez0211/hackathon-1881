@@ -1,9 +1,12 @@
 import {
   demoStrategyPosteriors,
   type CheckpointEvidence,
+  type CheckpointResult,
   type ConceptKnowledgeState,
   type DiagnosticResult,
   type RetentionSchedule,
+  type RetentionEvidence,
+  type RetentionCheckResult,
   type StrategyObservation,
   type StrategyPosterior,
   type StudentTopicMastery,
@@ -14,6 +17,11 @@ export interface LearningRepository {
   listDiagnostics(studentId: string): Promise<DiagnosticResult[]>;
   saveEvidence(value: CheckpointEvidence): Promise<void>;
   listEvidence(studentId: string, topicId: string): Promise<CheckpointEvidence[]>;
+  getCheckpointResultBySubmissionId(
+    studentId: string,
+    submissionId: string,
+  ): Promise<CheckpointResult | null>;
+  saveCheckpointResult(submissionId: string, value: CheckpointResult): Promise<void>;
   getMastery(studentId: string, topicId: string): Promise<StudentTopicMastery | null>;
   listMastery(studentId: string): Promise<StudentTopicMastery[]>;
   saveMastery(value: StudentTopicMastery): Promise<void>;
@@ -31,17 +39,27 @@ export interface LearningRepository {
   saveStrategyObservation(value: StrategyObservation): Promise<void>;
   saveRetention(value: RetentionSchedule): Promise<void>;
   listRetention(studentId: string): Promise<RetentionSchedule[]>;
+  saveRetentionEvidence(value: RetentionEvidence): Promise<void>;
+  listRetentionEvidence(studentId: string, conceptId?: string): Promise<RetentionEvidence[]>;
+  getRetentionResultBySubmissionId(
+    studentId: string,
+    submissionId: string,
+  ): Promise<RetentionCheckResult | null>;
+  saveRetentionResult(submissionId: string, value: RetentionCheckResult): Promise<void>;
 }
 
 export class InMemoryLearningRepository implements LearningRepository {
   private readonly diagnostics: DiagnosticResult[] = [];
   private readonly evidence: CheckpointEvidence[] = [];
+  private readonly checkpointResults = new Map<string, CheckpointResult>();
   private readonly mastery = new Map<string, StudentTopicMastery>();
   private readonly knowledge = new Map<string, ConceptKnowledgeState>();
   private readonly misconceptions = new Map<string, Set<string>>();
   private readonly posteriors = new Map<string, StrategyPosterior>();
   private readonly observations: StrategyObservation[] = [];
   private readonly retention = new Map<string, RetentionSchedule>();
+  private readonly retentionEvidence: RetentionEvidence[] = [];
+  private readonly retentionResults = new Map<string, RetentionCheckResult>();
 
   async saveDiagnostic(value: DiagnosticResult) {
     this.diagnostics.push(value);
@@ -59,6 +77,14 @@ export class InMemoryLearningRepository implements LearningRepository {
     return this.evidence.filter(
       (value) => value.studentId === studentId && value.topicId === topicId,
     );
+  }
+
+  async getCheckpointResultBySubmissionId(studentId: string, submissionId: string) {
+    return this.checkpointResults.get(key(studentId, submissionId)) ?? null;
+  }
+
+  async saveCheckpointResult(submissionId: string, value: CheckpointResult) {
+    this.checkpointResults.set(key(value.evidence.studentId, submissionId), value);
   }
 
   async getMastery(studentId: string, topicId: string) {
@@ -121,6 +147,24 @@ export class InMemoryLearningRepository implements LearningRepository {
 
   async listRetention(studentId: string) {
     return [...this.retention.values()].filter((value) => value.studentId === studentId);
+  }
+
+  async saveRetentionEvidence(value: RetentionEvidence) {
+    this.retentionEvidence.push(value);
+  }
+
+  async listRetentionEvidence(studentId: string, conceptId?: string) {
+    return this.retentionEvidence.filter(
+      (value) => value.studentId === studentId && (!conceptId || value.conceptId === conceptId),
+    );
+  }
+
+  async getRetentionResultBySubmissionId(studentId: string, submissionId: string) {
+    return this.retentionResults.get(key(studentId, submissionId)) ?? null;
+  }
+
+  async saveRetentionResult(submissionId: string, value: RetentionCheckResult) {
+    this.retentionResults.set(key(value.evidence.studentId, submissionId), value);
   }
 }
 

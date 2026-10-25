@@ -199,6 +199,7 @@ export const diagnosticResultSchema = z.object({
 export type DiagnosticResult = z.infer<typeof diagnosticResultSchema>;
 
 export const checkpointSubmissionSchema = z.object({
+  submissionId: idSchema.optional(),
   studentId: idSchema,
   courseId: idSchema,
   topicId: idSchema,
@@ -212,6 +213,7 @@ export type CheckpointSubmission = z.infer<typeof checkpointSubmissionSchema>;
 
 export const checkpointEvidenceSchema = z.object({
   id: idSchema,
+  submissionId: idSchema.optional(),
   studentId: idSchema,
   topicId: idSchema,
   conceptId: idSchema,
@@ -280,6 +282,39 @@ export const retentionScheduleSchema = z.object({
   dueAt: isoDateSchema,
 });
 export type RetentionSchedule = z.infer<typeof retentionScheduleSchema>;
+
+export const retentionCheckSubmissionSchema = z.object({
+  submissionId: idSchema.optional(),
+  studentId: idSchema,
+  courseId: idSchema,
+  topicId: idSchema,
+  conceptId: idSchema,
+  questionId: idSchema,
+  answer: z.unknown(),
+});
+export type RetentionCheckSubmission = z.infer<typeof retentionCheckSubmissionSchema>;
+
+export const retentionEvidenceSchema = z.object({
+  id: idSchema,
+  submissionId: idSchema.optional(),
+  studentId: idSchema,
+  topicId: idSchema,
+  conceptId: idSchema,
+  questionId: idSchema,
+  correct: z.boolean(),
+  score: z.number().min(0).max(1),
+  scheduledFor: isoDateSchema,
+  checkedAt: isoDateSchema,
+});
+export type RetentionEvidence = z.infer<typeof retentionEvidenceSchema>;
+
+export const retentionCheckResultSchema = z.object({
+  evidence: retentionEvidenceSchema,
+  retention: retentionScheduleSchema,
+  mastery: studentTopicMasterySchema.nullable(),
+  masteryChanged: z.literal(false),
+});
+export type RetentionCheckResult = z.infer<typeof retentionCheckResultSchema>;
 
 export const checkpointResultSchema = z.object({
   evidence: checkpointEvidenceSchema,

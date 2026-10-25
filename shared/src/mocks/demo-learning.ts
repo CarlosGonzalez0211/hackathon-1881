@@ -23,6 +23,7 @@ export const demoLearningIds = {
     checkpointTriangleBaseHeight: "00000000-0000-4000-8000-00000000c002",
     checkpointRectangleArea: "00000000-0000-4000-8000-00000000c003",
     checkpointTriangleAreaTransfer: "00000000-0000-4000-8000-00000000c004",
+    retentionTriangleArea: "00000000-0000-4000-8000-00000000b001",
   },
   materials: {
     geometryNotes: "00000000-0000-4000-8000-00000000e001",

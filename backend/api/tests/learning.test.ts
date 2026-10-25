@@ -7,12 +7,14 @@ import {
   demoDiagnosticSubmission,
   demoLearningIds,
   diagnosticResultSchema,
+  retentionCheckResultSchema,
   studentLearningStateSchema,
   type CheckpointEvidence,
 } from "@athena/shared";
 import {
   calculateMastery,
   calculateStrategyReward,
+  InMemoryAssessmentRepository,
   rankRecommendations,
   scheduleRetention,
   selectAssessmentQuestions,
@@ -205,6 +207,44 @@ test("adaptive question selection covers required concepts, targets misconceptio
   assert.equal(misconceptionRepair[0]?.reason, "misconception_repair");
 });
 
+test("assessment grading supports deterministic partial credit", async () => {
+  const assessments = new InMemoryAssessmentRepository();
+  const partial = await assessments.grade(demoLearningIds.questions.checkpointTriangleArea, 15);
+  assert.equal(partial?.correct, false);
+  assert.equal(partial?.score, 0.5);
+  assert.equal(partial?.misconceptionId, undefined);
+});
+
+test("diagnostics can assess multiple concepts in one submission", async () => {
+  const app = await createApp({ logger: false });
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/learning/diagnostic",
+      payload: {
+        studentId: athenaDemoIds.students.lucia,
+        courseId: athenaDemoIds.course,
+        topicId: athenaDemoIds.topics.geometry,
+        answers: [
+          { questionId: demoLearningIds.questions.diagnosticTriangleArea, answer: 24 },
+          {
+            questionId: demoLearningIds.questions.diagnosticTriangleBaseHeight,
+            answer: "Perpendicular",
+          },
+        ],
+      },
+    });
+    assert.equal(response.statusCode, 200, response.body);
+    const diagnostic = diagnosticResultSchema.parse(response.json());
+    assert.equal(diagnostic.concepts.length, 2);
+    assert.equal(diagnostic.strengths.includes("Base y altura de un triángulo"), true);
+    const recommendations = await app.platform.events.list({ type: "TopicRecommended" });
+    assert.equal(recommendations.length, 1);
+  } finally {
+    await app.close();
+  }
+});
+
 test("quiz route returns adaptive learner-safe questions without answer keys", async () => {
   const app = await createApp({ logger: false });
   try {
@@ -220,6 +260,75 @@ test("quiz route returns adaptive learner-safe questions without answer keys", a
       assert.equal("answerKey" in question, false);
       assert.equal("misconceptionAnswers" in question, false);
     }
+  } finally {
+    await app.close();
+  }
+});
+
+test("checkpoint and retention submission ids are idempotent", async () => {
+  const app = await createApp({
+    logger: false,
+    platform: {
+      clock: fixedClock("2026-10-24T12:00:00.000Z"),
+      ids: sequentialIdGenerator(700),
+    },
+  });
+  try {
+    const checkpointPayload = {
+      submissionId: "checkpoint-submission-1",
+      studentId: athenaDemoIds.students.lucia,
+      courseId: athenaDemoIds.course,
+      topicId: athenaDemoIds.topics.geometry,
+      conceptId: demoLearningIds.concepts.triangleArea,
+      questionId: demoLearningIds.questions.checkpointTriangleArea,
+      answer: 30,
+      strategy: "visual_decomposition",
+      hintCount: 0,
+    };
+    const firstCheckpoint = await app.inject({
+      method: "POST",
+      url: "/api/learning/attempt",
+      payload: checkpointPayload,
+    });
+    const duplicateCheckpoint = await app.inject({
+      method: "POST",
+      url: "/api/learning/attempt",
+      payload: checkpointPayload,
+    });
+    assert.equal(firstCheckpoint.statusCode, 200, firstCheckpoint.body);
+    assert.equal(duplicateCheckpoint.statusCode, 200, duplicateCheckpoint.body);
+    assert.equal(
+      checkpointResultSchema.parse(firstCheckpoint.json()).evidence.id,
+      checkpointResultSchema.parse(duplicateCheckpoint.json()).evidence.id,
+    );
+    assert.equal((await app.platform.events.list({ type: "CheckpointCompleted" })).length, 1);
+
+    const retentionPayload = {
+      submissionId: "retention-submission-1",
+      studentId: athenaDemoIds.students.lucia,
+      courseId: athenaDemoIds.course,
+      topicId: athenaDemoIds.topics.geometry,
+      conceptId: demoLearningIds.concepts.triangleArea,
+      questionId: demoLearningIds.questions.retentionTriangleArea,
+      answer: 30,
+    };
+    const firstRetention = await app.inject({
+      method: "POST",
+      url: "/api/learning/retention-check",
+      payload: retentionPayload,
+    });
+    const duplicateRetention = await app.inject({
+      method: "POST",
+      url: "/api/learning/retention-check",
+      payload: retentionPayload,
+    });
+    assert.equal(firstRetention.statusCode, 200, firstRetention.body);
+    assert.equal(duplicateRetention.statusCode, 200, duplicateRetention.body);
+    assert.equal(
+      retentionCheckResultSchema.parse(firstRetention.json()).evidence.id,
+      retentionCheckResultSchema.parse(duplicateRetention.json()).evidence.id,
+    );
+    assert.equal((await app.platform.events.list({ type: "RetentionCheckPassed" })).length, 1);
   } finally {
     await app.close();
   }
@@ -288,6 +397,44 @@ test("diagnostic, failed checkpoint and successful checkpoint form the learning 
     assert.deepEqual(passed.activeMisconceptionIds, []);
     assert.equal(passed.retention?.intervalDays, 1);
 
+    const failedRetentionResponse = await app.inject({
+      method: "POST",
+      url: "/api/learning/retention-check",
+      payload: {
+        studentId: athenaDemoIds.students.lucia,
+        courseId: athenaDemoIds.course,
+        topicId: athenaDemoIds.topics.geometry,
+        conceptId: demoLearningIds.concepts.triangleArea,
+        questionId: demoLearningIds.questions.retentionTriangleArea,
+        answer: 60,
+      },
+    });
+    assert.equal(failedRetentionResponse.statusCode, 200, failedRetentionResponse.body);
+    const failedRetention = retentionCheckResultSchema.parse(failedRetentionResponse.json());
+    assert.equal(failedRetention.evidence.correct, false);
+    assert.equal(failedRetention.mastery?.mastery, 0.55);
+    assert.equal(failedRetention.masteryChanged, false);
+    assert.equal(failedRetention.retention.successfulRecallStreak, 0);
+
+    const passedRetentionResponse = await app.inject({
+      method: "POST",
+      url: "/api/learning/retention-check",
+      payload: {
+        studentId: athenaDemoIds.students.lucia,
+        courseId: athenaDemoIds.course,
+        topicId: athenaDemoIds.topics.geometry,
+        conceptId: demoLearningIds.concepts.triangleArea,
+        questionId: demoLearningIds.questions.retentionTriangleArea,
+        answer: 30,
+      },
+    });
+    assert.equal(passedRetentionResponse.statusCode, 200, passedRetentionResponse.body);
+    const passedRetention = retentionCheckResultSchema.parse(passedRetentionResponse.json());
+    assert.equal(passedRetention.evidence.correct, true);
+    assert.equal(passedRetention.mastery?.mastery, 0.55);
+    assert.equal(passedRetention.retention.successfulRecallStreak, 1);
+    assert.equal((await app.platform.events.list({ type: "RetentionCheckPassed" })).length, 1);
+
     const stateResponse = await app.inject({
       method: "GET",
       url: `/api/learning/student/${athenaDemoIds.students.lucia}/state`,
@@ -296,7 +443,7 @@ test("diagnostic, failed checkpoint and successful checkpoint form the learning 
     const state = studentLearningStateSchema.parse(stateResponse.json());
     assert.equal(state.diagnostics.length, 1);
     assert.equal(state.mastery[0]?.mastery, 0.55);
-    assert.equal(state.knowledge[0]?.evidenceCount, 3);
+    assert.equal(state.knowledge[0]?.evidenceCount, 5);
     assert.equal(state.retention.length, 1);
   } finally {
     await app.close();

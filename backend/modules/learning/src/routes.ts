@@ -4,9 +4,11 @@ import {
   assessmentPurposeSchema,
   checkpointSubmissionSchema,
   diagnosticSubmissionSchema,
+  retentionCheckSubmissionSchema,
   type AssessmentQuiz,
   type CheckpointResult,
   type DiagnosticResult,
+  type RetentionCheckResult,
   type StudentLearningState,
 } from "@athena/shared";
 import { InMemoryAssessmentRepository, type AssessmentRepository } from "./assessment.js";
@@ -51,6 +53,9 @@ export async function learningRoutes(app: FastifyInstance, options: LearningRout
     const query = quizQuerySchema.parse(request.query);
     return service.getQuiz(request.auth, { ...query, topicId: params.topicId });
   });
+  app.post<{ Reply: RetentionCheckResult }>("/learning/retention-check", async (request) =>
+    service.submitRetentionCheck(request.auth, retentionCheckSubmissionSchema.parse(request.body)),
+  );
   app.get<{ Reply: StudentLearningState }>("/learning/student/:studentId/state", async (request) =>
     service.getStudentState(request.auth, studentParamsSchema.parse(request.params).studentId),
   );

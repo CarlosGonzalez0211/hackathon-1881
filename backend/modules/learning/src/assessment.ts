@@ -13,6 +13,7 @@ export interface AssessmentQuestion {
   requiredForMastery: boolean;
   transfer: boolean;
   answerKey: unknown;
+  partialCreditAnswers?: Readonly<Record<string, number>>;
   misconceptionAnswers: Readonly<Record<string, string>>;
   targetMisconceptionIds: readonly string[];
   strategyContextKey: string;
@@ -68,6 +69,7 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
         requiredForMastery: true,
         transfer: false,
         answerKey: 30,
+        partialCreditAnswers: { "15": 0.5 },
         misconceptionAnswers: {
           "60": demoLearningIds.misconceptions.triangleMissingHalf,
         },
@@ -155,6 +157,27 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
         strategyContextKey: "geometry:missing_half:transfer",
       },
     ],
+    [
+      demoLearningIds.questions.retentionTriangleArea,
+      {
+        id: demoLearningIds.questions.retentionTriangleArea,
+        purpose: "retention",
+        topicId: athenaDemoIds.topics.geometry,
+        conceptId: demoLearningIds.concepts.triangleArea,
+        conceptTitle: "Área de triángulos",
+        prompt: "Una señal triangular tiene base 12 cm y altura 5 cm. ¿Cuál es su área?",
+        format: "numeric",
+        difficulty: 0.65,
+        requiredForMastery: true,
+        transfer: true,
+        answerKey: 30,
+        misconceptionAnswers: {
+          "60": demoLearningIds.misconceptions.triangleMissingHalf,
+        },
+        targetMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
+        strategyContextKey: "geometry:missing_half:retention",
+      },
+    ],
   ]);
 
   async grade(questionId: string, answer: unknown): Promise<ScoredAnswer | null> {
@@ -162,11 +185,13 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
     if (!question) return null;
     const normalizedAnswer = normalizeAnswer(answer);
     const correct = normalizedAnswer === normalizeAnswer(question.answerKey);
+    const score = correct ? 1 : (question.partialCreditAnswers?.[normalizedAnswer] ?? 0);
     return {
       question,
       correct,
-      score: correct ? 1 : 0,
-      misconceptionId: correct ? undefined : question.misconceptionAnswers[normalizedAnswer],
+      score,
+      misconceptionId:
+        correct || score > 0 ? undefined : question.misconceptionAnswers[normalizedAnswer],
     };
   }
 
