@@ -222,9 +222,15 @@ export const contentAiCallOutcomeSchema = z.enum([
 ]);
 export type ContentAiCallOutcome = z.infer<typeof contentAiCallOutcomeSchema>;
 
-export const contentCitationSchema = citationSchema.extend({
-  excerpt: z.string().max(CONTENT_LIMITS.maxCitationExcerpt),
-});
+// `citationSchema` is refined (ZodEffects), so extend its object and re-apply the locator rule.
+export const contentCitationSchema = citationSchema
+  .innerType()
+  .extend({
+    excerpt: z.string().max(CONTENT_LIMITS.maxCitationExcerpt),
+  })
+  .refine((value) => value.page !== undefined || value.section !== undefined, {
+    message: "A source locator is required",
+  });
 export type ContentCitation = z.infer<typeof contentCitationSchema>;
 
 export const contentChatResponseSchema = z
