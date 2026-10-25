@@ -15,6 +15,8 @@ import type {
 } from "@athena/engine3d";
 import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
 import type { Volumes } from "@/features/world/components/SoundControls";
+import { appLocale, t } from "@/lib/i18n";
+import { WorldSketchIcon } from "@/features/world/components/WorldSketchIcon";
 export interface PlanetProps {
   state: PlanetState;
   mode: "surface" | "orbit";
@@ -91,7 +93,7 @@ export function Planet(props: PlanetProps) {
 }
 function OrbitPlanet({ state, onPlanetClick, label, own }: PlanetProps) {
   const context = useContext(OrbitContext);
-  if (!context) throw new Error('Planet mode="orbit" requiere un OrbitCanvas compartido.');
+  if (!context) throw new Error(t('Planet mode="orbit" requires a shared OrbitCanvas.'));
   const { register } = context;
   const name = label ?? state.studentId;
   return (
@@ -100,10 +102,24 @@ function OrbitPlanet({ state, onPlanetClick, label, own }: PlanetProps) {
       className={`planet-label${own ? " is-own" : ""}`}
       style={{ visibility: "hidden" }}
       onClick={() => onPlanetClick?.(state)}
-      aria-label={own ? `Tu planeta, ${name}: volver a tu mundo` : `Planeta de ${name}`}
+      aria-label={
+        own
+          ? t("Your planet, {0}: back to your world", { 0: name })
+          : t("{0}’s planet", { 0: name })
+      }
     >
-      {own && <span className="planet-label-badge">Tu planeta</span>}
-      <span>{name}</span>
+      {own && (
+        <span className="planet-label-home">
+          <WorldSketchIcon kind="globe" />
+        </span>
+      )}
+      <span className="planet-label-copy">
+        {own && <span className="planet-label-badge">{t("YOUR LITTLE WORLD")}</span>}
+        <span className="planet-label-name">
+          {name}
+          {own && <span aria-hidden="true"> ↗</span>}
+        </span>
+      </span>
     </button>
   );
 }
@@ -160,6 +176,7 @@ function SurfacePlanet({
         if (abort.signal.aborted) return;
         const instance = await createSurfaceEngine(host.current, {
           state,
+          locale: appLocale,
           signal: abort.signal,
           athenaAssets: process.env.NEXT_PUBLIC_ATHENA_ASSETS !== "false",
           onHouseClick: (house) => callbacks.current.onHouseClick?.(house),
@@ -183,7 +200,7 @@ function SurfacePlanet({
         setPhase("ready");
       } catch (cause) {
         if (!abort.signal.aborted) {
-          setError(cause instanceof Error ? cause.message : "No se pudo abrir el mundo 3D.");
+          setError(cause instanceof Error ? cause.message : t("Could not open the 3D world."));
           setPhase("error");
         }
       }
@@ -223,21 +240,21 @@ function SurfacePlanet({
   }, [volumes, phase]);
   return (
     <div className="scene village-scene" data-engine-status={phase} data-renderer="athena-village">
-      <div ref={host} className="engine-host" aria-label="Mundo 3D de Athena" />
+      <div ref={host} className="engine-host" aria-label={t("Athena 3D world")} />
       {phase === "loading" && (
         <div className="scene-status" role="status">
           <span className="loader-orbit" />
-          <strong>Preparando tu mundo</strong>
-          <span>Los temas también están disponibles en la lista.</span>
+          <strong>{t("Getting your world ready")}</strong>
+          <span>{t("Your topics are also available in the list.")}</span>
         </div>
       )}
       {error && (
         <div className="scene-status" role="alert">
-          <strong>Usa la vista de temas</strong>
+          <strong>{t("Use the topic list")}</strong>
           <span>{error}</span>
         </div>
       )}
-      <div className="house-markers" aria-label="Casas de temas en el mundo">
+      <div className="house-markers" aria-label={t("Topic houses in your world")}>
         {state.houses.map((house) => (
           <button
             key={house.topicId}
@@ -248,7 +265,7 @@ function SurfacePlanet({
             aria-hidden="true"
             style={{ left: 0, top: 0 }}
             onClick={() => onHouseClick?.(house)}
-            aria-label={`Entrar a ${house.title}: ${stateLabel(house.status)}`}
+            aria-label={t("Enter {0}: {1}", { 0: house.title, 1: stateLabel(house.status) })}
           >
             <StateIcon status={house.status} />
             <span>{house.title}</span>
@@ -280,12 +297,19 @@ export function OrbitCanvas({
   const labels = useRef(new Map<string, HTMLElement>());
   const latest = useRef(new Map<string, ProjectedPlanet>());
   const sizes = useRef(new Map<string, { width: number; height: number }>());
+  useEffect(() => {
+    // Font loading and responsive styles can change chips after their first projection.
+    const observer = new ResizeObserver(() => sizes.current.clear());
+    for (const node of labels.current.values()) observer.observe(node);
+    return () => observer.disconnect();
+  }, [states]);
   const register = useRef((studentId: string, node: HTMLElement | null) => {
     if (!node) {
       labels.current.delete(studentId);
       return;
     }
     labels.current.set(studentId, node);
+    sizes.current.delete(studentId);
     const point = latest.current.get(studentId);
     if (point) placeOrbitLabel(node, point);
   }).current;
@@ -320,7 +344,7 @@ export function OrbitCanvas({
       } catch (cause) {
         if (!abort.signal.aborted) {
           setPhase("error");
-          setError(cause instanceof Error ? cause.message : "No se pudo cargar la órbita.");
+          setError(cause instanceof Error ? cause.message : t("Could not load the orbit."));
         }
       }
     });
@@ -337,12 +361,12 @@ export function OrbitCanvas({
         <div
           ref={host}
           className="engine-host"
-          aria-label={`Sistema de ${states.length} planetas de la clase`}
+          aria-label={t("Class solar system with {0} planets", { 0: states.length })}
         />
         {phase === "loading" && (
           <div className="scene-status" role="status">
             <span className="loader-orbit" />
-            <strong>Preparando la órbita</strong>
+            <strong>{t("Getting the orbit ready")}</strong>
           </div>
         )}
         {error && (

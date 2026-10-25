@@ -1,3 +1,4 @@
+import { appLocale } from "@/lib/i18n";
 import type { HouseState } from "@athena/shared";
 import { houseStateVisuals } from "@athena/brand";
 import locked from "@athena/engine3d/icons/state-locked.svg";
@@ -14,8 +15,8 @@ const icons: Record<Status, { src: string }> = {
   done,
 };
 
-/** Spanish label of a learning state (brand guide 05: same labels in ES/EN). */
-export const stateLabel = (status: Status) => houseStateVisuals[status].es;
+/** Localized label of a learning state (brand guide 05: same labels in ES/EN). */
+export const stateLabel = (status: Status) => houseStateVisuals[status][appLocale];
 
 /**
  * Learning-state shape from the kit (`state-*.svg`), drawn on the state colour token.

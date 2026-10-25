@@ -1,0 +1,359 @@
+/* Shared illustrated UI. Change these once to restyle world and orbit overlays. */
+:root {
+  --athena-ui-paper: #f4f0e3;
+  --athena-ui-ink: #514b40;
+  --athena-ui-edge: #847d6b;
+  --athena-ui-highlight: #fff9e6;
+  --athena-ui-radius: 19px 23px 18px 21px / 22px 18px 24px 19px;
+  --athena-ui-shadow: 0 4px 0 #655c4430, 0 12px 32px #18203626, inset 0 0 0 3px #fff9e68c;
+}
+.world-app {
+  --toon-paper: var(--athena-ui-paper);
+  --toon-ink: var(--athena-ui-ink);
+  --toon-edge: var(--athena-ui-edge);
+}
+.paper-tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.paper-tooltip {
+  position: absolute;
+  top: calc(100% + 13px);
+  right: 0;
+  z-index: 40;
+  width: max-content;
+  max-width: min(230px, 80vw);
+  padding: 9px 13px;
+  border: 1.3px solid var(--athena-ui-edge);
+  border-radius: 9px 13px 10px 12px;
+  background: var(--athena-ui-paper);
+  color: var(--athena-ui-ink);
+  box-shadow:
+    0 3px 0 #655c4430,
+    0 6px 16px #18203620;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  pointer-events: none;
+  animation: paper-enter var(--athena-motion-fast) var(--athena-ease) both;
+}
+.paper-tooltip::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: 25px;
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  border-top: 1.3px solid var(--athena-ui-edge);
+  border-left: 1.3px solid var(--athena-ui-edge);
+  transform: rotate(45deg);
+}
+.world-controls.orbit-controls {
+  top: 24px;
+  right: 24px;
+}
+.world-controls .orbit-home-link {
+  gap: 12px;
+  min-height: 64px;
+  padding: 9px 19px 9px 11px;
+  border: 1.6px solid var(--athena-ui-edge);
+  border-radius: var(--athena-ui-radius);
+  background: var(--athena-ui-paper);
+  color: var(--athena-ui-ink);
+  box-shadow: var(--athena-ui-shadow);
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    transform var(--athena-motion-fast) var(--athena-ease),
+    background var(--athena-motion-fast);
+}
+.orbit-home-link .world-sketch-icon {
+  width: 42px;
+  height: 42px;
+}
+.world-controls .orbit-home-link:hover {
+  transform: translateY(-3px) rotate(-1deg);
+  background: var(--athena-ui-highlight);
+}
+.world-controls .orbit-home-link:active {
+  transform: translateY(1px);
+}
+.orbit-roster-toggle {
+  position: absolute;
+  z-index: 5;
+  bottom: 26px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 7px 13px;
+  background: var(--athena-ui-paper);
+  color: var(--athena-ui-ink);
+  border: 1px solid var(--athena-ui-edge);
+  border-radius: 12px 16px 11px 14px;
+  font-size: 11px;
+  box-shadow: 0 3px 0 #655c4430;
+}
+.orbit-roster-toggle .world-sketch-icon {
+  width: 25px;
+  height: 25px;
+}
+.orbital-app .orbit-list {
+  inset: auto auto 83px 24px;
+  width: 265px;
+  background: var(--athena-ui-paper);
+  border: 1.5px solid var(--athena-ui-edge);
+  border-radius: var(--athena-ui-radius);
+  box-shadow: var(--athena-ui-shadow);
+  animation: paper-enter var(--athena-motion-standard) var(--athena-ease) both;
+}
+.orbit-list button {
+  min-height: 44px;
+}
+.orbital-app .world-footer {
+  left: auto;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.orbital-app .world-footer .runtime-note {
+  display: none;
+}
+.planet-label {
+  min-height: 32px;
+  padding: 6px 13px;
+  border-color: var(--athena-ui-edge);
+  color: var(--athena-ui-ink);
+  background: var(--athena-ui-paper);
+  border-radius: 12px 15px 11px 14px;
+  box-shadow:
+    0 3px 0 #655c4430,
+    0 5px 12px #0002;
+}
+.planet-label-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+}
+.planet-label.is-own {
+  gap: 10px;
+  min-height: 56px;
+  padding: 8px 15px 8px 10px;
+  border: 2px solid #a6c6a0;
+  background: #f8f4e5;
+  box-shadow:
+    0 0 0 4px #b9d8b52b,
+    0 4px 0 #667e583b,
+    0 6px 22px #0003;
+}
+.planet-label-home {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+}
+.planet-label-badge {
+  padding: 0;
+  background: transparent;
+  color: #426954;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.075em;
+}
+.planet-label.is-own .planet-label-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+.planet-label.is-own::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border: 1px solid #c3dc9b;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: home-beacon 3.8s ease-in-out infinite;
+}
+.planet-label:hover {
+  background: #fff9e6;
+}
+.visit-dialog.toon-paper {
+  position: fixed;
+  width: min(360px, calc(100vw - 32px));
+  padding: 30px 28px 26px;
+  text-align: center;
+  border: 1.6px solid var(--athena-ui-edge);
+  border-radius: var(--athena-ui-radius);
+  color: var(--athena-ui-ink);
+  background: radial-gradient(ellipse at 20% 0%, #fffdf2, transparent 70%), var(--athena-ui-paper);
+  box-shadow: var(--athena-ui-shadow);
+}
+.visit-dialog[open],
+.npc-dialogue[open] {
+  animation: paper-enter var(--athena-motion-standard) var(--athena-ease) both;
+}
+.visit-dialog[data-closing="true"],
+.npc-dialogue[data-closing="true"] {
+  animation: paper-exit 180ms var(--athena-ease) both;
+  pointer-events: none;
+}
+.visit-dialog::backdrop,
+.npc-dialogue::backdrop {
+  background: #121b326b;
+  backdrop-filter: blur(4px);
+  animation: veil-enter var(--athena-motion-standard) both;
+}
+.visit-dialog[data-closing="true"]::backdrop,
+.npc-dialogue[data-closing="true"]::backdrop {
+  animation: veil-enter 180ms reverse both;
+}
+.visit-dialog-seal {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  padding: 7px;
+  border: 1px dashed #a49c83;
+  border-radius: 50%;
+  background: #e3e8d3;
+  transform: rotate(-8deg);
+}
+.visit-dialog-eyebrow {
+  color: #75694d;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.visit-dialog h2 {
+  margin: 8px 0 10px;
+  font-size: 29px;
+  font-weight: 700;
+}
+.visit-dialog-summary {
+  font-size: 12px;
+  margin-bottom: 25px;
+}
+.visit-dialog-actions {
+  gap: 10px;
+}
+.visit-dialog-actions button {
+  flex: 1;
+  border-radius: 11px 14px 10px 13px;
+  min-height: 46px;
+  font-size: 13px;
+  transition:
+    translate var(--athena-motion-fast),
+    box-shadow var(--athena-motion-fast);
+}
+.visit-dialog-actions button:hover {
+  translate: 0 -2px;
+}
+.visit-dialog-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  box-shadow: 0 3px 0 #064547;
+}
+.visit-dialog-secondary {
+  border-color: var(--athena-ui-edge);
+}
+.topic-panel.expanded,
+.sound-mixer {
+  animation: paper-enter var(--athena-motion-standard) var(--athena-ease) both;
+}
+.orbit-visit-bar {
+  top: 105px;
+  max-width: calc(100% - 32px);
+  background: var(--athena-ui-paper);
+  border-color: var(--athena-ui-edge);
+  font-size: 12px;
+}
+@keyframes paper-enter {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+    scale: 0.96;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+@keyframes paper-exit {
+  from {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    translate: 0 6px;
+    scale: 0.97;
+  }
+}
+@keyframes veil-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes home-beacon {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+@media (max-width: 600px) {
+  .world-controls.orbit-controls {
+    top: 14px;
+    right: 14px;
+  }
+  .world-controls .orbit-home-link {
+    min-height: 54px;
+    font-size: 11px;
+    gap: 8px;
+    padding: 7px 12px;
+  }
+  .orbit-home-link .world-sketch-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .orbit-roster-toggle {
+    left: 14px;
+    bottom: 18px;
+  }
+  .orbital-app .orbit-list {
+    left: 14px;
+    bottom: 74px;
+  }
+  .orbital-app .world-footer {
+    display: none;
+  }
+  .orbit-visit-bar {
+    top: 82px;
+    width: max-content;
+    gap: 10px;
+  }
+  .orbit-visit-bar button {
+    padding: 0 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .planet-label.is-own::before {
+    animation: none;
+  }
+}
+.world-app .topic-panel {
+  top: 112px;
+}
+@media (max-width: 750px) {
+  .world-app .topic-panel {
+    top: 88px;
+  }
+}

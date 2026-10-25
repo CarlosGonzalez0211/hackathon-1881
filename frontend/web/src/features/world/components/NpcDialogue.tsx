@@ -1,6 +1,9 @@
 "use client";
+import { t } from "@/lib/i18n";
+
 import { useEffect, useRef } from "react";
 import { WorldSketchIcon } from "./WorldSketchIcon";
+import { usePaperDialog } from "@/components/ui/usePaperDialog";
 
 export interface NpcConversation {
   name: string;
@@ -16,6 +19,7 @@ export function NpcDialogue({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const { dismiss, dialogProps } = usePaperDialog(ref);
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal();
@@ -27,6 +31,7 @@ export function NpcDialogue({
     <dialog
       role="dialog"
       ref={ref}
+      {...dialogProps}
       className="npc-dialogue toon-paper"
       aria-labelledby="npc-speaker"
       // A remount (React StrictMode in development) closes and reopens the modal; its queued
@@ -38,7 +43,7 @@ export function NpcDialogue({
         event.stopPropagation();
         if (event.key.toLowerCase() === "e") {
           event.preventDefault();
-          ref.current?.close();
+          dismiss();
         }
       }}
     >
@@ -46,18 +51,15 @@ export function NpcDialogue({
         <WorldSketchIcon kind="book" />
       </div>
       <div className="npc-dialogue-content">
-        <span className="npc-dialogue-kicker">Una charla en el camino</span>
+        <span className="npc-dialogue-kicker">{t("A chat along the way")}</span>
         <h2 id="npc-speaker">{conversation.name}</h2>
         <p>{conversation.text}</p>
-        <button className="toon-action" onClick={() => ref.current?.close()}>
-          Seguir explorando <kbd>E</kbd>
+        <button className="toon-action" onClick={() => dismiss()}>
+          {t("Keep exploring")}
+          <kbd>E</kbd>
         </button>
       </div>
-      <button
-        className="toon-close"
-        aria-label="Cerrar conversación"
-        onClick={() => ref.current?.close()}
-      >
+      <button className="toon-close" aria-label={t("Close conversation")} onClick={() => dismiss()}>
         ×
       </button>
     </dialog>

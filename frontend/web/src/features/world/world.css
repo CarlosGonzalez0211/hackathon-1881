@@ -132,9 +132,9 @@
 }
 /* Illustrated paper and ink, shared by controls, conversation and world feedback. */
 .world-app {
-  --toon-paper: #f4f0e3;
-  --toon-ink: #514b40;
-  --toon-edge: #847d6b;
+  --toon-paper: var(--athena-ui-paper);
+  --toon-ink: var(--athena-ui-ink);
+  --toon-edge: var(--athena-ui-edge);
   --toon-shadow: #514b4030;
 }
 .toon-paper {
@@ -163,14 +163,14 @@
   height: 76px;
   min-height: 0;
   padding: 9px;
-  background: #f4f0e3;
-  border: 1.7px solid #817a6a;
+  background: var(--athena-ui-paper);
+  border: 1.7px solid var(--athena-ui-edge);
   border-radius: 19px 22px 18px 21px / 22px 17px 23px 18px;
   box-shadow:
     0 3px 1px #655c443d,
     0 5px 12px #354a3c1c,
     inset 0 0 0 3px #fff9e68c;
-  color: #514b40;
+  color: var(--athena-ui-ink);
   cursor: pointer;
   transition:
     transform 0.15s ease,
@@ -181,7 +181,7 @@
 }
 .world-app .world-controls .world-tool:hover {
   transform: translateY(-2px) rotate(-1deg);
-  background: #fff8e8;
+  background: var(--athena-ui-highlight);
 }
 .world-app .world-controls .world-tool:active {
   transform: translateY(2px);
@@ -220,7 +220,7 @@
 }
 .sound-mixer label {
   background: transparent;
-  color: #514b40;
+  color: var(--athena-ui-ink);
   font-size: 13px;
   padding: 0;
 }
@@ -232,7 +232,7 @@
   bottom: 20px;
   left: 22px;
   right: 22px;
-  color: #514b40;
+  color: var(--athena-ui-ink);
   text-shadow: none;
   align-items: flex-end;
 }
@@ -262,7 +262,7 @@
   border: 1.5px solid #6b6659;
   border-radius: 7px 6px 8px 6px;
   background: linear-gradient(145deg, #fff9ec, #e5e1d5);
-  color: #514b40;
+  color: var(--athena-ui-ink);
   box-shadow:
     0 3px 0 #9d9785,
     0 4px 0 #6b6659,
@@ -305,7 +305,7 @@
 }
 .engine-host > .village-interaction-hint {
   background: #f4f0e3f0;
-  color: #514b40;
+  color: var(--athena-ui-ink);
   border: 1.5px solid #847d6b;
   border-radius: 11px 14px 10px 13px;
   box-shadow: 0 3px 0 #655c4430;
@@ -321,7 +321,7 @@
 }
 .world-app .house-marker {
   background: #f4f0e3f0;
-  color: #514b40;
+  color: var(--athena-ui-ink);
   border: 1.3px solid #847d6b;
   border-radius: 9px 12px 10px 11px;
   box-shadow: 0 3px 0 #655c4426;
@@ -339,7 +339,7 @@
   width: min(600px, calc(100vw - 32px));
   max-width: none;
   overflow: visible;
-  color: #514b40;
+  color: var(--athena-ui-ink);
 }
 .npc-dialogue[open] {
   display: flex;
@@ -389,7 +389,7 @@
   gap: 16px;
   min-height: 44px;
   background: #dfd4b7;
-  color: #514b40;
+  color: var(--athena-ui-ink);
   border: 1.4px solid #8b8169;
   border-radius: 10px 13px 9px 12px;
   box-shadow: 0 3px 0 #968b6f;
@@ -545,7 +545,7 @@
   border: 1.5px solid #81785f;
   border-radius: 12px 17px 11px 15px;
   background: #f7f1e3f5;
-  color: #514b40;
+  color: var(--athena-ui-ink);
   box-shadow:
     0 3px 0 #6d62482b,
     0 5px 16px #3b4d361a;
@@ -694,7 +694,7 @@
   border: 1.5px solid #9a7a45;
   border-radius: 11px 14px 10px 13px;
   background: linear-gradient(#fbf6e8f5, #f1e7cff5);
-  color: #514b40;
+  color: var(--athena-ui-ink);
   font-size: 0.8rem;
   white-space: nowrap;
   box-shadow: 0 3px 12px #3a2a1230;

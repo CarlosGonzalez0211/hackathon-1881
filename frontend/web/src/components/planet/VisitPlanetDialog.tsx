@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useRef } from "react";
 import type { ClassOrbitStudent } from "@athena/shared";
-import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
+import { WorldSketchIcon } from "@/features/world/components/WorldSketchIcon";
+import { usePaperDialog } from "@/components/ui/usePaperDialog";
+import { t } from "@/lib/i18n";
 
 /**
- * Invitation to visit a classmate's planet (brand kit: paper panel, accent action, learning
- * states as shape + text + colour). The native modal provides focus containment, Escape and
- * focus restoration.
+ * A compact illustrated invitation. Native focus containment and restoration are retained;
+ * the shared paper-dialog hook adds motion, Escape and outside-click dismissal.
  */
 export function VisitPlanetDialog({
   student,
@@ -18,6 +19,7 @@ export function VisitPlanetDialog({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const { dismiss, dialogProps } = usePaperDialog(ref);
   useEffect(() => {
     const dialog = ref.current;
     if (dialog && !dialog.open) dialog.showModal();
@@ -25,11 +27,11 @@ export function VisitPlanetDialog({
       if (dialog?.open) dialog.close();
     };
   }, []);
-  const built = student.planet.houses.filter((house) => house.status === "done").length;
   return (
     <dialog
       ref={ref}
-      className="visit-dialog"
+      {...dialogProps}
+      className="visit-dialog toon-paper"
       aria-labelledby="visit-title"
       aria-describedby="visit-summary"
       // A StrictMode remount closes and reopens the modal; ignore that replayed close.
@@ -37,38 +39,26 @@ export function VisitPlanetDialog({
         if (!ref.current?.open) onClose();
       }}
     >
-      <span className="visit-dialog-eyebrow">Planeta de la clase</span>
+      <div className="visit-dialog-seal">
+        <WorldSketchIcon kind="globe" />
+      </div>
+      <span className="visit-dialog-eyebrow">{t("Classmate’s planet")}</span>
       <h2 id="visit-title">{student.displayName}</h2>
       <p id="visit-summary" className="visit-dialog-summary">
-        {built === 1 ? "1 casa construida" : `${built} casas construidas`} de{" "}
-        {student.planet.houses.length} temas.
+        {t("Ready for a little exploring?")}
       </p>
-      <ul className="visit-dialog-houses" aria-label="Casas del planeta">
-        {student.planet.houses.map((house) => (
-          <li key={house.topicId}>
-            <StateIcon status={house.status} />
-            <span>{house.title}</span>
-            <small>{stateLabel(house.status)}</small>
-          </li>
-        ))}
-      </ul>
       <div className="visit-dialog-actions">
         <button
           type="button"
           className="visit-dialog-primary"
           onClick={() => {
-            onVisit();
-            ref.current?.close();
+            dismiss(onVisit);
           }}
         >
-          Visitar planeta
+          {t("Visit")} <span aria-hidden="true">↗</span>
         </button>
-        <button
-          type="button"
-          className="visit-dialog-secondary"
-          onClick={() => ref.current?.close()}
-        >
-          Ahora no
+        <button type="button" className="visit-dialog-secondary" onClick={() => dismiss()}>
+          {t("Cancel")}
         </button>
       </div>
     </dialog>

@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import {
   mockClassOrbit,
   mockClassPlanets,
@@ -32,7 +33,7 @@ export async function getClassOrbit(
     classId,
     students: planets.map((planet, index) => ({
       studentId: planet.studentId,
-      displayName: `Estudiante ${index + 1}`,
+      displayName: t("Student {0}", { 0: index + 1 }),
       planet,
     })),
   };

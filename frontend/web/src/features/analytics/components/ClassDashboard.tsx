@@ -1,4 +1,5 @@
 "use client";
+import { appLocale, localizeContent, t } from "@/lib/i18n";
 
 import { useEffect, useState } from "react";
 import type {
@@ -18,17 +19,17 @@ const SEVERITY: Record<Intervention["severity"], { es: string; en: string; rank:
   low: { es: "Baja", en: "Low", rank: 2 },
 };
 const STATUS: Record<Intervention["status"], string> = {
-  open: "Abierta / Open",
-  acknowledged: "Vista / Seen",
-  resolved: "Resuelta / Resolved",
+  open: t("Open"),
+  acknowledged: t("Seen"),
+  resolved: t("Resolved"),
 };
 const AI_LABELS = {
   chat: "Chat",
   podcast: "Podcast",
   video: "Video",
-  summary: "Resumen / Summary",
-  hint: "Pistas / Hints",
-  quiz_answer: "Respuestas / Answers",
+  summary: t("Summary"),
+  hint: t("Hints"),
+  quiz_answer: t("Answers"),
 } as const;
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
@@ -86,10 +87,14 @@ function TopicList({ topics }: { topics: TopicAnalytics[] }) {
           <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="font-semibold">{topic.title}</h3>
             <p className="text-sm text-[var(--athena-muted)]">
-              {topic.masteredStudents} dominan · {topic.strugglingStudents} con dificultad
+              {topic.masteredStudents} {t("mastered ·")} {topic.strugglingStudents}{" "}
+              {t("need support")}
             </p>
           </div>
-          <MasteryBar value={topic.averageMastery} label={`Dominio promedio, ${topic.title}`} />
+          <MasteryBar
+            value={topic.averageMastery}
+            label={t("Average mastery, {0}", { 0: topic.title })}
+          />
           {topic.commonMisconceptions.length > 0 ? (
             <ul className="mt-2 flex flex-wrap gap-2">
               {topic.commonMisconceptions.map((item) => (
@@ -130,7 +135,7 @@ function InterventionList({
     .filter((item) => item.status !== "resolved")
     .sort((a, b) => SEVERITY[a.severity].rank - SEVERITY[b.severity].rank);
   if (active.length === 0) {
-    return <p>Sin intervenciones pendientes. / No pending interventions.</p>;
+    return <p>{t("No pending interventions.")}</p>;
   }
   return (
     <ul className="space-y-4">
@@ -140,13 +145,13 @@ function InterventionList({
             <strong>{nameOf(item.studentId)}</strong>
             <span className="text-[var(--athena-muted)]">· {topicOf(item.topicId)}</span>
             <span className="rounded-[var(--athena-radius-pill)] bg-[var(--athena-accent)] px-2 py-0.5 text-xs text-[var(--athena-accent-ink)]">
-              {SEVERITY[item.severity].es} / {SEVERITY[item.severity].en}
+              {SEVERITY[item.severity][appLocale]}
             </span>
             <span className="text-xs text-[var(--athena-muted)]">{STATUS[item.status]}</span>
           </p>
           <p className="mt-1 text-sm">{item.reason}</p>
           <p className="mt-1 text-sm">
-            <span className="font-semibold">Siguiente paso:</span> {item.recommendedAction}
+            <span className="font-semibold">{t("Next step:")}</span> {item.recommendedAction}
           </p>
           {onStatus ? (
             <div className="mt-2 flex flex-wrap gap-2">
@@ -157,7 +162,7 @@ function InterventionList({
                   disabled={busyId === item.id}
                   onClick={() => onStatus(item.id, "acknowledged")}
                 >
-                  Marcar como vista / Acknowledge
+                  {t("Acknowledge")}
                 </button>
               ) : null}
               <button
@@ -166,7 +171,7 @@ function InterventionList({
                 disabled={busyId === item.id}
                 onClick={() => onStatus(item.id, "resolved")}
               >
-                Resolver / Resolve
+                {t("Resolve")}
               </button>
             </div>
           ) : null}
@@ -181,25 +186,23 @@ function StudentTable({ students }: { students: StudentAnalytics[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[34rem] text-left text-sm">
-        <caption className="sr-only">
-          Estudiantes ordenados por dominio / Students by mastery
-        </caption>
+        <caption className="sr-only">{t("Students by mastery")}</caption>
         <thead>
           <tr className="border-b border-[var(--athena-border)]">
             <th scope="col" className="py-2 pr-4 font-semibold">
-              Estudiante
+              {t("Student")}
             </th>
             <th scope="col" className="py-2 pr-4 font-semibold">
-              Dominio
+              {t("Mastery")}
             </th>
             <th scope="col" className="py-2 pr-4 font-semibold">
-              Crecimiento
+              {t("Growth")}
             </th>
             <th scope="col" className="py-2 pr-4 font-semibold">
-              Alertas
+              {t("Alerts")}
             </th>
             <th scope="col" className="py-2 font-semibold">
-              Uso de IA
+              {t("AI usage")}
             </th>
           </tr>
         </thead>
@@ -240,7 +243,7 @@ export function ClassDashboardView({
   busyId?: string | null;
   notice?: string | null;
 }) {
-  const { students, topics, interventions, aiUsage } = analytics;
+  const { students, topics, interventions, aiUsage } = localizeContent(analytics);
   const avg = students.length
     ? students.reduce((sum, s) => sum + s.averageMastery, 0) / students.length
     : 0;
@@ -254,24 +257,24 @@ export function ClassDashboardView({
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
-          label="Dominio promedio"
+          label={t("Average mastery")}
           value={percent(avg)}
-          hint={`${students.length} estudiantes`}
+          hint={t("{0} students", { 0: students.length })}
         />
-        <Stat label="Crecimiento promedio" value={`+${percent(growth)}`} />
-        <Stat label="Intervenciones abiertas" value={String(open)} />
+        <Stat label={t("Average growth")} value={`+${percent(growth)}`} />
+        <Stat label={t("Open interventions")} value={String(open)} />
         <Stat
-          label="Usos de IA"
+          label={t("AI uses")}
           value={String(totalAi)}
-          hint="Se muestra junto al dominio, no lo cambia"
+          hint={t("Shown alongside mastery; does not change it")}
         />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Temas / Topics">
+        <Panel title={t("Topics")}>
           <TopicList topics={topics} />
         </Panel>
-        <Panel title="Intervenciones sugeridas / Suggested interventions">
+        <Panel title={t("Suggested interventions")}>
           {notice ? (
             <p role="alert" className="mb-3 text-sm">
               {notice}
@@ -287,14 +290,13 @@ export function ClassDashboardView({
         </Panel>
       </div>
 
-      <Panel title="Estudiantes / Students">
+      <Panel title={t("Students")}>
         <StudentTable students={students} />
       </Panel>
 
-      <Panel title="Uso de IA / AI usage">
+      <Panel title={t("AI usage")}>
         <p className="mb-3 text-sm text-[var(--athena-muted)]">
-          Evidencia descriptiva. No cambia el dominio ni el crecimiento. / Descriptive only; it
-          never changes mastery.
+          {t("Descriptive only. Does not change mastery or growth.")}
         </p>
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {(Object.keys(AI_LABELS) as (keyof typeof AI_LABELS)[]).map((key) => (
@@ -337,7 +339,7 @@ export function ClassDashboard({ classId }: { classId: string }) {
         return { status: "ready", data: { ...current.data, interventions, students } };
       });
     } catch {
-      setNotice("No se pudo guardar el cambio. / Could not save the change.");
+      setNotice(t("Could not save the change."));
     } finally {
       setBusyId(null);
     }
@@ -356,18 +358,18 @@ export function ClassDashboard({ classId }: { classId: string }) {
   }, [classId, attempt]);
 
   if (state.status === "loading") {
-    return <p role="status">Cargando análisis… / Loading analytics…</p>;
+    return <p role="status">{t("Loading analytics…")}</p>;
   }
   if (state.status === "error") {
     return (
       <div role="alert">
-        <p>No se pudo cargar el análisis de la clase. / Could not load class analytics.</p>
+        <p>{t("Could not load class analytics.")}</p>
         <button
           type="button"
           onClick={() => setAttempt((n) => n + 1)}
           className="mt-2 min-h-[var(--athena-target-min)] rounded-[var(--athena-radius-small)] border border-[var(--athena-border)] px-4"
         >
-          Reintentar / Retry
+          {t("Retry")}
         </button>
       </div>
     );

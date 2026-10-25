@@ -1,4 +1,6 @@
 "use client";
+import { appLocale, localizeContent, t } from "@/lib/i18n";
+
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { houseStateVisuals } from "@athena/brand";
@@ -13,8 +15,8 @@ import styles from "./HousePage.module.css";
 type Tab = "material" | "learn" | "progress";
 const tabs: { id: Tab; label: string }[] = [
   { id: "material", label: "Material" },
-  { id: "learn", label: "Aprender" },
-  { id: "progress", label: "Progreso" },
+  { id: "learn", label: t("Learn") },
+  { id: "progress", label: t("Progress") },
 ];
 
 const tabKey = (studentId: string, topicId: string) => `athena.house-tab.${studentId}.${topicId}`;
@@ -38,7 +40,7 @@ export function StateChip({ status }: { status: HouseState["status"] }) {
   const visual = houseStateVisuals[status];
   return (
     <span className={`${styles.chip} ${styles[status]}`}>
-      <span aria-hidden="true">{visual.symbol}</span> {visual.es}
+      <span aria-hidden="true">{visual.symbol}</span> {visual[appLocale]}
     </span>
   );
 }
@@ -81,7 +83,7 @@ export function HousePage({
       .enterHouse({ studentId, topicId })
       .then((result) => {
         if (!active) return;
-        setEntry(result);
+        setEntry(localizeContent(result));
         if (result.granted)
           setTab(
             result.mode === "resume"
@@ -153,20 +155,23 @@ export function HousePage({
   if (missing) {
     body = (
       <section className={styles.compact}>
-        <p>Esta casa aún no tiene contenido. Tu profesora la abrirá pronto.</p>
+        <p>{t("This house has no content yet. Your teacher will open it soon.")}</p>
       </section>
     );
   } else if (entryError) {
     body = (
       <section className={styles.compact} role="alert">
-        <p>No pudimos abrir esta casa. {entryError}</p>
+        <p>
+          {t("Could not open this house.")}
+          {entryError}
+        </p>
       </section>
     );
   } else if (locked) {
     body = (
       <section className={styles.compact} aria-labelledby={`${titleId}-locked`}>
         <h2 id={`${titleId}-locked`} className={styles.subheading}>
-          Esta casa se abre cuando completes:
+          {t("Complete these topics to open this house:")}
         </h2>
         <ul className={styles.prerequisites}>
           {locked.missingPrerequisites.map((item) => (
@@ -178,7 +183,7 @@ export function HousePage({
                   className={styles.secondary}
                   onClick={() => router.replace(`/world/house/${encodeURIComponent(item.topicId)}`)}
                 >
-                  Ir a esa casa
+                  {t("Go to that house")}
                 </button>
               )}
             </li>
@@ -188,7 +193,7 @@ export function HousePage({
     );
   } else if (!granted || !house) {
     body = (
-      <div className={styles.skeleton} role="status" aria-label="Cargando la casa">
+      <div className={styles.skeleton} role="status" aria-label={t("Loading the house")}>
         <span />
         <span />
         <span />
@@ -199,11 +204,11 @@ export function HousePage({
       <>
         {granted.mode === "review" && (
           <p className={styles.banner}>
-            <span aria-hidden="true">✓</span> Repaso: ya completaste este tema. Todo el material
-            sigue disponible.
+            <span aria-hidden="true">✓</span>{" "}
+            {t("Review: you’ve completed this topic. All materials are still available.")}
           </p>
         )}
-        <div role="tablist" aria-label="Secciones de la casa" className={styles.tabs}>
+        <div role="tablist" aria-label={t("House sections")} className={styles.tabs}>
           {tabs.map((item, index) => (
             <button
               key={item.id}
@@ -233,10 +238,10 @@ export function HousePage({
               showStart={false}
               cta={
                 granted.mode === "resume"
-                  ? "Continuar"
+                  ? t("Continue")
                   : granted.mode === "enter"
-                    ? "Comenzar"
-                    : "Repasar"
+                    ? t("Start")
+                    : t("Review")
               }
             />
           )}
@@ -253,7 +258,12 @@ export function HousePage({
 
   const progressShown = house && house.status !== "locked";
   return (
-    <div className={variant === "overlay" ? styles.backdrop : styles.standalone}>
+    <div
+      className={variant === "overlay" ? styles.backdrop : styles.standalone}
+      onClick={(event) => {
+        if (variant === "overlay" && event.target === event.currentTarget) close();
+      }}
+    >
       <div
         ref={panel}
         className={styles.sheet}
@@ -266,21 +276,21 @@ export function HousePage({
         <header className={styles.header}>
           <div className={styles.headerRow}>
             <button className={styles.back} onClick={close}>
-              <span aria-hidden="true">←</span> Volver al mundo
+              <span aria-hidden="true">←</span> {t("Back to my world")}
             </button>
             {house && <StateChip status={house.status} />}
           </div>
           <div className={styles.titleRow}>
             <h1 id={titleId} ref={heading} tabIndex={-1} className={styles.title}>
-              {house?.title ?? "Casa"}
+              {house?.title ?? t("House")}
             </h1>
             {granted && (
               <button className={styles.primary} onClick={() => choose("learn")}>
                 {granted.mode === "resume"
-                  ? "Continuar"
+                  ? t("Continue")
                   : granted.mode === "review"
-                    ? "Repasar"
-                    : "Comenzar"}
+                    ? t("Review")
+                    : t("Start")}
               </button>
             )}
           </div>
@@ -288,22 +298,24 @@ export function HousePage({
             <div className={styles.meta}>
               {granted?.mastery?.totalConcepts !== undefined && (
                 <span>
-                  {granted.mastery.demonstratedConcepts ?? 0} de {granted.mastery.totalConcepts}{" "}
-                  conceptos
+                  {granted.mastery.demonstratedConcepts ?? 0} {t("of")}{" "}
+                  {granted.mastery.totalConcepts} {t("concepts")}
                 </span>
               )}
               <span className={styles.progress}>
                 <progress
                   value={house.progress}
                   max={1}
-                  aria-label={`Progreso en ${house.title}`}
+                  aria-label={t("Progress in {0}", { 0: house.title })}
                 />
                 <strong>{Math.round(house.progress * 100)}%</strong>
               </span>
             </div>
           )}
           {granted?.mastery?.nextAction && (
-            <p className={styles.next}>Siguiente: {granted.mastery.nextAction}</p>
+            <p className={styles.next}>
+              {t("Next:")} {granted.mastery.nextAction}
+            </p>
           )}
         </header>
         <div className={styles.houseBody}>
@@ -311,7 +323,7 @@ export function HousePage({
           {tab === "material" && (
             <aside className={styles.illustration}>
               <HouseVignette />
-              <span>Un nuevo lugar para descubrir</span>
+              <span>{t("A new place to discover")}</span>
             </aside>
           )}
         </div>

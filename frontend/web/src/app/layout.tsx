@@ -1,8 +1,10 @@
+import { appLocale, t } from "@/lib/i18n";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { athenaBrand } from "@athena/brand";
 import "@athena/brand/tokens.css";
 import "./globals.css";
+import "./paper-ui.css";
 
 // Comfortaa is locally served with the app. The variable font covers weights 300–700.
 const comfortaa = localFont({
@@ -15,7 +17,7 @@ const comfortaa = localFont({
 
 export const metadata: Metadata = {
   title: "Athena",
-  description: "Un espacio de aprendizaje para explorar temas y comprender a tu ritmo.",
+  description: t("A learning world to explore topics and understand at your own pace."),
 };
 
 export const viewport: Viewport = {
@@ -26,7 +28,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={comfortaa.variable}>
+    <html lang={appLocale} className={comfortaa.variable}>
       <body>{children}</body>
     </html>
   );
