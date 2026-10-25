@@ -2,7 +2,7 @@
 import { t } from "@/lib/i18n";
 
 import { useState, type FormEvent } from "react";
-import { useMocks } from "@/lib/mode";
+import { bypassAuth } from "@/lib/mode";
 import { supabaseBrowser } from "@/lib/supabase";
 import { safeNextPath } from "@/lib/safe-next";
 
@@ -58,7 +58,7 @@ export function SignIn({ next = "/", error }: { next?: string; error?: string | 
     }
   }
 
-  if (useMocks) {
+  if (bypassAuth) {
     return (
       <div role="status" className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm">
         <p className="font-medium">{t("Demo mode: no sign-in required")}</p>

@@ -1,4 +1,6 @@
 import {
+  AllowAllAuthService,
+  AllowAllAuthorizationService,
   DirectoryAuthService,
   RoleAuthorizationService,
   type PlatformServices,
@@ -20,12 +22,16 @@ import {
 export function platformServicesFor(mode = env.ATHENA_DATA_MODE): Partial<PlatformServices> {
   if (mode !== "real") return {};
   const client = supabaseAdmin();
+  // ATHENA_DEV_BYPASS_AUTH: local demos against real data with no sign-in (app.ts refuses it in production).
+  const bypass = env.ATHENA_DEV_BYPASS_AUTH;
   return {
-    auth: new DirectoryAuthService(
-      new SupabaseTokenVerifier(client),
-      new SupabaseIdentityDirectory(client),
-    ),
-    authorization: new RoleAuthorizationService(),
+    auth: bypass
+      ? new AllowAllAuthService()
+      : new DirectoryAuthService(
+          new SupabaseTokenVerifier(client),
+          new SupabaseIdentityDirectory(client),
+        ),
+    authorization: bypass ? new AllowAllAuthorizationService() : new RoleAuthorizationService(),
     classes: new SupabaseClassCatalog(client),
     enrollments: new SupabaseEnrollmentRegistry(client),
   };

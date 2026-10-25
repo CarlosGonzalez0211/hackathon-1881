@@ -28,9 +28,15 @@ export async function createApp(
   const fromEnv =
     options.platform?.auth && options.platform.authorization ? {} : platformServicesFor(mode);
   const services = createPlatformServices({ ...fromEnv, ...options.platform });
-  // The allow-all auth stub treats every caller as an admin, so it must never front real data.
+  const bypassAuth = env.ATHENA_DEV_BYPASS_AUTH;
+  if (bypassAuth && process.env.NODE_ENV === "production") {
+    throw new Error("ATHENA_DEV_BYPASS_AUTH is for local development only");
+  }
+  // The allow-all auth stub treats every caller as an admin, so it must never front real data
+  // (except the explicit local ATHENA_DEV_BYPASS_AUTH escape hatch).
   if (
     mode === "real" &&
+    !(bypassAuth && !options.platform) &&
     (services.auth instanceof AllowAllAuthService ||
       services.authorization instanceof AllowAllAuthorizationService)
   ) {
@@ -55,6 +61,8 @@ export async function createApp(
   if (mode === "mock" && process.env.NODE_ENV === "production") {
     app.log.warn("ATHENA_DATA_MODE=mock in production: every caller is the demo admin");
   }
+  if (bypassAuth)
+    app.log.warn("ATHENA_DEV_BYPASS_AUTH: auth is disabled, every caller is the demo admin");
   installPlatform(app, services);
   // Register before child plugins so every route inherits the same validation handling.
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {

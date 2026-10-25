@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMocks } from "@/lib/mode";
+import { bypassAuth } from "@/lib/mode";
 import { homeFor } from "../home";
 import { useAuth } from "../hooks/useAuth";
 
@@ -16,12 +16,12 @@ export function HomeRedirect() {
   const { status, user, retry } = useAuth();
 
   useEffect(() => {
-    if (useMocks) router.replace("/world");
+    if (bypassAuth) router.replace("/world");
     else if (status === "signedOut") router.replace("/login?next=%2F");
     else if (status === "ready" && user) router.replace(homeFor(user.role));
   }, [router, status, user]);
 
-  if (status === "error" && !useMocks) {
+  if (status === "error" && !bypassAuth) {
     return (
       <div role="alert" className="p-6">
         <p>No se pudo cargar tu sesión.</p>
