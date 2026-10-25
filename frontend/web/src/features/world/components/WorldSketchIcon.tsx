@@ -4,7 +4,7 @@ export function WorldSketchIcon({
   kind,
   muted = false,
 }: {
-  kind: "book" | "globe" | "walk" | "sound";
+  kind: "book" | "globe" | "walk" | "sound" | "progress";
   muted?: boolean;
 }) {
   let drawing: ReactNode;
@@ -35,6 +35,17 @@ export function WorldSketchIcon({
           d="m21 15 6 4 1 6-6 3 2 7-6 4-5-6 1-10Zm17-3-2 6 7 3 5-1m-8 7-8 4-2 7 5 4 1 8 9-6 1-9-5-2Z"
         />
         <path d="m16 43 7 4m18-31 4 3" opacity=".4" />
+      </>
+    );
+  else if (kind === "progress")
+    drawing = (
+      <>
+        <circle cx="32" cy="32" r="26" strokeDasharray="3 4" opacity=".45" />
+        <path stroke="#e3b354" strokeWidth="4" d="M32 6a26 26 0 0 1 24 35" />
+        <circle cx="32" cy="32" r="17" opacity=".35" />
+        <path stroke="#8b7fe0" strokeWidth="4" d="M32 15a17 17 0 1 1-15 9" />
+        <circle cx="32" cy="32" r="8" fill="#83af8e" />
+        <circle cx="56" cy="41" r="3" fill="#fff8df" />
       </>
     );
   else if (kind === "walk")
