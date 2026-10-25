@@ -13,7 +13,8 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "build:assets": "node scripts/build-athena-assets.mjs"
+    "build:assets": "node scripts/build-athena-assets.mjs",
+    "check:assets": "node scripts/check-assets.mjs"
   },
   "dependencies": {
     "@athena/shared": "workspace:*",
