@@ -1,4 +1,6 @@
 "use client";
+import { t } from "@/lib/i18n";
+
 import styles from "./HousePage.module.css";
 
 /**
@@ -14,13 +16,14 @@ export function HouseTutorPanel(props: {
 }) {
   return (
     <div className={styles.compact} data-topic={props.topicId} data-entry={props.entryId}>
-      <h2 className={styles.subheading}>Próximamente: tu tutor de Athena</h2>
+      <h2 className={styles.subheading}>{t("Coming soon: your Athena tutor")}</h2>
       <p>
-        Aquí aprenderás con explicaciones basadas en el material de tu profesora, pistas que no
-        revelan la respuesta y puntos de control. Tu progreso crece solo con lo que demuestras.
+        {t(
+          "Learn with explanations grounded in your teacher’s material, hints, and checkpoints. Progress grows as you show what you’ve learned.",
+        )}
       </p>
       <button className={styles.primary} disabled>
-        Iniciar sesión de aprendizaje
+        {t("Start learning session")}
       </button>
     </div>
   );

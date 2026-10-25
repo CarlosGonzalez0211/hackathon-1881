@@ -1,6 +1,10 @@
 "use client";
+import { t } from "@/lib/i18n";
+
+import { Tooltip } from "@/components/ui/Tooltip";
 import { WorldSketchIcon } from "./WorldSketchIcon";
-import { useId } from "react";
+import { useId, useRef, useState } from "react";
+import { useOutsideDismiss } from "@/components/ui/useOutsideDismiss";
 import "../world.css";
 
 export interface Volumes {
@@ -24,22 +28,29 @@ export function SoundControls({
   onVolumesChange: (volumes: Volumes) => void;
 }) {
   const id = useId();
+  const ref = useRef<HTMLFieldSetElement>(null);
+  const [open, setOpen] = useState(false);
+  useOutsideDismiss(ref, open, () => setOpen(false));
   return (
-    <fieldset className="sound-controls">
-      <legend className="visually-hidden">Sonido</legend>
-      <button
-        className="world-tool"
-        title={muted ? "Activar sonido" : "Silenciar sonido"}
-        type="button"
-        onClick={() => onMutedChange(!muted)}
-        aria-pressed={!muted}
-        aria-label={muted ? "Activar sonido" : "Silenciar sonido"}
-      >
-        <WorldSketchIcon kind="sound" muted={muted} />
-      </button>
-      {!muted && (
+    <fieldset ref={ref} className="sound-controls">
+      <legend className="visually-hidden">{t("Sound")}</legend>
+      <Tooltip label={muted ? t("Turn sound on") : t("Mute sound")}>
+        <button
+          className="world-tool"
+          type="button"
+          onClick={() => {
+            onMutedChange(!muted);
+            setOpen(muted);
+          }}
+          aria-pressed={!muted}
+          aria-label={muted ? t("Turn sound on") : t("Mute sound")}
+        >
+          <WorldSketchIcon kind="sound" muted={muted} />
+        </button>
+      </Tooltip>
+      {!muted && open && (
         <div className="sound-mixer toon-paper">
-          <label htmlFor={`${id}-music`}>Música</label>
+          <label htmlFor={`${id}-music`}>{t("Music")}</label>
           <input
             id={`${id}-music`}
             type="range"
@@ -49,7 +60,7 @@ export function SoundControls({
             value={volumes.music}
             onChange={(event) => onVolumesChange({ ...volumes, music: Number(event.target.value) })}
           />
-          <label htmlFor={`${id}-effects`}>Efectos</label>
+          <label htmlFor={`${id}-effects`}>{t("Effects")}</label>
           <input
             id={`${id}-effects`}
             type="range"

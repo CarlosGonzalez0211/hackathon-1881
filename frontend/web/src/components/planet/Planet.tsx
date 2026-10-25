@@ -15,6 +15,8 @@ import type {
 } from "@athena/engine3d";
 import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
 import type { Volumes } from "@/features/world/components/SoundControls";
+import { appLocale, t } from "@/lib/i18n";
+import { WorldSketchIcon } from "@/features/world/components/WorldSketchIcon";
 export interface PlanetProps {
   state: PlanetState;
   mode: "surface" | "orbit";
@@ -29,28 +31,95 @@ export interface PlanetProps {
   world?: WorldState;
   overview?: boolean;
   onOverviewChange?: (overview: boolean) => void;
+  /** Orbit: the name the class sees (defaults to the student id). */
+  label?: string;
+  /** Orbit: this planet belongs to the signed-in student. */
+  own?: boolean;
 }
-const OrbitContext = createContext<{ positions: ProjectedPlanet[] } | null>(null);
+/** Orbit labels register their node; the canvas moves them every frame, outside React. */
+const OrbitContext = createContext<{
+  register: (studentId: string, node: HTMLElement | null) => void;
+} | null>(null);
+function placeOrbitLabel(node: HTMLElement, point: ProjectedPlanet, clear = true) {
+  node.style.transform = `translate3d(${point.x}px, ${point.y + point.radius + 6}px, 0) translateX(-50%)`;
+  node.style.visibility = point.visible ? "visible" : "hidden";
+  node.classList.toggle("is-crowded", !clear);
+}
+/**
+ * Declutter: the signed-in student's label and nearer planets claim space first; a label that
+ * would overlap one already placed fades out until its planet moves clear.
+ */
+function placeOrbitLabels(
+  points: ProjectedPlanet[],
+  labels: Map<string, HTMLElement>,
+  sizes: Map<string, { width: number; height: number }>,
+) {
+  const placed: { left: number; right: number; top: number; bottom: number }[] = [];
+  const order = [...points].sort(
+    (a, b) =>
+      Number(labels.get(b.studentId)?.classList.contains("is-own")) -
+        Number(labels.get(a.studentId)?.classList.contains("is-own")) || a.depth - b.depth,
+  );
+  for (const point of order) {
+    const node = labels.get(point.studentId);
+    if (!node) continue;
+    let size = sizes.get(point.studentId);
+    if (!size || !size.width) {
+      size = { width: node.offsetWidth, height: node.offsetHeight };
+      sizes.set(point.studentId, size);
+    }
+    const top = point.y + point.radius + 6;
+    const box = {
+      left: point.x - size.width / 2 - 4,
+      right: point.x + size.width / 2 + 4,
+      top: top - 2,
+      bottom: top + size.height + 2,
+    };
+    const clear =
+      !point.visible ||
+      !placed.some(
+        (other) =>
+          box.left < other.right &&
+          box.right > other.left &&
+          box.top < other.bottom &&
+          box.bottom > other.top,
+      );
+    if (clear && point.visible) placed.push(box);
+    placeOrbitLabel(node, point, clear);
+  }
+}
 export function Planet(props: PlanetProps) {
   return props.mode === "orbit" ? <OrbitPlanet {...props} /> : <SurfacePlanet {...props} />;
 }
-function OrbitPlanet({ state, onPlanetClick }: PlanetProps) {
+function OrbitPlanet({ state, onPlanetClick, label, own }: PlanetProps) {
   const context = useContext(OrbitContext);
-  if (!context) throw new Error('Planet mode="orbit" requiere un OrbitCanvas compartido.');
-  const position = context.positions.find((item) => item.studentId === state.studentId);
+  if (!context) throw new Error(t('Planet mode="orbit" requires a shared OrbitCanvas.'));
+  const { register } = context;
+  const name = label ?? state.studentId;
   return (
     <button
-      className="planet-label"
-      style={{
-        left: position?.x ?? -1000,
-        top: (position?.y ?? -1000) + 55,
-        visibility: position?.visible ? "visible" : "hidden",
-      }}
+      ref={(node) => register(state.studentId, node)}
+      className={`planet-label${own ? " is-own" : ""}`}
+      style={{ visibility: "hidden" }}
       onClick={() => onPlanetClick?.(state)}
-      aria-label={`Abrir planeta ${state.studentId}, ${Math.round(state.growth * 100)}% de progreso simulado`}
+      aria-label={
+        own
+          ? t("Your planet, {0}: back to your world", { 0: name })
+          : t("{0}’s planet", { 0: name })
+      }
     >
-      <span>{state.studentId.replace("student-", "Estudiante ")}</span>
-      <strong>{Math.round(state.growth * 100)}%</strong>
+      {own && (
+        <span className="planet-label-home">
+          <WorldSketchIcon kind="globe" />
+        </span>
+      )}
+      <span className="planet-label-copy">
+        {own && <span className="planet-label-badge">{t("YOUR LITTLE WORLD")}</span>}
+        <span className="planet-label-name">
+          {name}
+          {own && <span aria-hidden="true"> ↗</span>}
+        </span>
+      </span>
     </button>
   );
 }
@@ -107,6 +176,7 @@ function SurfacePlanet({
         if (abort.signal.aborted) return;
         const instance = await createSurfaceEngine(host.current, {
           state,
+          locale: appLocale,
           signal: abort.signal,
           athenaAssets: process.env.NEXT_PUBLIC_ATHENA_ASSETS !== "false",
           onHouseClick: (house) => callbacks.current.onHouseClick?.(house),
@@ -130,7 +200,7 @@ function SurfacePlanet({
         setPhase("ready");
       } catch (cause) {
         if (!abort.signal.aborted) {
-          setError(cause instanceof Error ? cause.message : "No se pudo abrir el mundo 3D.");
+          setError(cause instanceof Error ? cause.message : t("Could not open the 3D world."));
           setPhase("error");
         }
       }
@@ -170,21 +240,21 @@ function SurfacePlanet({
   }, [volumes, phase]);
   return (
     <div className="scene village-scene" data-engine-status={phase} data-renderer="athena-village">
-      <div ref={host} className="engine-host" aria-label="Mundo 3D de Athena" />
+      <div ref={host} className="engine-host" aria-label={t("Athena 3D world")} />
       {phase === "loading" && (
         <div className="scene-status" role="status">
           <span className="loader-orbit" />
-          <strong>Preparando tu mundo</strong>
-          <span>Los temas también están disponibles en la lista.</span>
+          <strong>{t("Getting your world ready")}</strong>
+          <span>{t("Your topics are also available in the list.")}</span>
         </div>
       )}
       {error && (
         <div className="scene-status" role="alert">
-          <strong>Usa la vista de temas</strong>
+          <strong>{t("Use the topic list")}</strong>
           <span>{error}</span>
         </div>
       )}
-      <div className="house-markers" aria-label="Casas de temas en el mundo">
+      <div className="house-markers" aria-label={t("Topic houses in your world")}>
         {state.houses.map((house) => (
           <button
             key={house.topicId}
@@ -195,7 +265,7 @@ function SurfacePlanet({
             aria-hidden="true"
             style={{ left: 0, top: 0 }}
             onClick={() => onHouseClick?.(house)}
-            aria-label={`Entrar a ${house.title}: ${stateLabel(house.status)}`}
+            aria-label={t("Enter {0}: {1}", { 0: house.title, 1: stateLabel(house.status) })}
           >
             <StateIcon status={house.status} />
             <span>{house.title}</span>
@@ -211,16 +281,38 @@ export function OrbitCanvas({
   children,
   onPlanetClick,
   onStats,
+  focus = null,
 }: {
   states: PlanetState[];
   children: React.ReactNode;
   onPlanetClick?: (planet: PlanetState) => void;
   onStats?: (stats: EngineStats) => void;
+  /** Student whose planet the camera visits; `null` frames the whole class. */
+  focus?: string | null;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const callbacks = useRef({ onPlanetClick, onStats });
   callbacks.current = { onPlanetClick, onStats };
-  const [positions, setPositions] = useState<ProjectedPlanet[]>([]);
+  const engine = useRef<{ focus(studentId: string | null): void } | null>(null);
+  const labels = useRef(new Map<string, HTMLElement>());
+  const latest = useRef(new Map<string, ProjectedPlanet>());
+  const sizes = useRef(new Map<string, { width: number; height: number }>());
+  useEffect(() => {
+    // Font loading and responsive styles can change chips after their first projection.
+    const observer = new ResizeObserver(() => sizes.current.clear());
+    for (const node of labels.current.values()) observer.observe(node);
+    return () => observer.disconnect();
+  }, [states]);
+  const register = useRef((studentId: string, node: HTMLElement | null) => {
+    if (!node) {
+      labels.current.delete(studentId);
+      return;
+    }
+    labels.current.set(studentId, node);
+    sizes.current.delete(studentId);
+    const point = latest.current.get(studentId);
+    if (point) placeOrbitLabel(node, point);
+  }).current;
   const [phase, setPhase] = useState("loading");
   const [error, setError] = useState("");
   useEffect(() => {
@@ -237,10 +329,13 @@ export function OrbitCanvas({
           onPlanetClick: (planet) => callbacks.current.onPlanetClick?.(planet),
           onStats: (stats) => callbacks.current.onStats?.(stats),
           onProjection: (next) => {
-            if (!abort.signal.aborted) setPositions(next);
+            if (abort.signal.aborted) return;
+            for (const point of next) latest.current.set(point.studentId, point);
+            placeOrbitLabels(next, labels.current, sizes.current);
           },
         });
         dispose = instance.dispose;
+        engine.current = instance;
         if (abort.signal.aborted) {
           dispose();
           return;
@@ -249,23 +344,29 @@ export function OrbitCanvas({
       } catch (cause) {
         if (!abort.signal.aborted) {
           setPhase("error");
-          setError(cause instanceof Error ? cause.message : "No se pudo cargar la órbita.");
+          setError(cause instanceof Error ? cause.message : t("Could not load the orbit."));
         }
       }
     });
     return () => {
       abort.abort();
+      engine.current = null;
       dispose?.();
     };
   }, []);
+  useEffect(() => engine.current?.focus(focus), [focus, phase]);
   return (
-    <OrbitContext.Provider value={{ positions }}>
+    <OrbitContext.Provider value={{ register }}>
       <div className="scene orbit-scene" data-engine-status={phase} data-renderer="shared-orbit">
-        <div ref={host} className="engine-host" aria-label="Sistema de ocho planetas 3D" />
+        <div
+          ref={host}
+          className="engine-host"
+          aria-label={t("Class solar system with {0} planets", { 0: states.length })}
+        />
         {phase === "loading" && (
           <div className="scene-status" role="status">
             <span className="loader-orbit" />
-            <strong>Preparando la órbita</strong>
+            <strong>{t("Getting the orbit ready")}</strong>
           </div>
         )}
         {error && (

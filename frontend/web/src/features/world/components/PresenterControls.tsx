@@ -1,4 +1,6 @@
 "use client";
+import { t } from "@/lib/i18n";
+
 import "../world.css";
 import { useEffect, useState } from "react";
 import { useWorld } from "../WorldProvider";
@@ -33,8 +35,8 @@ export function PresenterControls() {
   };
 
   return (
-    <aside className="presenter-controls" aria-label="Controles de presentación">
-      <strong>Presentación</strong>
+    <aside className="presenter-controls" aria-label={t("Presentation controls")}>
+      <strong>{t("Presentation")}</strong>
       <button
         disabled={busy}
         onClick={() =>
@@ -42,23 +44,23 @@ export function PresenterControls() {
             () => client.demoStep(studentId),
             (value) => {
               const step = (value as { step: string | null }).step;
-              return step ? `Paso de demo: ${step}` : "La demo ya terminó";
+              return step ? t("Demo step: {0}", { 0: step }) : t("The demo is complete");
             },
           )
         }
       >
-        Siguiente paso
+        {t("Next step")}
       </button>
       <button
         disabled={busy}
         onClick={() =>
           run(
             () => client.demoReset(),
-            () => "Demo reiniciada",
+            () => t("Demo reset"),
           )
         }
       >
-        Reiniciar
+        {t("Reset")}
       </button>
     </aside>
   );

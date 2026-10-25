@@ -31,6 +31,22 @@ export const planetStateSchema = z.object({
 });
 export type PlanetState = z.infer<typeof planetStateSchema>;
 
+/**
+ * Proposed: the class orbit view. One planet per enrolled student, with the name the class
+ * sees. Ordering is the class roster order (it fixes each student's ring in the sky).
+ */
+export const classOrbitStudentSchema = z.object({
+  studentId: z.string().min(1),
+  displayName: z.string().min(1),
+  planet: planetStateSchema,
+});
+export type ClassOrbitStudent = z.infer<typeof classOrbitStudentSchema>;
+export const classOrbitSchema = z.object({
+  classId: z.string().min(1),
+  students: z.array(classOrbitStudentSchema),
+});
+export type ClassOrbit = z.infer<typeof classOrbitSchema>;
+
 export const aiEventKindSchema = z.enum([
   "chat",
   "podcast",

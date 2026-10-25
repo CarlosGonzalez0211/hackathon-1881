@@ -1,7 +1,11 @@
 "use client";
+import { t } from "@/lib/i18n";
+
+import { Tooltip } from "@/components/ui/Tooltip";
+import { useOutsideDismiss } from "@/components/ui/useOutsideDismiss";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { defaultWorldAccessibilitySettings } from "@athena/shared";
 import type { EngineStats } from "@athena/engine3d";
 import { useWorld } from "@/features/world/WorldProvider";
@@ -25,6 +29,8 @@ export function WorldExplorer() {
   const [conversation, setConversation] = useState<NpcConversation | null>(null);
   const [overview, setOverview] = useState(false);
   const [topics, setTopics] = useState(false);
+  const topicArea = useRef<HTMLDivElement>(null);
+  useOutsideDismiss(topicArea, topics, () => setTopics(false));
   const [muted, setMuted] = useState(true);
   const [volumes, setVolumes] = useState<Volumes>({
     music: defaultWorldAccessibilitySettings.musicVolume,
@@ -44,7 +50,7 @@ export function WorldExplorer() {
       <main className="world-app">
         <div className="scene-status" role={error ? "alert" : "status"}>
           {!error && <span className="loader-orbit" />}
-          <strong>{error ? "No pudimos cargar tu mundo" : "Preparando tu mundo"}</strong>
+          <strong>{error ? t("Could not load your world") : t("Getting your world ready")}</strong>
           {error && <span>{error}</span>}
         </div>
       </main>
@@ -56,7 +62,7 @@ export function WorldExplorer() {
       aria-hidden={houseOpen || undefined}
     >
       <a className="skip-link" href="#topic-list">
-        Ir a la lista de temas
+        {t("Skip to topic list")}
       </a>
       <Planet
         state={world.planet}
@@ -74,42 +80,47 @@ export function WorldExplorer() {
         onEvent={(event) => {
           if (event.type !== "npc_activate") return;
           const messages: Record<string, string> = {
-            lumen:
-              "Lumen: te espero junto al siguiente tema disponible. Abre la casa para continuar aprendiendo.",
-            "mentor-elena":
-              "Elena: cada casa representa un tema. Tu mundo crece con lo que demuestras haber aprendido.",
-            "guide-rafa":
-              "Rafa: sigue los senderos. Puedes dar la vuelta a todo el planeta y regresar aquí.",
-            "gardener-carmen":
-              "Carmen: explora con calma. También puedes abrir tus temas desde la lista.",
+            lumen: t("Lumen: I’m waiting by your next topic. Open the house to keep learning."),
+            "mentor-elena": t(
+              "Elena: each house is a topic. Your world grows as you show what you’ve learned.",
+            ),
+            "guide-rafa": t(
+              "Rafa: follow the paths. You can walk around the whole planet and come back here.",
+            ),
+            "gardener-carmen": t(
+              "Carmen: take your time exploring. You can also open topics from the list.",
+            ),
           };
           Object.assign(messages, {
-            "headmaster-ilda":
-              "Ilda: cada pregunta abre una puerta. Elige un tema y comparte lo que descubres.",
-            "librarian-oscar":
-              "Óscar: busca conexiones entre lo que ya sabes y lo que estás aprendiendo.",
-            "cook-marisol":
-              "Marisol: aprender lleva práctica. Prueba, ajusta y vuelve a intentarlo.",
-            "builder-ana": "Ana: las grandes ideas se construyen paso a paso.",
-            "builder-leo": "Leo: una buena base ayuda a construir más alto.",
-            "engineer-noor": "Noor: cuando algo falla, observa, prueba y cambia una cosa cada vez.",
-            "dr-amaia": "Amaia: empieza con una pregunta. Después busca evidencias.",
-            "dr-bruno": "Bruno: explicar una idea con tus palabras ayuda a comprenderla.",
-            "historian-tomas": "Tomás: cada lugar tiene una historia. Sigue explorando.",
-            "marine-kai": "Kai: los ríos y lagos conectan este pequeño mundo.",
-            "explorer-nico":
-              "Nico: los puentes conectan los senderos. Hay mucho por descubrir al otro lado.",
-            "musician-lia":
-              "Lia: el ritmo también está en los patrones que encontramos al aprender.",
-            "study-trio":
-              "Grupo de estudio: ¡comparte una idea! Aprender juntos ayuda a descubrir otras perspectivas.",
-            "visitor-orbi":
-              "Orbi: ¡qué mundo tan curioso! Me pregunto qué habrá en el próximo sendero.",
-            "owl-sage": "Sage: tómate un momento para pensar en lo que acabas de descubrir.",
-            "hare-pip": "Pip: ¡nos vemos en el siguiente sendero!",
+            "headmaster-ilda": t(
+              "Ilda: every question opens a door. Choose a topic and share what you discover.",
+            ),
+            "librarian-oscar": t(
+              "Óscar: look for connections between what you know and what you’re learning.",
+            ),
+            "cook-marisol": t("Marisol: learning takes practice. Try, adjust, and try again."),
+            "builder-ana": t("Ana: great ideas are built one step at a time."),
+            "builder-leo": t("Leo: a strong foundation helps you build higher."),
+            "engineer-noor": t(
+              "Noor: when something goes wrong, observe, test, and change one thing at a time.",
+            ),
+            "dr-amaia": t("Amaia: start with a question. Then look for evidence."),
+            "dr-bruno": t("Bruno: explaining an idea in your own words helps you understand it."),
+            "historian-tomas": t("Tomás: every place has a story. Keep exploring."),
+            "marine-kai": t("Kai: rivers and lakes connect this little world."),
+            "explorer-nico": t(
+              "Nico: bridges connect the paths. There’s plenty to discover on the other side.",
+            ),
+            "musician-lia": t("Lia: there’s rhythm in the patterns we find while learning."),
+            "study-trio": t(
+              "Study group: share an idea! Learning together helps us discover new perspectives.",
+            ),
+            "visitor-orbi": t("Orbi: what a curious world! I wonder what’s down the next path."),
+            "owl-sage": t("Sage: take a moment to think about what you just discovered."),
+            "hare-pip": t("Pip: see you on the next path!"),
           });
           const message =
-            messages[event.npcId] ?? "Vecino: ¡Qué gusto verte por aquí! Sigue explorando.";
+            messages[event.npcId] ?? t("Neighbor: good to see you here! Keep exploring.");
           const divider = message.indexOf(":");
           setConversation({
             name: message.slice(0, divider),
@@ -122,78 +133,84 @@ export function WorldExplorer() {
               targetId: event.npcId,
               at: new Date().toISOString(),
             })
-            .catch(() => notify("No pudimos guardar esta interacción. Puedes seguir explorando."));
+            .catch(() => notify(t("Could not save this interaction. You can keep exploring.")));
         }}
       />
-      <nav className="world-controls" aria-label="Controles del mundo">
-        <button
-          onClick={() => setTopics(!topics)}
-          aria-expanded={topics}
-          aria-controls="topic-list"
-          className="world-tool"
-          aria-label="Temas"
-          title="Temas"
-        >
-          <WorldSketchIcon kind="book" />
-        </button>
-        <Link href="/orbit" className="world-tool" aria-label="Órbita" title="Órbita">
-          <WorldSketchIcon kind="globe" />
-        </Link>
-        <button
-          className="world-tool"
-          onClick={() => setOverview((value) => !value)}
-          aria-pressed={overview}
-          aria-label={overview ? "Volver a caminar" : "Ver planeta"}
-          title={overview ? "Volver a caminar" : "Ver planeta"}
-        >
-          <WorldSketchIcon kind="walk" />
-        </button>
-        <SoundControls
-          muted={muted}
-          onMutedChange={setMuted}
-          volumes={volumes}
-          onVolumesChange={setVolumes}
-        />
-      </nav>
-      <aside
-        hidden={!topics}
-        id="topic-list"
-        className={`topic-panel ${topics ? "expanded" : ""}`}
-        aria-label="Lista accesible de temas"
-      >
-        <button
-          className="topic-toggle"
-          onClick={() => setTopics(!topics)}
-          aria-expanded={topics}
-          aria-controls="topics"
-        >
-          <span>⌂ &nbsp; Tus temas</span>
-          <span>
-            {houses.length} {topics ? "−" : "+"}
-          </span>
-        </button>
-        <div id="topics" className="topic-content">
-          <p className="subtle">Abre cualquier tema desde esta lista, sin desplazarte en 3D.</p>
-          {houses.map((item) => (
+      <div ref={topicArea}>
+        <nav className="world-controls" aria-label={t("World controls")}>
+          <Tooltip label={t("Topics")}>
             <button
-              className={`topic-row ${item.status}`}
-              onClick={() => activate({ topicId: item.topicId })}
-              key={item.topicId}
+              onClick={() => setTopics(!topics)}
+              aria-expanded={topics}
+              aria-controls="topic-list"
+              className="world-tool"
+              aria-label={t("Topics")}
             >
-              <span className="status-symbol" aria-hidden="true">
-                <StateIcon status={item.status} size={18} />
-              </span>
-              <span>
-                <strong>{item.title}</strong>
-                <small>{stateLabel(item.status)}</small>
-              </span>
-              <span className="topic-progress">{Math.round(item.progress * 100)}%</span>
+              <WorldSketchIcon kind="book" />
             </button>
-          ))}
-        </div>
-      </aside>
+          </Tooltip>
+          <Tooltip label={t("Class orbit")}>
+            <Link href="/orbit" className="world-tool" aria-label={t("Class orbit")}>
+              <WorldSketchIcon kind="globe" />
+            </Link>
+          </Tooltip>
+          <Tooltip label={overview ? t("Back to walking") : t("Planet overview")}>
+            <button
+              className="world-tool"
+              onClick={() => setOverview((value) => !value)}
+              aria-pressed={overview}
+              aria-label={overview ? t("Back to walking") : t("Planet overview")}
+            >
+              <WorldSketchIcon kind="walk" />
+            </button>
+          </Tooltip>
+          <SoundControls
+            muted={muted}
+            onMutedChange={setMuted}
+            volumes={volumes}
+            onVolumesChange={setVolumes}
+          />
+        </nav>
+        <aside
+          hidden={!topics}
+          id="topic-list"
+          className={`topic-panel ${topics ? "expanded" : ""}`}
+          aria-label={t("Accessible topic list")}
+        >
+          <button
+            className="topic-toggle"
+            onClick={() => setTopics(!topics)}
+            aria-expanded={topics}
+            aria-controls="topics"
+          >
+            <span>{t("Your topics")}</span>
+            <span>
+              {houses.length} {topics ? "−" : "+"}
+            </span>
+          </button>
+          <div id="topics" className="topic-content">
+            <p className="subtle">{t("Open any topic here without walking across the world.")}</p>
+            {houses.map((item) => (
+              <button
+                className={`topic-row ${item.status}`}
+                onClick={() => activate({ topicId: item.topicId })}
+                key={item.topicId}
+              >
+                <span className="status-symbol" aria-hidden="true">
+                  <StateIcon status={item.status} size={18} />
+                </span>
+                <span>
+                  <strong>{item.title}</strong>
+                  <small>{stateLabel(item.status)}</small>
+                </span>
+                <span className="topic-progress">{Math.round(item.progress * 100)}%</span>
+              </button>
+            ))}
+          </div>
+        </aside>
+      </div>
       <footer className="world-footer">
-        <div className="world-key-guide toon-paper" aria-label="Controles de teclado">
+        <div className="world-key-guide toon-paper" aria-label={t("Keyboard controls")}>
           <div className="key-command">
             <span className="movement-keys">
               <kbd>W</kbd>
@@ -201,23 +218,23 @@ export function WorldExplorer() {
               <kbd>S</kbd>
               <kbd>D</kbd>
             </span>
-            <span>mover</span>
+            <span>{t("move")}</span>
           </div>
           <div className="key-command">
             <kbd className="wide-key">Space</kbd>
-            <span>saltar</span>
+            <span>{t("jump")}</span>
           </div>
           <div className="key-command">
             <kbd>E</kbd>
-            <span>interactuar</span>
+            <span>{t("interact")}</span>
           </div>
           <div className="key-command">
             <kbd className="shift-key">Shift</kbd>
-            <span>correr</span>
+            <span>{t("run")}</span>
           </div>
         </div>
         <span className="runtime-note">
-          {useMocks ? "Datos simulados" : ""}
+          {useMocks ? t("Demo data") : ""}
           {stats ? ` · ${Math.round(stats.fps)} fps` : ""}
         </span>
       </footer>

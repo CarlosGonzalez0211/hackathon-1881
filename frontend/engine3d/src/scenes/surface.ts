@@ -22,6 +22,8 @@ export interface EngineStats {
 }
 export interface SurfaceOptions {
   state: PlanetState;
+  /** Language for engine-owned accessibility text and touch controls. Defaults to English. */
+  locale?: "en" | "es";
   signal?: AbortSignal;
   onHouseClick?: (house: HouseState) => void;
   onProjection?: (houses: ProjectedHouse[]) => void;
