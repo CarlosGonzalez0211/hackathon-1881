@@ -5,3 +5,11 @@
 export { InMemoryAnalyticsRepository, type AnalyticsReadRepository } from "./repository.js";
 export { AnalyticsService } from "./service.js";
 export { analyticsRoutes, type AnalyticsRoutesOptions } from "./routes.js";
+export {
+  projectClassAnalytics,
+  MASTERED_AT,
+  STRUGGLING_BELOW,
+  HIGH_SEVERITY_BELOW,
+  type ClassRoster,
+} from "./projection.js";
+export { ProjectedAnalyticsRepository } from "./projected-repository.js";
