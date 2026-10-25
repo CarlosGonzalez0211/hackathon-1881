@@ -6,6 +6,7 @@ import {
   type AuthorizationService,
   type AuthService,
 } from "./auth.js";
+import { InMemoryClassCatalog, type ClassCatalog } from "./classes.js";
 import { randomIdGenerator, systemClock, type Clock, type IdGenerator } from "./clock.js";
 import { InMemoryDomainEventStore, type DomainEventStore } from "./events.js";
 
@@ -14,6 +15,7 @@ export interface PlatformServices {
   events: DomainEventStore;
   auth: AuthService;
   authorization: AuthorizationService;
+  classes: ClassCatalog;
   clock: Clock;
   ids: IdGenerator;
 }
@@ -34,6 +36,7 @@ export function createPlatformServices(
     events: new InMemoryDomainEventStore(),
     auth: new AllowAllAuthService(),
     authorization: new AllowAllAuthorizationService(),
+    classes: new InMemoryClassCatalog(),
     clock: systemClock,
     ids: randomIdGenerator,
     ...overrides,

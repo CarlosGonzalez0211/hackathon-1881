@@ -20,7 +20,7 @@ export class MockClassesClient implements ClassesClient {
   }
 }
 
-/** STUB: `GET /api/classes` is not implemented in the backend yet. */
+/** `GET /api/classes`: the classes the caller belongs to. */
 export class ApiClassesClient implements ClassesClient {
   async listClasses() {
     return classSchema.array().parse(await api("/classes"));

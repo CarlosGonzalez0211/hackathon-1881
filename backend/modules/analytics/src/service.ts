@@ -29,7 +29,12 @@ export class AnalyticsService {
     // Only interventions the projection currently derives can be updated; stale ids are 404.
     const current = analytics.interventions.find((item) => item.id === interventionId);
     if (!current) throw notFound("Intervention", interventionId);
-    await this.statusStore.set(classId, interventionId, status, context.userId);
+    await this.statusStore.set(
+      classId,
+      interventionId,
+      { status, severity: current.severity },
+      context.userId,
+    );
     return { ...current, status };
   }
 }
