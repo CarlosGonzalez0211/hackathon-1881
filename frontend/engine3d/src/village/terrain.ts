@@ -5,8 +5,8 @@ import { direction, mountainHeight, pathDistance, surfacePoint, TAU, waterDepth 
 /** Grass, paths and illustrated rock are painted on ONE mesh: no overlapping road ribbons. */
 export function createTerrain(ctx: AthenaInstallContext, low: boolean) {
   const s = ctx.scope,
-    nx = low ? 128 : 384,
-    ny = low ? 64 : 192;
+    nx = low ? 128 : 336,
+    ny = low ? 64 : 168;
   const positions: number[] = [],
     land: number[] = [],
     indices: number[] = [];

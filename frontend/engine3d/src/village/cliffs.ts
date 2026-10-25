@@ -32,7 +32,7 @@ import {
  * placed by a hard-coded position: all of it follows the frozen predicates of `layout.ts`.
  */
 
-const STEP = 0.18;
+const STEP = 0.24;
 /** Height above the mountain base where the walkable ground ends (canOccupy). */
 const WALL = 1.25;
 const smooth = (a: number, b: number, v: number) => {
@@ -398,9 +398,11 @@ export function createRockScatter(
       "models/nature/athena-rock-set.glb",
       rocks.map((up, i) => ({ up, scale: 0.7 * (0.85 + (i % 7) * 0.045), yaw: i * 2.4 })),
     ),
-    instanceKit(ctx, root, "models/nature/athena-rock-boulder.glb", talus),
-    instanceKit(ctx, root, "models/nature/athena-rock-pebble.glb", edge, { shadows: false }),
-    instanceKit(ctx, root, "models/nature/athena-rock-pebble.glb", shore, { shadows: false }),
+    instanceKit(ctx, root, "models/nature/athena-rock-boulder.glb", talus, { shadows: false }),
+    // Edge stones and shore pebbles are the same model: one batch.
+    instanceKit(ctx, root, "models/nature/athena-rock-pebble.glb", [...edge, ...shore], {
+      shadows: false,
+    }),
   ];
   return Promise.all(tasks.map(optional));
 }
