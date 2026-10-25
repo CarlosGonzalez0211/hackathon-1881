@@ -65,6 +65,8 @@ export function createCliffShells(ctx: AthenaInstallContext, root: LegacyContext
   const positions: number[] = [];
   const normals: number[] = [];
   const levels: number[] = [];
+  /** Mountain height under every shell vertex: the foot of the shell fades into the ground colour. */
+  const mountainHeights: number[] = [];
   const indices: number[] = [];
 
   mountains.forEach((mountain, mountainIndex) => {
@@ -154,8 +156,9 @@ export function createCliffShells(ctx: AthenaInstallContext, root: LegacyContext
         const up = norm(add(mountain.up, add(mul(side, pa / RADIUS), mul(along, pb / RADIUS))));
         // Outside the walls the shell sinks under the terrain, so its edge is the line where it
         // emerges from the ground: no rim, no notches along a staircase of cells.
-        radii[k] = !valid(k) ? base[k]! + h[k]! - 0.3 : base[k]! + shell + offset;
+        radii[k] = !valid(k) ? base[k]! + h[k]! - 0.45 : base[k]! + shell + offset;
         positions.push(...mul(up, radii[k]!));
+        mountainHeights.push(h[k]!);
         levels.push(shell, level >= steps ? 1 : clamp(f / 0.4, 0, 1), valid(k) ? 1 : 0);
       }
     const raw = new Float32Array(count * 3);
@@ -235,15 +238,16 @@ export function createCliffShells(ctx: AthenaInstallContext, root: LegacyContext
   const position = geometry.attributes.position;
   const normal = geometry.attributes.normal;
   const colors = new Float32Array(position.count * 3);
-  const stoneLow = new s.Color("#6f8491");
+  const stoneLow = new s.Color("#8fa0ab");
   const stoneMid = new s.Color("#b9c4c8");
   const warm = new s.Color("#d9c3a3");
   const grassDeep = new s.Color("#3f7a5b");
   const grassMid = new s.Color("#6ca66e");
   const grassLight = new s.Color("#a8c97a");
   const lichen = new s.Color("#d9d2b0");
-  const strataDark = new s.Color("#6f8491");
+  const strataDark = new s.Color("#8fa0ab");
   const ink = new s.Color("#2b2936");
+  const ground = new s.Color("#579778").lerp(new s.Color("#b9c8c4"), 0.25).multiplyScalar(0.75);
   const c = new s.Color();
   const grass = new s.Color();
   const sunLength = Math.hypot(sun.x, sun.y, sun.z) || 1;
@@ -282,6 +286,8 @@ export function createCliffShells(ctx: AthenaInstallContext, root: LegacyContext
     grass.lerp(lichen, smooth(4.9, 5.9, shell) * 0.8);
     c.lerp(grass, smooth(0.8, 0.93, facing));
     if (bottom) c.lerp(ink, 0.22);
+    // The foot of the shell becomes the ground colour: no visible seam where it emerges.
+    c.lerp(ground, 1 - smooth(WALL, WALL + 0.8, mountainHeights[i]!));
     colors[i * 3] = c.r;
     colors[i * 3 + 1] = c.g;
     colors[i * 3 + 2] = c.b;
@@ -529,25 +535,25 @@ export async function createIslets(ctx: AthenaInstallContext, root: LegacyContex
   model.root.updateMatrixWorld(true);
   const group = new s.Group();
   group.name = "athena-floating-islets";
-  const tilt = 0.42;
-  // Placement angles follow the sun: most islets hang on the sun side of the ring (where the
-  // eye is drawn and the light is warm), the rest are spread around it.
-  const sun = sunOf(ctx);
-  const sunAngle = Math.atan2(sun.y * Math.sin(tilt) + sun.z * Math.cos(tilt), sun.x);
-  const onRing = (angle: number): Vec => [
-    Math.cos(angle),
-    Math.sin(angle) * Math.sin(tilt),
-    Math.sin(angle) * Math.cos(tilt),
-  ];
-  // Three islets hang in the sky ahead of the arrival spot (beyond the plaza, 35 to 55 degrees
-  // along the main loop: what a newcomer sees first), the rest on the sun side of the ring.
-  const ring: { dir: Vec; reach: number; scale: number; yaw: number; lift: number }[] = [
-    { dir: direction(-0.8, -0.5), reach: 18, scale: 1.5, yaw: 0.6, lift: 0 },
-    { dir: direction(-0.8, 0.12), reach: 17, scale: 1.7, yaw: 2.1, lift: 1.5 },
-    { dir: direction(-0.62, 0.34), reach: 16, scale: 1.45, yaw: 4.0, lift: 0.4 },
-    { dir: onRing(sunAngle - 0.4), reach: 16, scale: 1.7, yaw: 1.2, lift: 2.4 },
-    { dir: onRing(sunAngle + 0.5), reach: 14, scale: 1.45, yaw: 3.3, lift: 0.6 },
-    { dir: onRing(sunAngle + 1.5), reach: 17, scale: 1.6, yaw: 5.2, lift: 2.6 },
+  // Far shapes dissolve into light: every islet sits 26 to 32 m beyond the surface. Three hang
+  // in the sky ahead of the arrival spot, tipped toward the viewer so the spire reads against
+  // the sky; the other three sit on the far side of the globe, opposite the overview camera,
+  // so no islet enters the overview frame.
+  const arrival: Vec = direction(-0.18, -0.09);
+  const ring: {
+    dir: Vec;
+    reach: number;
+    scale: number;
+    yaw: number;
+    lift: number;
+    tipped?: boolean;
+  }[] = [
+    { dir: direction(-1.04, -0.55), reach: 28, scale: 1.2, yaw: 0.6, lift: 0, tipped: true },
+    { dir: direction(-1.08, 0.18), reach: 30, scale: 1.3, yaw: 2.1, lift: 1.5, tipped: true },
+    { dir: direction(-0.98, 0.5), reach: 26, scale: 1.1, yaw: 4.0, lift: 0.4, tipped: true },
+    { dir: direction(Math.PI - 0.5, 0.35), reach: 29, scale: 1.2, yaw: 1.2, lift: 2.4 },
+    { dir: direction(Math.PI + 0.3, -0.3), reach: 27, scale: 1.1, yaw: 3.3, lift: 0.6 },
+    { dir: direction(Math.PI + 1.2, 0.15), reach: 32, scale: 1.3, yaw: 5.2, lift: 2.6 },
   ];
   const parts: { batch: LegacyContext; matrices: LegacyContext[] }[] = [];
   const transform = new s.Object3D();
@@ -559,7 +565,7 @@ export async function createIslets(ctx: AthenaInstallContext, root: LegacyContex
     batch.castShadow = false;
     batch.receiveShadow = false;
     const matrices: LegacyContext[] = [];
-    ring.forEach(({ dir, reach, scale, yaw, lift }, i) => {
+    ring.forEach(({ dir, reach, scale, yaw, lift, tipped }, i) => {
       const v = dir;
       const position = mul(v, RADIUS + reach);
       transform.position.set(
@@ -569,7 +575,10 @@ export async function createIslets(ctx: AthenaInstallContext, root: LegacyContex
       );
       // Stand on its own radial: up points away from the globe, then yaw and a small lean.
       transform.quaternion
-        .setFromUnitVectors(new s.Vector3(0, 1, 0), new s.Vector3(...v))
+        .setFromUnitVectors(
+          new s.Vector3(0, 1, 0),
+          new s.Vector3(...(tipped ? norm(add(mul(v, 0.35), mul(arrival, 0.65))) : v)),
+        )
         .multiply(
           new s.Quaternion().setFromEuler(
             new s.Euler(0.12 * Math.sin(i * 1.7), yaw, 0.1 * Math.cos(i * 2.3)),

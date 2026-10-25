@@ -516,7 +516,9 @@ function buildPebble(_THREE, T) {
  * and a foliage cap. 3 m tall with the foot buried (the runtime sinks it into the slope).
  * Shared by the slabs and the islet rock, so both read as the same stone.
  */
-const STONE_DARK = "#6F8491";
+// Shaded stone is baked light enough that the toon shadow tint does not push it to navy.
+const STONE_SHADE = "#8FA0AB";
+const STONE_DARK = STONE_SHADE;
 const PLATEAU_PROFILE = [
   [0.96, 0.0],
   [1.0, 0.8],
@@ -535,7 +537,7 @@ function paintPlateau(THREE, T, geometry, { top = 3.0, strata = [1.5, 2.05], rad
   const position = geometry.attributes.position;
   const normal = geometry.attributes.normal;
   const color = new Float32Array(position.count * 3);
-  const low = new THREE.Color(STONE.low);
+  const low = new THREE.Color(STONE_SHADE);
   const mid = new THREE.Color(STONE.mid);
   const dark = new THREE.Color(STONE_DARK);
   const grass = new THREE.Color(LEAF.mid);
@@ -615,11 +617,11 @@ function buildIslet(THREE, T) {
   const stone = new THREE.Color();
   const grassLow = new THREE.Color(LEAF.deep);
   const grassHigh = new THREE.Color(LEAF.light);
-  const lo = new THREE.Color(STONE.low);
-  const hi = new THREE.Color(STONE.mid);
+  // Far shapes dissolve into light: pale lavender-grey underside, warm stone toward the lit top.
+  const lo = new THREE.Color("#C9CFE0");
   const warm = new THREE.Color(STONE.warm);
   const foam = new THREE.Color("#DDF2F0");
-  const strata = new THREE.Color(STONE_DARK);
+  const strata = new THREE.Color("#B3BBCF");
   const mixed = new THREE.Color();
   for (let i = 0; i < position.count; i++) {
     const y = position.getY(i);
@@ -627,10 +629,7 @@ function buildIslet(THREE, T) {
     const z = position.getZ(i);
     const ny = normal.getY(i);
     const heightT = Math.min(1, Math.max(0, (y + 3.3) / 3.6));
-    stone
-      .copy(lo)
-      .lerp(hi, Math.pow(heightT, 0.8))
-      .lerp(warm, Math.max(0, x / 2.4) * 0.35 * heightT);
+    stone.copy(lo).lerp(warm, Math.pow(heightT, 1.4) * (0.55 + 0.35 * Math.max(0, x / 2.4)));
     // Two darker strata bands, like the cliff slabs.
     for (const band of [-0.55, -1.5]) {
       const d = Math.abs(y - band) / 0.2;
@@ -688,7 +687,11 @@ function buildIslet(THREE, T) {
     roof,
     T.material("roof_tile", "#FFFFFF", { vertexColors: true, roughness: 0.6 }),
   );
-  for (const mesh of [tower_mesh, roof_mesh]) mesh.position.set(0.45, 0.28, -0.3);
+  // The spire is the one thing that must read from far away: a taller, bolder tower.
+  for (const mesh of [tower_mesh, roof_mesh]) {
+    mesh.position.set(0.45, 0.28, -0.3);
+    mesh.scale.setScalar(1.6);
+  }
   return { root: T.ground(T.group("athena-islet", body_mesh, tower_mesh, roof_mesh)) };
 }
 

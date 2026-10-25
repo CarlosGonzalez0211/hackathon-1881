@@ -392,7 +392,7 @@ export function createGroves(
   windMaterial(leaf, time);
   windMaterial(bark, time);
   // The one tree in twenty that turns ginkgo gold keeps the gradient's light and shade.
-  patchMaterial(leaf, "ginkgo-v2", (shader) => {
+  patchMaterial(leaf, "ginkgo-v5", (shader) => {
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
@@ -403,7 +403,10 @@ export function createGroves(
         `#include <color_vertex>
 #if defined( USE_COLOR ) && defined( USE_INSTANCING )
   float athenaLuma = dot( vColor, vec3( 0.2126, 0.7152, 0.0722 ) );
-  vColor = mix( vColor, vec3( 0.92, 0.56, 0.12 ) * ( athenaLuma / 0.34 ), aGinkgo );
+  float athenaRamp = clamp( ( position.y - 2.3 ) / 2.2, 0.0, 1.0 );
+  vec3 athenaGold = mix( vec3( 0.479, 0.287, 0.048 ), vec3( 0.888, 0.644, 0.195 ), athenaRamp );
+  athenaGold *= 0.74 * ( 0.8 + 0.4 * clamp( athenaLuma / 0.34, 0.0, 1.0 ) );
+  vColor = mix( vColor, athenaGold, aGinkgo );
 #endif`,
       );
     // No rim on crowns: a pale silhouette edge is what makes foliage read as plastic.
@@ -523,6 +526,7 @@ export function createGroves(
     const ramp = profile.ramp;
     const deep = new s.Color(ramp.deep);
     const light = new s.Color(ramp.light);
+    const gold = new s.Color("#f2d27a");
     for (let k = 0; k < 6; k++) {
       const theta = (k / 6) * TAU + i * 0.83 + Math.sin(i + k * 1.7) * 0.25;
       const along = [0.05, 0.3, 0.55, 0.18, 0.42, 0.1][(k + i) % 6]!;
@@ -571,9 +575,8 @@ export function createGroves(
       tint.copy(deep).lerp(light, t);
       if (ginkgo[i]) {
         // Gold on the crown and on its fringe alike, the fringe slightly darker.
-        const luma = 0.2126 * tint.r + 0.7152 * tint.g + 0.0722 * tint.b;
-        tint.setRGB(0.92, 0.56, 0.12).multiplyScalar(luma / 0.34);
-        tint.multiplyScalar(0.85);
+        const rampT = Math.min(1, Math.max(0, (py - 2.3) / 2.2));
+        tint.set("#b8923e").lerp(gold, rampT).multiplyScalar(0.7);
       } else tint.multiplyScalar(0.9);
       fringe.setColorAt(index, tint);
     }
