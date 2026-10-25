@@ -1,5 +1,6 @@
 import {
   demoCurriculumContextResponse,
+  demoStudentLearningProfiles,
   learningSessionMessageSubmissionSchema,
   tutorMessageSchema,
   worldLearningSessionStartRequestSchema,
@@ -47,6 +48,7 @@ interface MockSession {
   topicId: string;
   strategy: string;
   messages: number;
+  studentProfile?: (typeof demoStudentLearningProfiles)[string];
 }
 
 /** Deterministic in-browser tutor used by the default hackathon demo mode. */
@@ -57,10 +59,12 @@ export class MockLearningClient implements LearningClient {
   async startSession(input: WorldLearningSessionStartRequest) {
     const parsed = worldLearningSessionStartRequestSchema.parse(input);
     const sessionId = `mock-learning-session-${this.nextSession++}`;
+    const studentProfile = demoStudentLearningProfiles[parsed.studentId];
     const session = {
       topicId: parsed.topicId,
-      strategy: "worked_example",
+      strategy: studentProfile?.recommendedStrategy ?? "worked_example",
       messages: 0,
+      studentProfile,
     };
     this.sessions.set(sessionId, session);
     return worldLearningSessionStartSchema.parse({
@@ -76,11 +80,27 @@ export class MockLearningClient implements LearningClient {
     if (!session) throw new Error("Learning session not found");
     const { content: studentMessage } = learningSessionMessageSubmissionSchema.parse({ content });
     session.messages += 1;
-    const source = demoCurriculumContextResponse.chunks[0]!;
     const asksWhy = /why|por qu[eé]|divide|half|mitad/i.test(studentMessage);
-    const explanation = asksWhy
+    const asksBaseHeight = /base|height|altura|perpendicular|side|lado/i.test(studentMessage);
+    const asksForExample = /example|ejemplo|calculate|calcula|10|6|formula|f[oó]rmula/i.test(
+      studentMessage,
+    );
+    const source =
+      demoCurriculumContextResponse.chunks[
+        asksWhy ? 0 : asksForExample ? 2 : asksBaseHeight ? 1 : 0
+      ]!;
+    const profile = session.studentProfile;
+    const personalContext = profile
+      ? `${profile.displayName}, you already ${profile.strengths[0]}. Let's focus on ${profile.struggles[0]}. `
+      : "Let's connect your question to the approved geometry notes. ";
+    const groundedAnswer = asksWhy
       ? "Two equal triangles form a rectangle with the same base and height, so one triangle has half the rectangle's area."
-      : "Let's connect your question to the approved geometry notes: two equal triangles form a rectangle with the same base and height.";
+      : asksForExample
+        ? "For a triangle with base 10 and height 6, multiply 10 × 6 = 60, then divide by two. The area is 30 square units."
+        : asksBaseHeight
+          ? "The height is the perpendicular distance from the chosen base to the opposite vertex; it is not necessarily a slanted side."
+          : "Two equal triangles form a rectangle with the same base and height. What would you do next to find the area of just one triangle?";
+    const explanation = `${personalContext}${groundedAnswer}`;
     return tutorMessageSchema.parse({
       id: `${sessionId}-message-${session.messages}`,
       sessionId,
