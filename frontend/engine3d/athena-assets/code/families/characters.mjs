@@ -179,7 +179,7 @@ async function addBody(F, cfg, { feet = false } = {}) {
       );
     if (feet) {
       const foot = await footGeometry(T, THREE, "sandals");
-      foot.scale(0.92, 0.92, 0.95);
+      foot.scale(0.8, 0.8, 0.9);
       F.add(`knee_${side}`, `foot_skin_${side}`, foot, {
         ...skin,
         origin: [0, plan.calf / plan.hh, 0],
@@ -312,7 +312,7 @@ for (const [group, names] of Object.entries(AVATAR_PARTS)) {
           if (group === "shoes") await addShoes(F, { style: name, ...PART_STYLE.shoes[name] });
           if (group === "acc") {
             GEAR.scarf(F, "#2F7D7A");
-            GEAR.satchel(F, "#9C7356");
+            GEAR.satchel(F, "#9C7356", { out: 1.45, back: 0.22 });
             HELD.lanternStaff(F);
             HELD.book(F, "#C9785F", "r");
           }
@@ -549,8 +549,14 @@ async function buildNpc(THREE, T, id) {
   const F = new Figure(THREE, T, rig, { weave: false, collapse: true });
   await addBody(F, cfg, { feet: !!cfg.feet });
   await dress(F, cfg);
+  // the cape hangs from `chest`: seat it on the back of the garments, in front of any pack
+  rig.nodes.chest.position.z = F.torsoBack();
   consolidate(THREE, T, rig.root, new Set(RIG_CONTRACT.people.animated));
   applyPeopleRest(THREE, rig.nodes);
+  // `height` is the figure's height as the village sees it, hat or hair included
+  rig.root.updateMatrixWorld(true);
+  const tall = new THREE.Box3().setFromObject(rig.root).getSize(new THREE.Vector3()).y;
+  if (Math.abs(tall / cfg.height - 1) > 0.02) rig.root.scale.setScalar(cfg.height / tall);
   return {
     root: rig.root,
     clips: pruneClips(

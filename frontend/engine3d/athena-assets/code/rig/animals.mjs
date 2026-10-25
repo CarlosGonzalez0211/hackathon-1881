@@ -227,7 +227,7 @@ export async function buildLumen(THREE, T) {
     r: 0.03,
     irisHex: "#E9C26A",
     slit: true,
-    lookZ: 0.0,
+    lookZ: 0.024,
   });
 
   // tail: wrapped round the haunch to the front, tip curling up (a sitting cat keeps it close)
@@ -260,13 +260,16 @@ export async function buildLumen(THREE, T) {
   F.add(
     "body",
     "collar",
-    ring(THREE, 0.082, 0.014, { tubular: 18, radial: 5 }).translate(0, 0.34, 0.06).rotateX(-0.12),
+    ring(THREE, 0.132, 0.028, { tubular: 20, radial: 5 })
+      .scale(1, 1, 0.95)
+      .translate(0, 0.25, 0.05)
+      .rotateX(-0.1),
     { part: "base", style: STYLE.cloth, material: "gear", color: "#2F7D7A" },
   );
   const charm = F.addGlow(
     "body",
     "charm",
-    ellipsoid(THREE, [0.02, 0.022, 0.012], { w: 10, h: 7 }).translate(0, 0.292, 0.138),
+    ellipsoid(THREE, [0.022, 0.024, 0.014], { w: 10, h: 7 }).translate(0, 0.222, 0.178),
     glowMaterial(T, "charm_glow", "#F2C26B", 1.4),
     { part: "base", style: STYLE.cloth, color: "#FFFFFF", keep: true },
   );
@@ -276,9 +279,18 @@ export async function buildLumen(THREE, T) {
     "charm_rim",
     ring(THREE, 0.024, 0.005, { tubular: 12, radial: 4 })
       .rotateX(Math.PI / 2)
-      .translate(0, 0.292, 0.14),
+      .translate(0, 0.222, 0.182),
     { part: "base", style: STYLE.cloth, material: "gold", color: "#F2C26B" },
   );
+
+  // front paws, cream, side by side under the chest
+  for (const side of [-1, 1])
+    F.add(
+      "body",
+      `paw_${side}`,
+      ellipsoid(THREE, [0.036, 0.03, 0.065], { w: 8, h: 5 }).translate(side * 0.055, 0.03, 0.165),
+      { part: "base", style: STYLE.fur, material: "fur", color: cream },
+    );
 
   return { root: rig.root, clips: catClips(THREE), extras: { athenaKeepHierarchy: true } };
 }

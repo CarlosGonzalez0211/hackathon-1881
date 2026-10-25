@@ -50,6 +50,7 @@ export class Figure {
       for (const key of Object.keys(this.materials)) this.materials[key] = surface;
     }
     this.count = 0;
+    this.meshes = [];
     this.groups = new Map();
     this.used = new Set(Object.values(rig.nodes).map((node) => node.name));
     /** when set, only meshes with these `part` tags are added (avatar part GLBs) */
@@ -106,8 +107,52 @@ export class Figure {
       parent = group;
     }
     parent.add(mesh);
+    this.meshes.push(mesh);
     this.count += g.index.count / 3;
     return mesh;
+  }
+
+  /**
+   * z (metres) of the rearmost garment or skin of the torso at the shoulder line: where the
+   * cape's `chest` node sits, and what backpacks and tanks must stay behind.
+   */
+  torsoBack() {
+    const { THREE } = this;
+    this.rig.root.updateMatrixWorld(true);
+    const chest = this.node("chest").getWorldPosition(new THREE.Vector3());
+    const v = new THREE.Vector3();
+    let back = Infinity;
+    for (const mesh of this.meshes) {
+      if (mesh.userData.part !== "top" && mesh.userData.part !== "base") continue;
+      let node = mesh.parent;
+      let onTorso = false;
+      let excluded = false;
+      while (node) {
+        if (node.name === "torso") onTorso = true;
+        if (/^(arm|elbow|hand|head|face|mantle|cowl)/.test(node.name)) excluded = true;
+        node = node.parent;
+      }
+      if (!onTorso || excluded) continue;
+      const position = mesh.geometry.attributes.position;
+      for (let i = 0; i < position.count; i++) {
+        v.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+        if (
+          Math.abs(v.y - chest.y) < 0.06 * this.plan.height &&
+          Math.abs(v.x) < 0.1 * this.plan.height
+        )
+          back = Math.min(back, v.z);
+      }
+    }
+    return Number.isFinite(back) ? back : this.plan.backZ;
+  }
+
+  /**
+   * How far (head units, <= 0) a pack that normally fronts at z = -0.25 must move back so that it
+   * sits behind the cape (which hangs 1.4 % of the height behind the garments).
+   */
+  packShift() {
+    const cape = (this.torsoBack() - 0.014 * this.plan.height) / this.plan.hh;
+    return Math.min(0, cape - 0.08 + 0.25);
   }
 
   /** A mesh with its own (non-merging) emissive material, e.g. `lamp_light`. */
@@ -332,14 +377,14 @@ export function headField(T, { kid = false, jaw = 1, cheek = 1 } = {}) {
   const { sdf } = T;
   const c = 0.12;
   const skull = sdf.ellipsoid([0, c + 0.57, -0.01], [0.44, 0.44, 0.45]);
-  const lower = sdf.ellipsoid([0, c + 0.27, 0.04], [0.34 * jaw, 0.27, 0.35]);
+  const lower = sdf.ellipsoid([0, c + 0.27, 0.04], [0.385 * jaw, 0.27, 0.35]);
   const chin = sdf.sphere([0, c + 0.07, 0.19], 0.1 * jaw);
   const cheeks = [-1, 1].map((s) =>
     sdf.sphere([s * 0.265, c + (kid ? 0.28 : 0.3), 0.3], (kid ? 0.14 : 0.115) * cheek),
   );
   const nose = sdf.sphere([0, c + 0.35, 0.43], kid ? 0.036 : 0.042);
   const ears = [-1, 1].map((s) => sdf.ellipsoid([s * 0.435, c + 0.42, -0.03], [0.05, 0.095, 0.07]));
-  const neck = taperCapsule([0, -0.04, -0.01], [0, c + 0.1, 0], 0.125, 0.12);
+  const neck = taperCapsule([0, -0.04, -0.01], [0, c + 0.1, 0], 0.15, 0.14);
   return sdf.smin(0.2, sdf.smin(0.12, skull, lower), chin, ...cheeks, nose, neck, ...ears);
 }
 

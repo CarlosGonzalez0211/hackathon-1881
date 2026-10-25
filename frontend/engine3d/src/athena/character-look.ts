@@ -76,9 +76,9 @@ export function applyCharacterLook(ctx: AthenaInstallContext, root: LegacyContex
             float terminator = smoothstep(.05,.45,wrap)*(1.0-smoothstep(.45,.9,wrap));
             float backlit = pow(clamp(dot(lightDir,-viewDir)*.5+.5,0.0,1.0),2.0);
             float rim = pow(1.0-facing,2.6);
-            outgoingLight += base*vec3(.42,.15,.07)*skin*terminator;
+            outgoingLight += base*vec3(.22,.08,.04)*skin*terminator;
             outgoingLight += base*vec3(.34,.16,.07)*(skin+hair*.6)*rim*backlit*1.4;
-            outgoingLight += base*vec3(.12,.04,.02)*skin*(1.0-facing*.6);
+            outgoingLight += base*vec3(.05,.02,.01)*skin*(1.0-facing*.6);
             // Hair: a tight pale lobe plus a broad coloured lobe shifted along the strands.
             vec3 halfLight = normalize(lightDir+viewDir);
             float lobeA = pow(max(0.0,dot(normal,halfLight)),70.0);
@@ -88,7 +88,7 @@ export function applyCharacterLook(ctx: AthenaInstallContext, root: LegacyContex
             float catchlight = pow(max(0.0,dot(normal,halfLight)),180.0);
             float fill = pow(max(0.0,dot(normal,normalize(vec3(.5,-.3,.8)))),60.0);
             outgoingLight = mix(outgoingLight,base*1.05,eye*.9);
-            outgoingLight += vec3(1.,.97,.9)*(catchlight*.9+fill*.25)*eye;
+            outgoingLight += vec3(1.,.97,.9)*(catchlight*.9+fill*.14)*eye;
             #include <opaque_fragment>
           `,
           );

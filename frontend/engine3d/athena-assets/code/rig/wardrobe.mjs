@@ -1377,26 +1377,27 @@ export const GEAR = {
   backpack(F, hex = "#2F7D7A", o = {}) {
     const { THREE, T } = F;
     const L = F.plan.torsoLen / F.plan.hh;
+    const dz = F.packShift();
     const at = (name, g, color, extra = {}) =>
       gear(F, "torso", name, g, color, { group: "pack", ...extra });
     at(
       o.name ?? "pack",
-      roundBox(THREE, [0.6, 0.76, 0.36], 0.12, 2).translate(0, L * 0.5, -0.43),
+      roundBox(THREE, [0.6, 0.76, 0.36], 0.12, 2).translate(0, L * 0.5, -0.43 + dz),
       gradient(THREE, hex, { from: L * 0.1, to: L * 0.9, low: 0.8, high: 1.05 }),
     );
     at(
       "pack_flap",
-      roundBox(THREE, [0.62, 0.28, 0.38], 0.1, 1).translate(0, L * 0.82, -0.43),
+      roundBox(THREE, [0.62, 0.28, 0.38], 0.1, 1).translate(0, L * 0.82, -0.43 + dz),
       shade(THREE, hex, 0.9),
     );
     at(
       "pack_pocket",
-      roundBox(THREE, [0.4, 0.26, 0.14], 0.06, 1).translate(0, L * 0.38, -0.65),
+      roundBox(THREE, [0.4, 0.26, 0.14], 0.06, 1).translate(0, L * 0.38, -0.65 + dz),
       shade(THREE, hex, 1.08),
     );
     at(
       "pack_buckle",
-      roundBox(THREE, [0.1, 0.08, 0.04], 0.015, 1).translate(0, L * 0.78, -0.64),
+      roundBox(THREE, [0.1, 0.08, 0.04], 0.015, 1).translate(0, L * 0.78, -0.64 + dz),
       GOLD,
       { material: "gold" },
     );
@@ -1407,8 +1408,8 @@ export const GEAR = {
           T,
           THREE,
           [
-            [s * 0.18, L * 0.78, -0.3],
-            [s * 0.2, L - 0.04, -0.08],
+            [s * 0.18, L * 0.78, -0.3 + dz],
+            [s * 0.2, L - 0.04, -0.08 + dz],
             [s * 0.2, L - 0.05, 0.14],
             [s * 0.19, L * 0.5, 0.27],
           ],
@@ -1418,25 +1419,43 @@ export const GEAR = {
         "#6E4F3C",
       );
   },
+  /**
+   * Messenger bag on one hip. `out` pushes it (and its strap) away from the body for wide
+   * garments (the student's poncho), `back` moves it behind the hip.
+   */
   satchel(F, hex = "#9C7356", o = {}) {
     const { THREE, T } = F;
     const L = F.plan.torsoLen / F.plan.hh;
     const side = o.side ?? 1;
+    const k = o.out ?? 1;
+    const back = o.back ?? 0;
     const at = (name, g, color, extra = {}) =>
       gear(F, "torso", name, g, color, { group: "satchel", ...extra });
     at(
       "satchel_bag",
-      roundBox(THREE, [0.15, 0.3, 0.34], 0.07, 1).translate(side * 0.4, 0.04 * L, -0.02),
+      roundBox(THREE, [0.15, 0.3, 0.34], 0.07, 1).translate(
+        side * 0.4 * k,
+        0.04 * L,
+        -0.02 * k - back,
+      ),
       hex,
     );
     at(
       "satchel_flap",
-      roundBox(THREE, [0.16, 0.14, 0.35], 0.05, 1).translate(side * 0.4, 0.16 * L, -0.02),
+      roundBox(THREE, [0.16, 0.14, 0.35], 0.05, 1).translate(
+        side * 0.4 * k,
+        0.16 * L,
+        -0.02 * k - back,
+      ),
       shade(THREE, hex, 0.82),
     );
     at(
       "satchel_clasp",
-      ellipsoid(THREE, [0.02, 0.05, 0.05], { w: 6, h: 4 }).translate(side * 0.49, 0.13 * L, 0.08),
+      ellipsoid(THREE, [0.02, 0.05, 0.05], { w: 6, h: 4 }).translate(
+        side * 0.49 * k,
+        0.13 * L,
+        0.08 * k - back,
+      ),
       GOLD,
       { material: "gold" },
     );
@@ -1446,11 +1465,11 @@ export const GEAR = {
         T,
         THREE,
         [
-          [side * 0.4, 0.24 * L, -0.02],
-          [side * 0.2, L * 0.7, 0.25],
-          [-side * 0.1, L - 0.14, 0.0],
-          [-side * 0.14, L * 0.62, -0.26],
-          [side * 0.34, 0.1 * L, -0.2],
+          [side * 0.4 * k, 0.24 * L, -0.02 * k - back],
+          [side * 0.2 * k, L * 0.7, 0.25 * k],
+          [-side * 0.1 * k, L - 0.14, 0.0],
+          [-side * 0.14 * k, L * 0.62, -0.26 * k],
+          [side * 0.34 * k, 0.1 * L, -0.2 * k - back],
         ],
         0.026,
         { tubular: 12, radial: 3 },
@@ -1519,6 +1538,7 @@ export const GEAR = {
   tank(F) {
     const { THREE, T } = F;
     const L = F.plan.torsoLen / F.plan.hh;
+    const dz = F.packShift();
     for (const s of [-1, 1])
       gold(
         F,
@@ -1535,7 +1555,7 @@ export const GEAR = {
             [0.001, 0.84],
           ],
           { segments: 10, divisions: 1 },
-        ).translate(s * 0.15, L * 0.06, -0.38),
+        ).translate(s * 0.15, L * 0.06, -0.38 + dz),
         { group: "tank" },
       );
     gear(
@@ -1546,8 +1566,8 @@ export const GEAR = {
         T,
         THREE,
         [
-          [0, L * 0.6, -0.38],
-          [0, L * 0.8, -0.34],
+          [0, L * 0.6, -0.38 + dz],
+          [0, L * 0.8, -0.34 + dz],
         ],
         0.04,
         { tubular: 3, radial: 3 },
@@ -1564,8 +1584,8 @@ export const GEAR = {
           T,
           THREE,
           [
-            [s * 0.2, L * 0.78, -0.3],
-            [s * 0.2, L - 0.05, -0.06],
+            [s * 0.2, L * 0.78, -0.3 + dz],
+            [s * 0.2, L - 0.05, -0.06 + dz],
             [s * 0.2, L - 0.05, 0.14],
             [s * 0.19, L * 0.5, 0.26],
           ],
@@ -2149,20 +2169,25 @@ export const HELD = {
   /** the student's lantern staff (left hand): staff, hook, brass lantern with a glowing core */
   lanternStaff(F) {
     const { THREE, T } = F;
+    // The staff leans out and forward from the left hand, clear of the poncho, so the lantern is
+    // seen (outward is -x for the left hand).
+    const lean = (geometry) => geometry.rotateX(0.2).rotateZ(0.14);
     gear(
       F,
       "hand_l",
       "staff",
-      tube(
-        T,
-        THREE,
-        [
-          [0, -1.05, 0.0],
-          [0, 0.2, 0.0],
-          [0, 1.2, 0.02],
-        ],
-        0.036,
-        { tubular: 8, radial: 4 },
+      lean(
+        tube(
+          T,
+          THREE,
+          [
+            [0, -1.05, 0.0],
+            [0, 0.2, 0.0],
+            [0, 1.2, 0.02],
+          ],
+          0.036,
+          { tubular: 8, radial: 4 },
+        ),
       ),
       "#8A6246",
       { group: "staff" },
@@ -2171,17 +2196,20 @@ export const HELD = {
       F,
       "hand_l",
       "staff_hook",
-      tube(
-        T,
-        THREE,
-        [
-          [0, 1.2, 0.02],
-          [0.05, 1.32, 0.02],
-          [0.14, 1.34, 0.02],
-          [0.18, 1.26, 0.02],
-        ],
-        0.022,
-        { tubular: 8, radial: 3 },
+      lean(
+        tube(
+          T,
+          THREE,
+          [
+            [0, 1.2, 0.02],
+            [-0.08, 1.34, 0.02],
+            [-0.26, 1.38, 0.02],
+            [-0.42, 1.28, 0.02],
+            [-0.42, 1.04, 0.02],
+          ],
+          0.02,
+          { tubular: 8, radial: 3 },
+        ),
       ),
       { group: "staff" },
     );
@@ -2189,30 +2217,33 @@ export const HELD = {
       F,
       "hand_l",
       "staff_cap",
-      ellipsoid(THREE, [0.05, 0.035, 0.05], { w: 8, h: 4 }).translate(0, -1.07, 0),
+      lean(ellipsoid(THREE, [0.05, 0.035, 0.05], { w: 8, h: 4 }).translate(0, -1.07, 0)),
       { group: "staff" },
     );
+    const lx = -0.42;
     gold(
       F,
       "hand_l",
       "lantern_cap",
-      revolve(
-        T,
-        [
-          [0.001, 0.0],
-          [0.11, -0.03],
-          [0.09, -0.06],
-          [0.001, 0.04],
-        ],
-        { segments: 8, divisions: 1 },
-      ).translate(0.18, 1.0, 0.02),
+      lean(
+        revolve(
+          T,
+          [
+            [0.001, 0.0],
+            [0.11, -0.03],
+            [0.09, -0.06],
+            [0.001, 0.04],
+          ],
+          { segments: 8, divisions: 1 },
+        ).translate(lx, 1.0, 0.02),
+      ),
       { group: "staff" },
     );
     gold(
       F,
       "hand_l",
       "lantern_base",
-      ellipsoid(THREE, [0.095, 0.03, 0.095], { w: 8, h: 4 }).translate(0.18, 0.67, 0.02),
+      lean(ellipsoid(THREE, [0.095, 0.03, 0.095], { w: 8, h: 4 }).translate(lx, 0.67, 0.02)),
       { group: "staff" },
     );
     const material = T.material("lamp_light", "#FFE2A6", {
@@ -2223,26 +2254,28 @@ export const HELD = {
     F.addGlow(
       "hand_l",
       "lamp_light",
-      ellipsoid(THREE, [0.09, 0.14, 0.09], { w: 10, h: 7 }).translate(0.18, 0.83, 0.02),
+      lean(ellipsoid(THREE, [0.09, 0.14, 0.09], { w: 10, h: 7 }).translate(lx, 0.83, 0.02)),
       material,
       { part: "acc", style: STYLE.cloth, color: "#FFFFFF", keep: true },
     );
     for (let a = 0; a < 4; a++) {
-      const x = 0.18 + 0.095 * Math.cos((a * TAU) / 4 + 0.785);
+      const x = lx + 0.095 * Math.cos((a * TAU) / 4 + 0.785);
       const z = 0.02 + 0.095 * Math.sin((a * TAU) / 4 + 0.785);
       gold(
         F,
         "hand_l",
         `lantern_bar_${a}`,
-        tube(
-          T,
-          THREE,
-          [
-            [x, 0.69, z],
-            [x, 0.97, z],
-          ],
-          0.012,
-          { tubular: 2, radial: 3 },
+        lean(
+          tube(
+            T,
+            THREE,
+            [
+              [x, 0.69, z],
+              [x, 0.97, z],
+            ],
+            0.012,
+            { tubular: 2, radial: 3 },
+          ),
         ),
         { group: "staff" },
       );
