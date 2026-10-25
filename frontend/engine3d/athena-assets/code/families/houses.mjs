@@ -76,8 +76,8 @@ const MATERIALS = {
     color: C.white,
     vc: true,
     roughness: 0.5,
-    emissive: C.tealDark,
-    emissiveIntensity: 0.02,
+    emissive: C.tealDark, // replaced per house by the tile colour (see `material`)
+    emissiveIntensity: 0.08,
   },
   roof_ridge: { color: C.white, vc: true, roughness: 0.6 },
   window_unlit: { color: C.white, vc: true, roughness: 0.3 },
@@ -289,9 +289,10 @@ const VARIANTS = [
   },
 ];
 
+/** Roof tones are lifted so the tiles survive a backlit world (the grade pass is deferred). */
 const TONES = {
-  teal: { dark: C.tealDark, light: C.tealLight },
-  terra: { dark: C.terraDark, light: C.terraLight },
+  teal: { dark: "#245E5B", light: "#3C8E89" },
+  terra: { dark: "#A85E49", light: "#D4876C" },
   slate: { dark: C.slateDark, light: C.slateLight },
 };
 
@@ -591,7 +592,8 @@ async function buildHouse(THREE, T, v, status) {
       const m = T.material(name, spec.color, {
         roughness: spec.roughness,
         metalness: spec.metalness,
-        emissive: spec.emissive,
+        // roof tile: a self-light of 8 percent of its own colour reads in shade without blooming
+        emissive: name === "roof_tile" ? tone.light : spec.emissive,
         emissiveIntensity: spec.emissiveIntensity,
         vertexColors: !!spec.vc,
         doubleSided: spec.doubleSided,

@@ -186,7 +186,7 @@ for (const status of STATUSES)
             "KHR_materials_emissive_strength",
           );
           assert.ok(
-            lit && (extension?.getEmissiveStrength() ?? 1) <= 0.05,
+            lit && (extension?.getEmissiveStrength() ?? 1) <= 0.1,
             "roof_tile faint emissive",
           );
         } else assert.ok(!lit, `${name} is not emissive`);
