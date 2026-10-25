@@ -23,6 +23,7 @@ import {
   type HintResult,
   type LearningSessionStartResult,
   type LearningSessionSummary,
+  type LearningEvidenceSnapshot,
   type RetentionCheckResult,
   type StudentLearningState,
   type StudentLearningPreferences,
@@ -55,6 +56,10 @@ import {
 } from "./world-bridge.js";
 
 const studentParamsSchema = z.object({ studentId: z.string().min(1).max(200) });
+const studentTopicParamsSchema = z.object({
+  studentId: z.string().min(1).max(200),
+  topicId: z.string().min(1).max(200),
+});
 const quizParamsSchema = z.object({ topicId: z.string().min(1).max(200) });
 const quizQuerySchema = z.object({
   studentId: z.string().min(1).max(200),
@@ -160,6 +165,13 @@ export async function learningRoutes(app: FastifyInstance, options: LearningRout
       return studentMasterySnapshotSchema.parse(
         await masteryReadPort.getStudentMastery(studentId, topicIds),
       );
+    },
+  );
+  app.get<{ Reply: LearningEvidenceSnapshot }>(
+    "/learning/student/:studentId/topics/:topicId/evidence",
+    async (request) => {
+      const params = studentTopicParamsSchema.parse(request.params);
+      return service.getLearningEvidenceSnapshot(request.auth, params.studentId, params.topicId);
     },
   );
   app.put<{ Reply: StudentLearningPreferences }>(

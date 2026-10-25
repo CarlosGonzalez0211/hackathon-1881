@@ -11,6 +11,7 @@ import {
   hintResultSchema,
   learningSessionStartResultSchema,
   learningSessionSummarySchema,
+  learningEvidenceSnapshotSchema,
   retentionCheckResultSchema,
   studentLearningStateSchema,
   studentMasterySnapshotSchema,
@@ -525,6 +526,19 @@ test("three consecutive concept failures recommend educator intervention", async
     assert.equal(lastResult?.educatorInterventionRecommended, true);
     assert.equal(lastResult?.strategyReason, "repeated_failure_intervention");
     assert.match(lastResult?.strategyExplanation ?? "", /educator support/);
+
+    const evidenceResponse = await app.inject({
+      method: "GET",
+      url: `/api/learning/student/${athenaDemoIds.students.lucia}/topics/${athenaDemoIds.topics.geometry}/evidence`,
+    });
+    assert.equal(evidenceResponse.statusCode, 200, evidenceResponse.body);
+    const snapshot = learningEvidenceSnapshotSchema.parse(evidenceResponse.json());
+    assert.equal(snapshot.interventionSignals.length, 1);
+    assert.equal(snapshot.interventionSignals[0]?.recentFailureCount, 3);
+    assert.equal(snapshot.interventionSignals[0]?.severity, "medium");
+    assert.equal(snapshot.strategyEffectiveness[0]?.strategy, "worked_example");
+    assert.equal(snapshot.strategyEffectiveness[0]?.attempts, 3);
+    assert.equal("aiUsage" in evidenceResponse.json(), false);
   } finally {
     await app.close();
   }
@@ -799,6 +813,24 @@ test("Supabase adapters satisfy assessment and core learning repository contract
   ]);
   assert.deepEqual(await repository.listActiveMisconceptions(mastery.studentId, mastery.topicId), [
     demoLearningIds.misconceptions.triangleMissingHalf,
+  ]);
+
+  const observation = {
+    id: "00000000-0000-4000-8000-000000009903",
+    studentId: mastery.studentId,
+    topicId: mastery.topicId,
+    conceptId: demoLearningIds.concepts.triangleArea,
+    strategy: "visual_decomposition" as const,
+    contextKey: "geometry:missing_half:foundation",
+    beforeScore: 0,
+    afterScore: 1,
+    misconceptionResolved: true,
+    reward: 0.75,
+    observedAt: "2026-10-24T12:00:00.000Z",
+  };
+  await repository.saveStrategyObservation(observation);
+  assert.deepEqual(await repository.listStrategyObservations(mastery.studentId, mastery.topicId), [
+    observation,
   ]);
 
   const session = {

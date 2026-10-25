@@ -333,6 +333,36 @@ export const strategyObservationSchema = z.object({
 });
 export type StrategyObservation = z.infer<typeof strategyObservationSchema>;
 
+export const strategyEffectivenessSummarySchema = z.object({
+  strategy: teachingStrategySchema,
+  attempts: z.number().int().nonnegative(),
+  averageReward: z.number().min(0).max(1),
+  misconceptionResolutions: z.number().int().nonnegative(),
+});
+export type StrategyEffectivenessSummary = z.infer<typeof strategyEffectivenessSummarySchema>;
+
+export const educatorInterventionSignalSchema = z.object({
+  conceptId: idSchema,
+  severity: z.enum(["medium", "high"]),
+  reason: z.literal("repeated_checkpoint_failure"),
+  recentFailureCount: z.number().int().min(3),
+  evidenceIds: z.array(idSchema).min(3),
+  recommendedAction: z.string().min(1),
+});
+export type EducatorInterventionSignal = z.infer<typeof educatorInterventionSignalSchema>;
+
+export const learningEvidenceSnapshotSchema = z.object({
+  studentId: idSchema,
+  topicId: idSchema,
+  mastery: studentTopicMasterySchema.nullable(),
+  activeMisconceptionIds: z.array(idSchema),
+  resolvedMisconceptionEvidenceIds: z.array(idSchema),
+  strategyEffectiveness: z.array(strategyEffectivenessSummarySchema),
+  interventionSignals: z.array(educatorInterventionSignalSchema),
+  generatedAt: isoDateSchema,
+});
+export type LearningEvidenceSnapshot = z.infer<typeof learningEvidenceSnapshotSchema>;
+
 export const conceptKnowledgeStateSchema = z.object({
   studentId: idSchema,
   conceptId: idSchema,

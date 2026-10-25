@@ -58,6 +58,10 @@ test("every learning route enforces its student or course authorization boundary
         url: `/api/learning/student/${athenaDemoIds.students.lucia}/mastery`,
       },
       {
+        method: "GET",
+        url: `/api/learning/student/${athenaDemoIds.students.lucia}/topics/${athenaDemoIds.topics.geometry}/evidence`,
+      },
+      {
         method: "PUT",
         url: `/api/learning/student/${athenaDemoIds.students.lucia}/preferences`,
         payload: { preferredStrategies: ["worked_example"] },
@@ -101,6 +105,10 @@ test("every learning route rejects malformed parameters, queries or bodies", asy
       { method: "POST", url: "/api/learning/retention-check", payload: {} },
       { method: "GET", url: `/api/learning/student/${tooLongId}/state` },
       { method: "GET", url: `/api/learning/student/${tooLongId}/mastery` },
+      {
+        method: "GET",
+        url: `/api/learning/student/${athenaDemoIds.students.lucia}/topics/${tooLongId}/evidence`,
+      },
       {
         method: "PUT",
         url: `/api/learning/student/${athenaDemoIds.students.lucia}/preferences`,

@@ -40,6 +40,7 @@ export interface LearningRepository {
   getStrategyPosteriors(studentId: string, contextKey: string): Promise<StrategyPosterior[]>;
   saveStrategyPosterior(studentId: string, value: StrategyPosterior): Promise<void>;
   saveStrategyObservation(value: StrategyObservation): Promise<void>;
+  listStrategyObservations(studentId: string, topicId?: string): Promise<StrategyObservation[]>;
   saveRetention(value: RetentionSchedule): Promise<void>;
   listRetention(studentId: string): Promise<RetentionSchedule[]>;
   getLearningPreferences(studentId: string): Promise<StudentLearningPreferences | null>;
@@ -154,6 +155,12 @@ export class InMemoryLearningRepository implements LearningRepository {
 
   async saveStrategyObservation(value: StrategyObservation) {
     this.observations.push(value);
+  }
+
+  async listStrategyObservations(studentId: string, topicId?: string) {
+    return this.observations.filter(
+      (value) => value.studentId === studentId && (!topicId || value.topicId === topicId),
+    );
   }
 
   async saveRetention(value: RetentionSchedule) {

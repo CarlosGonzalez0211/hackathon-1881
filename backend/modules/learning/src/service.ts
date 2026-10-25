@@ -4,6 +4,7 @@ import {
   curriculumContextResponseSchema,
   diagnosticResultSchema,
   hintResultSchema,
+  learningEvidenceSnapshotSchema,
   learningSessionSchema,
   learningSessionStartResultSchema,
   learningSessionSummarySchema,
@@ -28,6 +29,7 @@ import {
   type LearningSessionStart,
   type LearningSessionStartResult,
   type LearningSessionSummary,
+  type LearningEvidenceSnapshot,
   type MisconceptionCandidate,
   type RetentionCheckResult,
   type RetentionCheckSubmission,
@@ -783,6 +785,34 @@ export class LearningService {
     });
   }
 
+  async getLearningEvidenceSnapshot(
+    context: AuthContext,
+    studentId: string,
+    topicId: string,
+  ): Promise<LearningEvidenceSnapshot> {
+    if (!this.authorization.canAccessStudent(context, studentId)) {
+      throw forbidden("You cannot view this student's learning evidence");
+    }
+    const [mastery, evidence, activeMisconceptionIds, observations] = await Promise.all([
+      this.repository.getMastery(studentId, topicId),
+      this.repository.listEvidence(studentId, topicId),
+      this.repository.listActiveMisconceptions(studentId, topicId),
+      this.repository.listStrategyObservations(studentId, topicId),
+    ]);
+    return learningEvidenceSnapshotSchema.parse({
+      studentId,
+      topicId,
+      mastery,
+      activeMisconceptionIds,
+      resolvedMisconceptionEvidenceIds: evidence
+        .filter((item) => item.misconceptionResolved)
+        .map((item) => item.id),
+      strategyEffectiveness: summarizeStrategyEffectiveness(observations),
+      interventionSignals: buildInterventionSignals(evidence),
+      generatedAt: this.clock.now().toISOString(),
+    });
+  }
+
   async updateLearningPreferences(
     context: AuthContext,
     studentId: string,
@@ -1030,6 +1060,54 @@ function average(values: number[]) {
   return values.length === 0
     ? 0
     : values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function summarizeStrategyEffectiveness(observations: StrategyObservation[]) {
+  const grouped = new Map<TeachingStrategy, StrategyObservation[]>();
+  for (const observation of observations) {
+    const values = grouped.get(observation.strategy) ?? [];
+    values.push(observation);
+    grouped.set(observation.strategy, values);
+  }
+  return [...grouped.entries()]
+    .map(([strategy, values]) => ({
+      strategy,
+      attempts: values.length,
+      averageReward: average(values.map((value) => value.reward)),
+      misconceptionResolutions: values.filter((value) => value.misconceptionResolved).length,
+    }))
+    .sort((left, right) => left.strategy.localeCompare(right.strategy));
+}
+
+function buildInterventionSignals(evidence: CheckpointEvidence[]) {
+  const byConcept = new Map<string, CheckpointEvidence[]>();
+  for (const item of evidence) {
+    const values = byConcept.get(item.conceptId) ?? [];
+    values.push(item);
+    byConcept.set(item.conceptId, values);
+  }
+  return [...byConcept.entries()].flatMap(([conceptId, values]) => {
+    const recentFailures: CheckpointEvidence[] = [];
+    for (const item of [...values].sort(
+      (left, right) =>
+        right.submittedAt.localeCompare(left.submittedAt) || right.id.localeCompare(left.id),
+    )) {
+      if (item.correct) break;
+      recentFailures.push(item);
+    }
+    if (recentFailures.length < 3) return [];
+    return [
+      {
+        conceptId,
+        severity: recentFailures.length >= 5 ? ("high" as const) : ("medium" as const),
+        reason: "repeated_checkpoint_failure" as const,
+        recentFailureCount: recentFailures.length,
+        evidenceIds: recentFailures.map((item) => item.id),
+        recommendedAction:
+          "Review the student's recent evidence and provide a teacher-guided explanation.",
+      },
+    ];
+  });
 }
 
 function explainStrategyDecision(input: {

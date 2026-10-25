@@ -8,6 +8,7 @@ import {
   retentionCheckResultSchema,
   retentionEvidenceSchema,
   retentionScheduleSchema,
+  strategyObservationSchema,
   strategyPosteriorSchema,
   studentLearningPreferencesSchema,
   studentTopicMasterySchema,
@@ -217,6 +218,14 @@ export class SupabaseLearningRepository implements LearningRepository {
       payload: value,
       observed_at: value.observedAt,
     });
+  }
+
+  async listStrategyObservations(studentId: string, topicId?: string) {
+    const rows = await this.rest.select<Row>("strategy_observations", {
+      student_id: studentId,
+      ...(topicId ? { topic_id: topicId } : {}),
+    });
+    return rows.map((row) => strategyObservationSchema.parse(row.payload));
   }
 
   async saveRetention(value: RetentionSchedule) {

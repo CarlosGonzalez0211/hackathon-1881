@@ -11,6 +11,7 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 - `POST /api/learning/retention-check`
 - `GET /api/learning/student/:studentId/state`
 - `GET /api/learning/student/:studentId/mastery?topicIds=a,b`
+- `GET /api/learning/student/:studentId/topics/:topicId/evidence`
 - `PUT /api/learning/student/:studentId/preferences`
 - `GET /api/learning/student/:studentId/recommendation`
 - `PUT /api/learning/course/:courseId/topics/:topicId/priority`
@@ -33,6 +34,8 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 - domain events for diagnostics, misconceptions, checkpoints, mastery and strategy changes
 - World-compatible mastery reads, compact tutor requests and idempotent learning-event delivery
 - structured review-required misconception candidates when deterministic patterns do not match
+- educator-facing evidence snapshots with mastery, misconceptions, strategy effectiveness and
+  deterministic repeated-failure signals
 
 ## Integration boundaries
 
@@ -51,6 +54,11 @@ implementation; this contract is provisional until Daniela and Vianey approve it
 The concept ids and three-concept Geometry fixture in `shared/src/mocks/demo-learning.ts` are
 intentionally centralized and provisional until Daniela and Vianey freeze the shared catalog. The
 generic `/api/ai/prompt` endpoint remains a developer demo and must not be used as the tutor.
+
+The educator evidence route is Learning's read-only handoff to Carlos's analytics subsystem. It
+contains academic evidence and deterministic intervention candidates, but deliberately contains no
+click, visit, time-spent or AI-usage fields. Carlos remains responsible for class-level projection,
+educator workflows and intervention status.
 
 The quiz route returns only learner-safe question fields. Answer keys and misconception-answer maps
 remain inside the backend assessment repository. Written-response rubric phrases, weights and
