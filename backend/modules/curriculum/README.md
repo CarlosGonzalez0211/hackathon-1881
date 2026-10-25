@@ -52,7 +52,7 @@ continuity, concept-specific wording, and live-model answer leakage.
 
 ### For the World owner
 
-The locally connected Material slot re-exports Person 1's
+The connected Material slot re-exports Person 1's
 `CurriculumMaterialPanel`, preserving `topicId`, `studentId`, `cta`, `onStart`,
 and `showStart`. HousePage keeps its separate start controls. The panel reads
 `GET /api/topics/:topicId/sources`, renders TXT lessons and citations, and offers
@@ -71,7 +71,7 @@ or course selection. See [the Material integration guide](../../../frontend/web/
 | Person 1 + Platform       | Agree on the History course UUID and add its explicit mapping. `classes.course_id` is UUID; `course-history-1` is not yet mapped. Preserve existing Mathematics IDs.                                         |
 | World owner + Person 1    | Connect real enrollment and curriculum providers. World still constructs fixture providers; real profiles and History navigation are not wired by the Material-slot change.                                  |
 | Daniela                   | Confirm follow-up/hint locale handling and concept-specific hints; test live-model grounding and answer leakage separately.                                                                                  |
-| Vianey + owners           | Once sign-in and navigation work, test Mathematics TXT and History resources in the browser. Review pending changes before authorizing a commit or push.                                                     |
+| Vianey + owners           | Once sign-in and navigation work, test Mathematics TXT and History resources in the browser. Review the feature branch with the owners before integration into main.                                         |
 
 Local configuration checks confirmed Supabase accepted the configured keys and
 that profile, class, and enrollment tables were reachable. The login page and
@@ -383,14 +383,28 @@ Published on `main` through `e76cc04`: the Person 1 retrieval/hint fixes,
 World adapters, authenticated read routes, History default publication, and the
 prepared Material panel. Teammates can fetch that committed work.
 
-**Still local and uncommitted:** the World Material-slot connection, its guide
-updates, this README update, and the actual Daniela service integration runner,
-tests, and guide. Teammates cannot pull those additions yet. Nothing in this
-handoff authorizes committing or pushing.
+**Committed and pushed on `feat/vianey-workspace` at `adba2f1`:** the World
+Material-slot connection, its guide, the Daniela service integration runner,
+tests, and the handoff updates included in that commit. These additions are
+available on [the feature branch](https://github.com/CarlosGonzalez0211/hackathon-1881/tree/feat/vianey-workspace);
+they have not been merged into `main`, and no pull request has been created.
+
+Teammates can fetch the branch without changing their current checkout:
+
+```sh
+git fetch origin
+git show origin/feat/vianey-workspace:backend/modules/curriculum/README.md
+```
+
+This publication-status correction is a subsequent local documentation change;
+it is not included in `adba2f1` and has not been committed or pushed. The blockers
+listed above still apply: real signed-in Material testing is unverified, History
+needs its UUID/enrollment mapping and World navigation wiring, and live-model
+hint behavior and language continuity need Daniela's validation.
 
 The source prerequisite differences in `INTEGRATION_IDS.md` remain. The World
 adapter preserves the shipped Mathematics graph through a compatibility view.
-The local World edit is limited to the Material slot re-export; it does not wire
+The committed World edit is limited to the Material slot re-export; it does not wire
 World's enrollment/topic providers or Daniela's production Learning routes.
 The latest tests exercise an explicit test connection to her service.
 
