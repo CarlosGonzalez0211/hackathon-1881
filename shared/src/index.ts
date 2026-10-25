@@ -10,6 +10,9 @@ export * from "./learning.js";
 export * from "./mocks.js";
 export * from "./mocks/index.js";
 export * from "./world.js";
+export * from "./world-integration.js";
+export * from "./contracts/curriculum-world.js";
+export * from "./contracts/learning-world.js";
 
 export const healthResponseSchema = z.object({
   status: z.literal("ok"),

@@ -48,3 +48,7 @@ Todas las rutas usan prefijo `/api`. La tabla describe el objetivo; verificar el
 `AiEvent` propone estudiante, tema, tipo (`chat | podcast | video | summary | hint | quiz_answer`), fecha y metadatos. `ClassSummary` propone progreso por tema, conteos AI por tipo y filas por estudiante. DTO, autorización, límites y errores de esos servicios siguen pendientes de acuerdo; no añadirlos al cliente por inferencia.
 
 Fixtures esperadas: un planeta, ocho planetas en diferentes etapas y resumen de clase. `NEXT_PUBLIC_USE_MOCKS=true` evita llamadas educativas reales. El health del backend demuestra disponibilidad técnica, no disponibilidad del tutor ni de Supabase.
+
+## Integración del mundo (propuesta)
+
+La interacción entre el mundo 3D, las casas y las APIs de Currículo (P1) y Aprendizaje (P2) se describe en [WORLD_INTEGRATION.md](WORLD_INTEGRATION.md), con un paquete de contrato por equipo: [P1](contracts/P1-curriculum-world.md), [P2](contracts/P2-learning-world.md) y [API del mundo](contracts/world-api.md).

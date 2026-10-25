@@ -14,6 +14,11 @@ export interface ProjectedHouse {
   y: number;
   visible: boolean;
   distance: number;
+  /**
+   * Within the house's interaction radius (anchor or door). The same rule as the E key:
+   * the house marker may only be activated when this is true.
+   */
+  inReach: boolean;
 }
 export interface EngineStats {
   fps: number;
@@ -154,7 +159,8 @@ export async function createSurfaceEngine(
         let distance = position.distanceTo(player.position);
         if (site)
           distance = Math.min(distance, door.fromArray(site.door).distanceTo(player.position));
-        if (distance < min && distance < (anchor.interaction?.radius || 2.2)) {
+        const inReach = distance < (anchor.interaction?.radius || 2.2);
+        if (inReach && distance < min) {
           min = distance;
           nearest = slot;
         }
@@ -169,6 +175,7 @@ export async function createSurfaceEngine(
           y: ((1 - projected.y) * host.clientHeight) / 2,
           visible: projected.z < 1 && position.dot(scene.camera.position) > 0,
           distance,
+          inReach,
         };
       });
       options.onProjection?.(points);

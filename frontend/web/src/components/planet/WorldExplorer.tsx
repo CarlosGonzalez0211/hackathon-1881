@@ -3,16 +3,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { defaultWorldAccessibilitySettings } from "@athena/shared";
-import type { HouseState, PlanetState } from "@athena/shared";
 import type { EngineStats } from "@athena/engine3d";
+import { useWorld } from "@/features/world/WorldProvider";
+import { PresenterControls } from "@/features/world/components/PresenterControls";
+import { WorldToasts } from "@/features/world/components/WorldToasts";
+import { useMocks } from "@/lib/mode";
 import { Planet } from "./Planet";
-import { HouseSession } from "../house/HouseSession";
 import { SoundControls } from "@/features/world/components/SoundControls";
 import type { Volumes } from "@/features/world/components/SoundControls";
 import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
 import { useWorldShortcuts } from "@/features/world/use-world-shortcuts";
-export function WorldExplorer({ state, simulated }: { state: PlanetState; simulated: boolean }) {
-  const [house, setHouse] = useState<HouseState | null>(null);
+
+/**
+ * Student world. The 3D planet and the 2D topic list both go through `activate`, which opens
+ * the routed house page (`/world/house/[topicId]`) over the paused world.
+ */
+export function WorldExplorer() {
+  const { world, houses, activate, houseOpen, error } = useWorld();
   const [topics, setTopics] = useState(false);
   const [muted, setMuted] = useState(true);
   const [volumes, setVolumes] = useState<Volumes>({
@@ -20,22 +27,37 @@ export function WorldExplorer({ state, simulated }: { state: PlanetState; simula
     effects: defaultWorldAccessibilitySettings.sfxVolume,
   });
   const router = useRouter();
+  // L / O / Esc belong to the world; the house page handles its own keys while open.
   useWorldShortcuts({
-    onList: () => setTopics((open) => !open),
-    onOrbit: () => router.push("/orbit"),
-    onEscape: () => setTopics(false),
+    onList: () => !houseOpen && setTopics((open) => !open),
+    onOrbit: () => !houseOpen && router.push("/orbit"),
+    onEscape: () => !houseOpen && setTopics(false),
   });
   const [stats, setStats] = useState<EngineStats | null>(null);
+
+  if (!world)
+    return (
+      <main className="world-app">
+        <div className="scene-status" role={error ? "alert" : "status"}>
+          {!error && <span className="loader-orbit" />}
+          <strong>{error ? "No pudimos cargar tu mundo" : "Preparando tu mundo"}</strong>
+          {error && <span>{error}</span>}
+        </div>
+      </main>
+    );
+
   return (
-    <main className="world-app">
+    <main className="world-app" aria-hidden={houseOpen || undefined}>
       <a className="skip-link" href="#topic-list">
         Ir a la lista de temas
       </a>
       <Planet
-        state={state}
+        state={world.planet}
         mode="surface"
-        onHouseClick={setHouse}
-        paused={Boolean(house)}
+        onHouseClick={(house) => {
+          if (!houseOpen) activate({ slot: house.slot });
+        }}
+        paused={houseOpen}
         muted={muted}
         volumes={volumes}
         onStats={setStats}
@@ -70,15 +92,15 @@ export function WorldExplorer({ state, simulated }: { state: PlanetState; simula
         >
           <span>⌂ &nbsp; Tus temas</span>
           <span>
-            {state.houses.length} {topics ? "−" : "+"}
+            {houses.length} {topics ? "−" : "+"}
           </span>
         </button>
         <div id="topics" className="topic-content">
           <p className="subtle">Abre cualquier tema desde esta lista, sin desplazarte en 3D.</p>
-          {state.houses.map((item) => (
+          {houses.map((item) => (
             <button
               className={`topic-row ${item.status}`}
-              onClick={() => setHouse(item)}
+              onClick={() => activate({ topicId: item.topicId })}
               key={item.topicId}
             >
               <span className="status-symbol" aria-hidden="true">
@@ -96,14 +118,15 @@ export function WorldExplorer({ state, simulated }: { state: PlanetState; simula
       <footer className="world-footer">
         <p>
           <kbd>W A S D</kbd> mover <span>·</span> <kbd>Espacio</kbd> saltar <span>·</span>{" "}
-          <kbd>E</kbd> interactuar
+          <kbd>E</kbd> entrar a una casa
         </p>
         <span className="runtime-note">
-          {simulated ? "Datos simulados" : ""}
+          {useMocks ? "Datos simulados" : ""}
           {stats ? ` · ${Math.round(stats.fps)} fps` : ""}
         </span>
       </footer>
-      {house && <HouseSession house={house} onClose={() => setHouse(null)} />}
+      <WorldToasts />
+      <PresenterControls />
     </main>
   );
 }

@@ -204,6 +204,9 @@ importers:
       '@athena/shared':
         specifier: workspace:*
         version: link:../../shared
+      '@athena/world':
+        specifier: workspace:*
+        version: link:../../backend/modules/world
       '@gsap/react':
         specifier: ^2.1.2
         version: 2.1.2(gsap@3.15.0)(react@19.3.1)

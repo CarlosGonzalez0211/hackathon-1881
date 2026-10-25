@@ -273,6 +273,8 @@ export const worldInteractionKindSchema = z.enum([
   "lumen_talked",
   "object_inspected",
   "celebration_seen",
+  /** Acknowledges a house status change shown to the student (targetId = transition id). */
+  "transition_seen",
   "accessibility_changed",
 ]);
 export type WorldInteractionKind = z.infer<typeof worldInteractionKindSchema>;
@@ -521,7 +523,10 @@ export const demoLuciaPlanetAfterCheckpoint: PlanetState = demoPlanet(DEMO_STUDE
   [L, 0],
 ]);
 
-/** Eight planets at different growth stages; Lucía first. */
+/**
+ * Eight planets at different growth stages; Lucía first. Statuses follow the prerequisites in
+ * `demoCurriculumTopics` (contracts/curriculum-world.ts) so the World projection reproduces them.
+ */
 export const demoClassPlanets: PlanetState[] = [
   demoLuciaPlanet,
   demoPlanet("student-mateo", 0.05, [
@@ -535,7 +540,7 @@ export const demoClassPlanets: PlanetState[] = [
   demoPlanet("student-valentina", 0.18, [
     [D, 1],
     [A, 0],
-    [L, 0],
+    [A, 0],
     [L, 0],
     [L, 0],
     [L, 0],
@@ -544,7 +549,7 @@ export const demoClassPlanets: PlanetState[] = [
     [D, 1],
     [D, 1],
     [P, 0.5],
-    [L, 0],
+    [A, 0],
     [L, 0],
     [L, 0],
   ]),

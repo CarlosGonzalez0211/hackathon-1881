@@ -118,16 +118,31 @@ function SurfacePlanet({
           .map((marker) => {
             const house = state.houses.find((item) => item.slot === marker.slot);
             if (!house) return null;
+            // Far away the marker is only a wayfinding label (clicks pass through to the world
+            // so the avatar can walk there). It becomes a button once the student is close
+            // enough to press E: the same reach rule the engine uses for the key.
+            if (!marker.inReach)
+              return (
+                <span
+                  key={house.topicId}
+                  className={`house-marker far ${house.status}`}
+                  style={{ left: marker.x, top: marker.y }}
+                >
+                  <StateIcon status={house.status} />
+                  <span>{house.title}</span>
+                </span>
+              );
             return (
               <button
                 key={house.topicId}
-                className={`house-marker ${house.status}`}
+                className={`house-marker near ${house.status}`}
                 style={{ left: marker.x, top: marker.y }}
                 onClick={() => onHouseClick?.(house)}
-                aria-label={`${house.title}: ${stateLabel(house.status)}`}
+                aria-label={`Entrar a ${house.title}: ${stateLabel(house.status)}`}
               >
                 <StateIcon status={house.status} />
                 <span>{house.title}</span>
+                <kbd aria-hidden="true">E</kbd>
               </button>
             );
           })}
