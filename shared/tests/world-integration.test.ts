@@ -10,6 +10,8 @@ import {
   demoCurriculumTopics,
   demoHouseContent,
   demoLearningScenario,
+  demoWorldTopics,
+  athenaDemoIds,
   diffHouses,
   houseContentSchema,
   houseEntryMode,
@@ -61,7 +63,7 @@ test("the pure projection reproduces every demo planet", () => {
     const mastery = demoClassMastery.find((item) => item.studentId === planet.studentId)!;
     const { planet: projected, overflowTopics } = projectPlanet({
       studentId: planet.studentId,
-      topics: demoCurriculumTopics,
+      topics: demoWorldTopics,
       mastery,
     });
     assert.deepEqual(projected, planet, planet.studentId);
@@ -72,8 +74,11 @@ test("the pure projection reproduces every demo planet", () => {
 test("growth falls back to mean house progress when Learning gives none", () => {
   const { planet } = projectPlanet({
     studentId: "s",
-    topics: demoCurriculumTopics,
-    mastery: { studentId: "s", topics: [{ topicId: "topic-fractions", mastery: 0.6 }] },
+    topics: demoWorldTopics,
+    mastery: {
+      studentId: "s",
+      topics: [{ topicId: athenaDemoIds.topics.fractions, mastery: 0.6 }],
+    },
   });
   assert.equal(planet.growth, 0.1);
 });
@@ -92,7 +97,7 @@ test("entry modes, diffs and layout", () => {
   );
   assert.deepEqual(diffHouses([], [{ ...house, status: "available" }])[0]?.from, "absent");
   assert.deepEqual(diffHouses([{ ...house, status: "done" }], [{ ...house, status: "done" }]), []);
-  const layout = buildWorldLayout("course-math-1", demoCurriculumTopics);
+  const layout = buildWorldLayout(athenaDemoIds.course, demoWorldTopics);
   assert.equal(layout.slots.filter((slot) => slot.topicId).length, 6);
   assert.throws(() =>
     houseEntryResultSchema.parse({ granted: true, mode: "review", entryId: "e" }),

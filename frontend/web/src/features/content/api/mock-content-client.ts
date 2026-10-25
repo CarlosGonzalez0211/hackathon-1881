@@ -1,9 +1,12 @@
 import {
   athenaDemoIds,
+  createDemoContentSeed,
   contentDisplayStatus,
+  demoContentChunk,
+  demoContentPreferences,
+  demoContentTopics,
   type ContentChatRequest,
   type ContentChatResponse,
-  type ContentFlag,
   type ContentMaterial,
   type ContentMilestone,
   type ContentObjective,
@@ -16,127 +19,7 @@ import {
 } from "@athena/shared";
 import { ContentApiError, type ContentClient, type ContentTopic } from "./types";
 
-const AT = "2026-10-24T00:00:00.000Z";
 const uuid = (suffix: string) => `00000000-0000-4000-8000-${suffix.padStart(12, "0")}`;
-const { topics, students } = athenaDemoIds;
-
-const TOPICS: ContentTopic[] = [
-  { id: topics.fractions, title: "Fracciones" },
-  { id: topics.geometry, title: "Geometría" },
-  { id: topics.functions, title: "Funciones" },
-  { id: topics.statistics, title: "Estadística" },
-];
-
-const base = {
-  classId: athenaDemoIds.class,
-  courseId: athenaDemoIds.course,
-  locale: "es" as const,
-  attempts: 1,
-  curriculumVersion: 1,
-  uploadedBy: athenaDemoIds.professorRuiz,
-  createdAt: AT,
-  updatedAt: AT,
-};
-
-/** Deterministic seed: one ready material, one failed, objectives, a milestone and flags. */
-function seed() {
-  const materials: ContentMaterial[] = [
-    {
-      ...base,
-      id: uuid("d001"),
-      title: "Notas de geometría",
-      filename: "notas-geometria.pdf",
-      mimeType: "application/pdf",
-      byteSize: 182_400,
-      sha256: "1".repeat(64),
-      topicIds: [topics.geometry],
-      status: "ready",
-      progress: { embedded: 24, total: 24 },
-      searchable: true,
-      processedAt: AT,
-    },
-    {
-      ...base,
-      id: uuid("d002"),
-      title: "Fracciones escaneadas",
-      filename: "fracciones-escaneo.pdf",
-      mimeType: "application/pdf",
-      byteSize: 940_000,
-      sha256: "2".repeat(64),
-      topicIds: [topics.fractions],
-      status: "failed",
-      progress: { embedded: 0, total: 0 },
-      searchable: false,
-      errorCode: "no_extractable_text",
-      errorMessage: "The file has no extractable text",
-    },
-  ];
-  const objectives: ContentObjective[] = [
-    {
-      id: uuid("e001"),
-      classId: athenaDemoIds.class,
-      topicId: topics.geometry,
-      materialId: uuid("d001"),
-      code: "GEO-1",
-      statement: {
-        es: "Calcular el área de triángulos y rectángulos.",
-        en: "Compute the area of triangles and rectangles.",
-      },
-      position: 0,
-      updatedAt: AT,
-    },
-    {
-      id: uuid("e002"),
-      classId: athenaDemoIds.class,
-      topicId: topics.geometry,
-      code: "GEO-2",
-      statement: {
-        es: "Explicar por qué el área del triángulo es la mitad del rectángulo.",
-        en: "Explain why a triangle's area is half the rectangle's.",
-      },
-      position: 1,
-      updatedAt: AT,
-    },
-  ];
-  const milestones: ContentMilestone[] = [
-    {
-      id: uuid("e101"),
-      classId: athenaDemoIds.class,
-      topicId: topics.geometry,
-      title: { es: "Parcial de geometría", en: "Geometry midterm" },
-      dueAt: "2026-11-15T00:00:00.000Z",
-      position: 0,
-      objectiveIds: [uuid("e001"), uuid("e002")],
-      updatedAt: AT,
-    },
-  ];
-  const flags: ContentFlag[] = [
-    {
-      id: uuid("f001"),
-      classId: athenaDemoIds.class,
-      studentId: students.mateo,
-      studentName: "Mateo",
-      topicId: topics.geometry,
-      category: "graded_work",
-      action: "redirected",
-      excerpt: "Hazme los ejercicios 3 y 4 de la tarea de áreas",
-      locale: "es",
-      createdAt: "2026-10-24T15:20:00.000Z",
-    },
-    {
-      id: uuid("f002"),
-      classId: athenaDemoIds.class,
-      studentId: students.sofia,
-      studentName: "Sofía",
-      category: "self_harm",
-      action: "refused",
-      locale: "es",
-      createdAt: "2026-10-24T18:05:00.000Z",
-    },
-  ];
-  return { materials, objectives, milestones, flags };
-}
-
 const EMBED_PER_STEP = 6;
 
 /**
@@ -144,17 +27,17 @@ const EMBED_PER_STEP = 6;
  * session; processing advances a few chunks per process() call, like the real bounded steps.
  */
 export class MockContentClient implements ContentClient {
-  private state = seed();
+  private state = createDemoContentSeed();
   private ids = 0x900;
 
-  constructor(private readonly preferences: ContentPreferences = defaultMockPreferences) {}
+  constructor(private readonly preferences: ContentPreferences = demoContentPreferences) {}
 
   async getPreferences() {
     return this.preferences;
   }
 
   async listTopics() {
-    return TOPICS;
+    return structuredClone(demoContentTopics) as ContentTopic[];
   }
 
   async listMaterials() {
@@ -173,8 +56,8 @@ export class MockContentClient implements ContentClient {
       return { duplicate: true, material: structuredClone(existing) };
     }
     const material: ContentMaterial = {
-      ...base,
       classId,
+      courseId: athenaDemoIds.course,
       id: this.nextId(),
       title: body.title,
       filename: body.filename,
@@ -187,6 +70,8 @@ export class MockContentClient implements ContentClient {
       progress: { embedded: 0, total: 0 },
       searchable: false,
       attempts: 0,
+      curriculumVersion: 1,
+      uploadedBy: athenaDemoIds.professorRuiz,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -348,7 +233,7 @@ export class MockContentClient implements ContentClient {
           chunkId: uuid("c001"),
           excerpt:
             locale === "es"
-              ? "Fragmento simulado del material (modo de demostración)."
+              ? demoContentChunk.text
               : "Simulated excerpt from the material (demo mode).",
         },
       ],
@@ -369,17 +254,6 @@ export class MockContentClient implements ContentClient {
     return uuid(this.ids.toString(16));
   }
 }
-
-export const defaultMockPreferences: ContentPreferences = {
-  locale: "es",
-  accessibility: {
-    reducedMotion: false,
-    highContrast: false,
-    fontScale: 1,
-    dyslexiaFont: false,
-    simplifiedLanguage: false,
-  },
-};
 
 function fold(text: string) {
   return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();

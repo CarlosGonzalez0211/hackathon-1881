@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEMO_CLASS_ID, DEMO_COURSE_ID, DEMO_STUDENT_ID, type AuthContext } from "@athena/shared";
+import { athenaDemoIds, DEMO_CLASS_ID, DEMO_STUDENT_ID, type AuthContext } from "@athena/shared";
 import {
   RoleAuthorizationService,
   createPlatformServices,
@@ -11,7 +11,7 @@ import Fastify from "fastify";
 import { createApp } from "../src/app.js";
 
 const LUCIA = DEMO_STUDENT_ID;
-const MATEO = "student-mateo";
+const MATEO = athenaDemoIds.students.mateo;
 
 const context = (overrides: Partial<AuthContext>): AuthContext => ({
   userId: "u",
@@ -26,13 +26,13 @@ const context = (overrides: Partial<AuthContext>): AuthContext => ({
 const callers = {
   student: context({
     classIds: [DEMO_CLASS_ID],
-    courseIds: [DEMO_COURSE_ID],
+    courseIds: [athenaDemoIds.course],
     studentIds: [LUCIA],
   }),
   professor: context({
     role: "professor",
     classIds: [DEMO_CLASS_ID],
-    courseIds: [DEMO_COURSE_ID],
+    courseIds: [athenaDemoIds.course],
     studentIds: [LUCIA, MATEO],
   }),
   outsider: context({ role: "professor", classIds: ["some-other-class"] }),
@@ -86,12 +86,12 @@ test("professors read their class; a professor of another class is refused", () 
     as("professor");
     assert.equal(await get(`/class/${DEMO_CLASS_ID}/planets`), 200);
     assert.equal(await get(`/planet/${LUCIA}`), 200);
-    assert.equal(await get(`/courses/${DEMO_COURSE_ID}/world-layout`), 200);
+    assert.equal(await get(`/courses/${athenaDemoIds.course}/world-layout`), 200);
     as("outsider");
     for (const url of [
       `/class/${DEMO_CLASS_ID}/planets`,
       `/planet/${LUCIA}`,
-      `/courses/${DEMO_COURSE_ID}/world-layout`,
+      `/courses/${athenaDemoIds.course}/world-layout`,
     ])
       assert.equal(await get(url), 403, url);
   }));

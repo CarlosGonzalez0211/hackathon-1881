@@ -1,4 +1,4 @@
-import { athenaDemoIds, type AuthContext } from "@athena/shared";
+import { athenaDemoIds, athenaDemoProfessor, type AuthContext } from "@athena/shared";
 
 /** Resolves a bearer token (or nothing) into who is calling. */
 export interface AuthService {
@@ -18,7 +18,7 @@ export interface AuthorizationService {
 /** The demo professor, who can see the demo class. */
 export const demoProfessorContext: AuthContext = {
   userId: athenaDemoIds.professorRuiz,
-  displayName: "Prof. Elena Ruiz",
+  displayName: athenaDemoProfessor.displayName,
   role: "admin",
   classIds: [athenaDemoIds.class],
   courseIds: [athenaDemoIds.course],

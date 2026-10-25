@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  athenaDemoIds,
   demoCurriculum,
   demoCurriculumTopics,
   demoClassMastery,
   demoClassPlanets,
+  demoWorldTopics,
   curriculumTopicSummarySchema,
   projectPlanet,
   WORLD_HOUSE_SLOT_COUNT,
@@ -42,7 +44,8 @@ test("adapter exactly matches the shipped Mathematics World catalog and slots", 
 });
 
 test("every existing demo planet is unchanged when projected from the adapter", async () => {
-  const topics = await create().listTopics("course-math-1");
+  const topics = await create().listTopics(athenaDemoIds.course);
+  assert.deepEqual(topics, demoWorldTopics);
   for (const expected of demoClassPlanets) {
     const mastery = demoClassMastery.find((m) => m.studentId === expected.studentId)!;
     const projected = projectPlanet({ studentId: expected.studentId, topics, mastery });
@@ -57,27 +60,36 @@ test("actual WorldService preserves planets, entry gates and progression with in
   const world = new WorldService({ ports: consumerPorts, now: () => AT });
   const baseline = new WorldService({ ports, now: () => AT });
   assert.deepEqual(
-    await world.getPlanet("student-lucia"),
-    await baseline.getPlanet("student-lucia"),
+    await world.getPlanet(athenaDemoIds.students.lucia),
+    await baseline.getPlanet(athenaDemoIds.students.lucia),
   );
   assert.deepEqual(
-    await world.getClassPlanets("class-demo"),
-    await baseline.getClassPlanets("class-demo"),
+    await world.getClassPlanets(athenaDemoIds.class),
+    await baseline.getClassPlanets(athenaDemoIds.class),
   );
   assert.deepEqual(
-    await world.getWorldLayout("course-math-1"),
-    await baseline.getWorldLayout("course-math-1"),
+    await world.getWorldLayout(athenaDemoIds.course),
+    await baseline.getWorldLayout(athenaDemoIds.course),
   );
-  for (const topicId of ["topic-geometry", "topic-functions", "topic-statistics"]) {
+  for (const topicId of [
+    athenaDemoIds.topics.geometry,
+    athenaDemoIds.topics.functions,
+    athenaDemoIds.topics.statistics,
+  ]) {
     assert.deepEqual(
-      await world.enterHouse({ studentId: "student-lucia", topicId }),
-      await baseline.enterHouse({ studentId: "student-lucia", topicId }),
+      await world.enterHouse({ studentId: athenaDemoIds.students.lucia, topicId }),
+      await baseline.enterHouse({ studentId: athenaDemoIds.students.lucia, topicId }),
     );
   }
-  ports.mastery.set("student-lucia", [{ topicId: "topic-geometry", mastery: 0.85 }]);
-  const after = await world.getPlanet("student-lucia");
-  assert.deepEqual(after, await baseline.getPlanet("student-lucia"));
-  assert.equal(after.houses.find((h) => h.topicId === "topic-statistics")!.status, "available");
+  ports.mastery.set(athenaDemoIds.students.lucia, [
+    { topicId: athenaDemoIds.topics.geometry, mastery: 0.85 },
+  ]);
+  const after = await world.getPlanet(athenaDemoIds.students.lucia);
+  assert.deepEqual(after, await baseline.getPlanet(athenaDemoIds.students.lucia));
+  assert.equal(
+    after.houses.find((h) => h.topicId === athenaDemoIds.topics.statistics)!.status,
+    "available",
+  );
 });
 
 test("compatibility view is explicit and does not rewrite the underlying curriculum graph", async () => {
@@ -148,10 +160,10 @@ test("new ready topics use World's existing overflow support without moving the 
   });
   const ports = createMockWorldPorts();
   const world = new WorldService({ ports: { ...ports, curriculum: adapter }, now: () => AT });
-  const view = await world.getWorld("student-lucia");
+  const view = await world.getWorld(athenaDemoIds.students.lucia);
   assert.deepEqual(
     view.planet.houses.map((h) => [h.topicId, h.slot]),
-    demoCurriculumTopics.map((t) => [t.id, t.order]),
+    demoWorldTopics.map((t) => [t.id, t.order]),
   );
   assert.deepEqual(
     view.overflowTopics.map((h) => [h.topicId, h.slot]),

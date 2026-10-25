@@ -171,27 +171,27 @@ export class MockEmbeddingProvider implements EmbeddingProvider {
   readonly dimensions = 768;
 
   async embedDocuments(items: { title: string; text: string }[]) {
-    return items.map((item) => this.embed(item.text));
+    return items.map((item) => mockTextEmbedding(item.text));
   }
 
   async embedQuery(text: string) {
-    return this.embed(text);
+    return mockTextEmbedding(text);
   }
+}
 
-  private embed(text: string) {
-    const vector = new Array<number>(this.dimensions).fill(0);
-    const words = text
-      .normalize("NFD")
-      .replace(/\p{M}/gu, "")
-      .toLowerCase()
-      .match(/[\p{L}\p{N}]{3,}/gu);
-    for (const word of words ?? []) {
-      const hash = fnv1a(word);
-      vector[hash % this.dimensions]! += hash & 0x80000000 ? -1 : 1;
-    }
-    const norm = Math.hypot(...vector) || 1;
-    return vector.map((value) => value / norm);
+export function mockTextEmbedding(text: string): number[] {
+  const vector = new Array<number>(768).fill(0);
+  const words = text
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .match(/[\p{L}\p{N}]{3,}/gu);
+  for (const word of words ?? []) {
+    const hash = fnv1a(word);
+    vector[hash % vector.length]! += hash & 0x80000000 ? -1 : 1;
   }
+  const norm = Math.hypot(...vector) || 1;
+  return vector.map((value) => value / norm);
 }
 
 function fnv1a(text: string) {

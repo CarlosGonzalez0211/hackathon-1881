@@ -1,4 +1,4 @@
-import { athenaDemoIds, type AuthContext, type Class } from "@athena/shared";
+import { athenaDemoClass, type AuthContext, type Class } from "@athena/shared";
 
 /** Class metadata the caller can see. The Supabase version reads `classes` for the caller's class ids. */
 export interface ClassCatalog {
@@ -6,12 +6,7 @@ export interface ClassCatalog {
 }
 
 export const demoClass: Class = {
-  id: athenaDemoIds.class,
-  courseId: athenaDemoIds.course,
-  professorId: athenaDemoIds.professorRuiz,
-  title: "Matemáticas I – Grupo A",
-  term: "2026-2",
-  createdAt: "2026-10-24T00:00:00.000Z",
+  ...athenaDemoClass,
 };
 
 export class InMemoryClassCatalog implements ClassCatalog {

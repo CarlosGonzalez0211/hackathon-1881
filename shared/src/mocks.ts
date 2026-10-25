@@ -1,4 +1,13 @@
 import type { ClassOrbit, ClassSummary, HouseState, PlanetState } from "./learning.js";
+import {
+  DEMO_CLASS_ID,
+  demoClassPlanets,
+  demoLuciaPlanet,
+  demoRoster,
+  demoTopics,
+} from "./world.js";
+
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /** Demo topic titles in English; the web app localizes them (locales/es.json). */
 const titles = ["Fractions", "Geometry", "Ecosystems", "Energy", "Reading", "Critical thinking"];
@@ -26,11 +35,10 @@ function planet(student: number): PlanetState {
     houses,
   };
 }
-export const mockClassPlanets: PlanetState[] = Array.from({ length: 8 }, (_, index) =>
-  planet(index),
-);
+/** Same opening state the backend World store receives. */
+export const mockClassPlanets: PlanetState[] = clone(demoClassPlanets);
 export const mockClassPlanets8 = mockClassPlanets;
-/** Class roster names for the mocked orbit; Lucía is the demo student (`student-lucia`). */
+/** Extra names are only used by the variable-size orbit layout demo after the canonical eight. */
 const rosterNames = [
   "Lucía",
   "Mateo",
@@ -75,8 +83,16 @@ const slug = (name: string) =>
 export function mockClassOrbit(count = 8): ClassOrbit {
   const size = Math.max(0, Math.min(60, Math.floor(count)));
   return {
-    classId: "class-demo",
+    classId: DEMO_CLASS_ID,
     students: Array.from({ length: size }, (_, index) => {
+      const canonical = demoRoster.students[index];
+      if (canonical) {
+        return {
+          studentId: canonical.id,
+          displayName: canonical.displayName,
+          planet: clone(demoClassPlanets[index]!),
+        };
+      }
       const base = rosterNames[index % rosterNames.length]!;
       const round = Math.floor(index / rosterNames.length);
       const displayName = round ? `${base} ${round + 1}` : base;
@@ -85,12 +101,12 @@ export function mockClassOrbit(count = 8): ClassOrbit {
     }),
   };
 }
-export const mockPlanet: PlanetState = mockClassPlanets[1]!;
+export const mockPlanet: PlanetState = clone(demoLuciaPlanet);
 const usage = () => ({ chat: 0, podcast: 0, video: 0, summary: 0, hint: 0, quiz_answer: 0 });
 export const mockSummary: ClassSummary = {
-  classId: "class-demo",
-  topics: titles.map((title, slot) => ({
-    topicId: `topic-${slot + 1}`,
+  classId: DEMO_CLASS_ID,
+  topics: demoTopics.map(({ title, topicId, slot }) => ({
+    topicId,
     title,
     progress:
       mockClassPlanets.reduce((sum, item) => sum + item.houses[slot]!.progress, 0) /

@@ -1,4 +1,6 @@
 import {
+  athenaDemoCourse,
+  canonicalDemoTopicId,
   curriculumTopicSummarySchema,
   demoCurriculumTopics,
   demoCurriculum,
@@ -36,9 +38,11 @@ export class WorldCurriculumTopicAdapter implements WorldCurriculumTopicPort {
     options: WorldCurriculumAdapterOptions = {},
   ) {
     this.service = new CurriculumRetrievalService(repository, policy);
+    const courseIds = new Set(access.courseIds);
+    if (courseIds.has(athenaDemoCourse.id)) courseIds.add(athenaDemoCourse.legacyId);
     this.access = Object.freeze({
       userId: access.userId,
-      courseIds: Object.freeze([...access.courseIds]),
+      courseIds: Object.freeze([...courseIds]),
     });
     this.published = new Set(
       options.publishedTopicIds ?? [
@@ -49,9 +53,11 @@ export class WorldCurriculumTopicAdapter implements WorldCurriculumTopicPort {
     this.preserveMathematicsDemo = options.preserveMathematicsDemo ?? true;
   }
   async listTopics(courseId: string): Promise<CurriculumTopicSummary[]> {
+    const canonicalOutput = courseId === athenaDemoCourse.id;
+    const sourceCourseId = canonicalOutput ? athenaDemoCourse.legacyId : courseId;
     let course;
     try {
-      course = await this.service.getCourse(courseId, this.access);
+      course = await this.service.getCourse(sourceCourseId, this.access);
     } catch (error) {
       if (error instanceof CurriculumError && error.code === "NOT_FOUND") return [];
       throw error;
@@ -69,13 +75,14 @@ export class WorldCurriculumTopicAdapter implements WorldCurriculumTopicPort {
         : [];
       summaries.push(
         curriculumTopicSummarySchema.parse({
-          id: topic.id,
-          courseId: topic.courseId,
+          id: canonicalOutput ? canonicalDemoTopicId(topic.id) : topic.id,
+          courseId: canonicalOutput ? athenaDemoCourse.id : topic.courseId,
           title: topic.title,
           order: topic.order,
-          prerequisiteTopicIds: baseline
+          prerequisiteTopicIds: (baseline
             ? [...baseline.prerequisiteTopicIds]
-            : [...topic.prerequisiteTopicIds],
+            : [...topic.prerequisiteTopicIds]
+          ).map((id) => (canonicalOutput ? canonicalDemoTopicId(id) : id)),
           masteryThreshold: topic.masteryThreshold,
           published: this.published.has(topic.id) && ready.length > 0,
         }),

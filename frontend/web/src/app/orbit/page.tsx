@@ -1,4 +1,4 @@
-import { DEMO_STUDENT_ID } from "@athena/shared";
+import { athenaDemoIds, DEMO_STUDENT_ID } from "@athena/shared";
 import { OrbitExplorer } from "@/components/planet/OrbitExplorer";
 import { getClassOrbit } from "@/lib/learning-data";
 
@@ -13,7 +13,7 @@ export default async function OrbitPage({
 }) {
   const { alumnos } = await searchParams;
   const students = Number.parseInt(alumnos ?? "", 10);
-  const orbit = await getClassOrbit("class-demo", {
+  const orbit = await getClassOrbit(athenaDemoIds.class, {
     students: Number.isFinite(students) ? students : undefined,
   });
   return <OrbitExplorer orbit={orbit} viewerStudentId={DEMO_STUDENT_ID} />;

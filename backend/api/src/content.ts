@@ -1,11 +1,24 @@
 import {
   ContentCurriculumContext,
+  InMemoryChunkRepository,
+  InMemoryFlagRepository,
+  InMemoryMaterialRepository,
+  InMemoryMaterialStorage,
+  InMemoryVersionedRepository,
+  MOCK_EMBEDDING_MODEL,
   MockEmbeddingProvider,
   demoCurriculumCatalog,
+  mockTextEmbedding,
+  sha256Hex,
   LayeredGuardrailClassifier,
   HeuristicGuardrailClassifier,
+  type FlagRecord,
+  type MaterialRecord,
+  type MilestoneRecord,
+  type ObjectiveRecord,
   type ContentRoutesOptions,
 } from "@athena/content";
+import { createDemoContentSeed, demoContentChunk, demoContentPreferences } from "@athena/shared";
 import type { FastifyInstance } from "fastify";
 import { env } from "./env.js";
 import { anthropic, gemini, supabaseAdmin } from "./lib.js";
@@ -37,7 +50,7 @@ export function contentOptionsFor(
   dataMode = env.ATHENA_DATA_MODE,
   aiMode = env.ATHENA_AI_MODE,
 ): ContentRoutesOptions {
-  const options: ContentRoutesOptions = {};
+  const options: ContentRoutesOptions = dataMode === "real" ? {} : mockContentOptions();
   if (dataMode === "real") {
     const client = supabaseAdmin();
     const materials = new SupabaseMaterialRepository(client);
@@ -74,18 +87,76 @@ export function contentOptionsFor(
   return options;
 }
 
+/** One seeded in-memory graph shared by Content routes and Learning's Curriculum gateway. */
+function mockContentOptions(): ContentRoutesOptions {
+  const seed = createDemoContentSeed();
+  const records: MaterialRecord[] = seed.materials.map((material) => {
+    const { progress, searchable, ...publicFields } = material;
+    const ready = material.status === "ready";
+    if (searchable !== ready) throw new Error(`Invalid demo material search state: ${material.id}`);
+    return {
+      ...publicFields,
+      storagePath: `${material.classId}/${material.id}/${material.filename}`,
+      chunksTotal: progress.total,
+      chunksEmbedded: progress.embedded,
+      activeGeneration: ready ? 1 : undefined,
+      verifiedAt: material.createdAt,
+    };
+  });
+  const materials = new InMemoryMaterialRepository(records);
+  const chunks = new InMemoryChunkRepository(materials, [
+    {
+      id: demoContentChunk.id,
+      materialId: demoContentChunk.materialId,
+      classId: demoContentChunk.classId,
+      generation: 1,
+      chunkIndex: 0,
+      pageStart: demoContentChunk.pageStart,
+      pageEnd: demoContentChunk.pageEnd,
+      sectionTitle: demoContentChunk.sectionTitle,
+      content: demoContentChunk.text,
+      contentHash: sha256Hex(demoContentChunk.text),
+      tokenEstimate: Math.ceil(demoContentChunk.text.length / 4),
+      embedding: mockTextEmbedding(demoContentChunk.text),
+      embeddingModel: MOCK_EMBEDDING_MODEL,
+    },
+  ]);
+  const flags: FlagRecord[] = seed.flags.map((flag) => ({
+    ...flag,
+    callId: `seed-${flag.id}`,
+    expiresAt: "2027-01-24T00:00:00.000Z",
+  }));
+  return {
+    materials,
+    chunks,
+    storage: new InMemoryMaterialStorage(),
+    embeddings: new MockEmbeddingProvider(),
+    catalog: demoCurriculumCatalog,
+    objectives: new InMemoryVersionedRepository<ObjectiveRecord>(seed.objectives),
+    milestones: new InMemoryVersionedRepository<MilestoneRecord>(seed.milestones),
+    flags: new InMemoryFlagRepository(flags),
+    preferences: {
+      async get() {
+        return {
+          locale: demoContentPreferences.locale,
+          accessibility: demoContentPreferences.accessibility,
+        };
+      },
+    },
+  };
+}
+
 /**
- * Real-data Learning retrieval uses the exact repositories and embedding provider registered by
- * Content. Mock mode intentionally keeps Learning's deterministic curriculum fixture.
+ * Learning retrieval uses the exact repositories and embedding provider registered by Content,
+ * including the shared seeded stores in mock mode.
  */
 export function contentCurriculumContextFor(
   app: FastifyInstance,
   options: ContentRoutesOptions,
   dataMode = env.ATHENA_DATA_MODE,
 ) {
-  if (dataMode !== "real") return undefined;
   if (!options.materials || !options.chunks || !options.objectives) {
-    throw new Error("Content-backed curriculum context requires shared real-data repositories");
+    throw new Error("Content-backed curriculum context requires shared repositories");
   }
   const embeddings = options.embeddings ?? new MockEmbeddingProvider();
   const catalog = options.catalog ?? demoCurriculumCatalog;
@@ -99,6 +170,6 @@ export function contentCurriculumContextFor(
     chunks: options.chunks,
     embeddings,
     objectives: options.objectives,
-    minSimilarity: options.retrieval?.minSimilarity,
+    minSimilarity: dataMode === "mock" ? 0 : options.retrieval?.minSimilarity,
   });
 }

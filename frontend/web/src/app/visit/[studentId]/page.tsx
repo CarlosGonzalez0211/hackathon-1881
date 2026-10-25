@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { DEMO_STUDENT_ID } from "@athena/shared";
+import { athenaDemoIds, DEMO_STUDENT_ID } from "@athena/shared";
 import { VisitExplorer } from "@/components/planet/VisitExplorer";
 import { getClassOrbit } from "@/lib/learning-data";
 
@@ -18,7 +18,7 @@ export default async function VisitPage({
   const id = decodeURIComponent(studentId);
   if (id === DEMO_STUDENT_ID) redirect("/world");
   const students = Number.parseInt(alumnos ?? "", 10);
-  const orbit = await getClassOrbit("class-demo", {
+  const orbit = await getClassOrbit(athenaDemoIds.class, {
     students: Number.isFinite(students) ? students : undefined,
   });
   const student = orbit.students.find((item) => item.studentId === id);

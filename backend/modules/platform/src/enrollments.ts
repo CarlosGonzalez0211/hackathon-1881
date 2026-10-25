@@ -1,4 +1,4 @@
-import { athenaDemoIds } from "@athena/shared";
+import { athenaDemoIds, athenaDemoStudents } from "@athena/shared";
 import { PlatformError, notFound } from "./errors.js";
 
 export interface EnrolledStudent {
@@ -27,9 +27,9 @@ export class InMemoryEnrollmentRegistry implements EnrollmentRegistry {
     seed: { classId: string; students: EnrolledStudent[] }[] = [
       {
         classId: athenaDemoIds.class,
-        students: Object.entries(athenaDemoIds.students).map(([key, studentId]) => ({
-          studentId,
-          displayName: key,
+        students: athenaDemoStudents.map(({ id, displayName }) => ({
+          studentId: id,
+          displayName,
         })),
       },
     ],

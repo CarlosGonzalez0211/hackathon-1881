@@ -70,5 +70,5 @@ test("the mock class orbit has one valid planet per student at any class size", 
   }
   // The demo student (the world's viewer) is in the class, so their planet is theirs.
   assert.equal(mockClassOrbit().students[0]!.studentId, DEMO_STUDENT_ID);
-  assert.equal(mockClassOrbit().students[0]!.displayName, "Lucía");
+  assert.equal(mockClassOrbit().students[0]!.displayName, "Lucía Torres");
 });

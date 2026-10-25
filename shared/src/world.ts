@@ -1,5 +1,12 @@
 import { z } from "zod";
 import { planetStateSchema, type HouseState, type PlanetState } from "./learning.js";
+import {
+  athenaDemoClass,
+  athenaDemoIds,
+  athenaDemoProfessor,
+  athenaDemoStudents,
+  athenaDemoTopics,
+} from "./mocks/demo-identities.js";
 
 /**
  * Subsystem 3 (World, Progression, and Collaboration) contracts.
@@ -452,35 +459,35 @@ export const demoRosterSchema = z.object({
 });
 export type DemoRoster = z.infer<typeof demoRosterSchema>;
 
-export const DEMO_CLASS_ID = "class-demo";
-export const DEMO_STUDENT_ID = "student-lucia";
-export const DEMO_GEOMETRY_TOPIC_ID = "topic-geometry";
+export const DEMO_CLASS_ID = athenaDemoIds.class;
+export const DEMO_STUDENT_ID = athenaDemoIds.students.lucia;
+export const DEMO_GEOMETRY_TOPIC_ID = athenaDemoIds.topics.geometry;
 
 export const demoRoster: DemoRoster = {
   classId: DEMO_CLASS_ID,
-  name: "Matemáticas I – Grupo A",
+  name: athenaDemoClass.title,
   locale: "es",
-  professor: { id: "prof-elena-ruiz", displayName: "Prof. Elena Ruiz" },
-  students: [
-    { id: DEMO_STUDENT_ID, displayName: "Lucía Torres" },
-    { id: "student-mateo", displayName: "Mateo Herrera" },
-    { id: "student-valentina", displayName: "Valentina Díaz" },
-    { id: "student-santiago", displayName: "Santiago Morales" },
-    { id: "student-camila", displayName: "Camila Rojas" },
-    { id: "student-diego", displayName: "Diego Navarro" },
-    { id: "student-sofia", displayName: "Sofía Castro" },
-    { id: "student-andres", displayName: "Andrés Vega" },
-  ],
+  professor: athenaDemoProfessor,
+  students: athenaDemoStudents.map(({ id, displayName }) => ({ id, displayName })),
 };
 
-export const demoTopics = [
-  { slot: 0, topicId: "topic-fractions", title: "Fracciones" },
-  { slot: 1, topicId: DEMO_GEOMETRY_TOPIC_ID, title: "Geometría" },
-  { slot: 2, topicId: "topic-functions", title: "Funciones" },
-  { slot: 3, topicId: "topic-statistics", title: "Estadística" },
-  { slot: 4, topicId: "topic-probability", title: "Probabilidad" },
-  { slot: 5, topicId: "topic-critical-thinking", title: "Pensamiento crítico" },
-] as const;
+export const demoTopics = athenaDemoTopics.map(({ id, title, order }) => ({
+  slot: order,
+  topicId: id,
+  title,
+}));
+
+const demoTopicIdByKey = new Map(athenaDemoTopics.map((topic) => [topic.key, topic.id]));
+/** Canonical topic projection consumed by both browser and backend World mocks. */
+export const demoWorldTopics = athenaDemoTopics.map((topic) => ({
+  id: topic.id,
+  courseId: athenaDemoIds.course,
+  title: topic.title,
+  order: topic.order,
+  prerequisiteTopicIds: topic.prerequisiteKeys.map((key) => demoTopicIdByKey.get(key)!),
+  masteryThreshold: 0.8,
+  published: true,
+}));
 
 /** Developer-defined identity, same as shared mocks. Not a user appearance picker. */
 const demoTheme = { palette: "athena-default", character: "messenger-provisional" };
@@ -529,7 +536,7 @@ export const demoLuciaPlanetAfterCheckpoint: PlanetState = demoPlanet(DEMO_STUDE
  */
 export const demoClassPlanets: PlanetState[] = [
   demoLuciaPlanet,
-  demoPlanet("student-mateo", 0.05, [
+  demoPlanet(athenaDemoIds.students.mateo, 0.05, [
     [P, 0.3],
     [L, 0],
     [L, 0],
@@ -537,7 +544,7 @@ export const demoClassPlanets: PlanetState[] = [
     [L, 0],
     [L, 0],
   ]),
-  demoPlanet("student-valentina", 0.18, [
+  demoPlanet(athenaDemoIds.students.sofia, 0.18, [
     [D, 1],
     [A, 0],
     [A, 0],
@@ -545,7 +552,7 @@ export const demoClassPlanets: PlanetState[] = [
     [L, 0],
     [L, 0],
   ]),
-  demoPlanet("student-santiago", 0.42, [
+  demoPlanet(athenaDemoIds.students.diego, 0.42, [
     [D, 1],
     [D, 1],
     [P, 0.5],
@@ -553,7 +560,7 @@ export const demoClassPlanets: PlanetState[] = [
     [L, 0],
     [L, 0],
   ]),
-  demoPlanet("student-camila", 0.55, [
+  demoPlanet(athenaDemoIds.students.valeria, 0.55, [
     [D, 1],
     [D, 1],
     [D, 1],
@@ -561,7 +568,7 @@ export const demoClassPlanets: PlanetState[] = [
     [L, 0],
     [L, 0],
   ]),
-  demoPlanet("student-diego", 0.12, [
+  demoPlanet(athenaDemoIds.students.andres, 0.12, [
     [P, 0.7],
     [L, 0],
     [L, 0],
@@ -569,7 +576,7 @@ export const demoClassPlanets: PlanetState[] = [
     [L, 0],
     [L, 0],
   ]),
-  demoPlanet("student-sofia", 0.71, [
+  demoPlanet(athenaDemoIds.students.camila, 0.71, [
     [D, 1],
     [D, 1],
     [D, 1],
@@ -577,7 +584,7 @@ export const demoClassPlanets: PlanetState[] = [
     [P, 0.6],
     [L, 0],
   ]),
-  demoPlanet("student-andres", 0.0, [
+  demoPlanet(athenaDemoIds.students.nicolas, 0.0, [
     [A, 0],
     [L, 0],
     [L, 0],

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  athenaDemoIds,
   achievementSchema,
   demoCheckpointEvents,
   demoClassPlanets,
@@ -19,7 +20,10 @@ import { installPlatform } from "@athena/platform";
 import Fastify from "fastify";
 import { createApp } from "../src/app.js";
 
-const LUCIA = "student-lucia";
+const LUCIA = athenaDemoIds.students.lucia;
+const MATEO = athenaDemoIds.students.mateo;
+const SOFIA = athenaDemoIds.students.sofia;
+const GEOMETRY = athenaDemoIds.topics.geometry;
 const AT = "2026-10-24T15:10:00.000Z";
 
 async function withApp(run: (app: Awaited<ReturnType<typeof createApp>>) => Promise<void>) {
@@ -37,7 +41,10 @@ test("planet and class routes return the seeded demo fixtures", () =>
     assert.equal(planet.statusCode, 200);
     assert.deepEqual(planetStateSchema.parse(planet.json()), demoLuciaPlanet);
 
-    const planets = await app.inject({ method: "GET", url: "/api/class/class-demo/planets" });
+    const planets = await app.inject({
+      method: "GET",
+      url: `/api/class/${athenaDemoIds.class}/planets`,
+    });
     assert.equal(planets.statusCode, 200);
     assert.deepEqual(planetStateSchema.array().parse(planets.json()), demoClassPlanets);
 
@@ -169,10 +176,10 @@ test("teams, challenges and attempts unlock team-spark once per member", () =>
       method: "POST",
       url: "/api/teams",
       payload: {
-        classId: "class-demo",
+        classId: athenaDemoIds.class,
         name: "Los Triángulos",
         createdBy: LUCIA,
-        memberIds: [LUCIA, "student-mateo"],
+        memberIds: [LUCIA, MATEO],
       },
     });
     assert.equal(created.statusCode, 201);
@@ -185,7 +192,7 @@ test("teams, challenges and attempts unlock team-spark once per member", () =>
     const challengeResponse = await app.inject({
       method: "POST",
       url: `/api/teams/${team.id}/challenges`,
-      payload: { topicId: "topic-geometry", title: "Áreas en equipo", requiredSuccesses: 2 },
+      payload: { topicId: GEOMETRY, title: "Áreas en equipo", requiredSuccesses: 2 },
     });
     assert.equal(challengeResponse.statusCode, 201);
     const challenge = teamChallengeSchema.parse(challengeResponse.json());
@@ -204,18 +211,16 @@ test("teams, challenges and attempts unlock team-spark once per member", () =>
     const duplicate = teamChallengeAttemptResultSchema.parse((await attempt(LUCIA, "ev-1")).json());
     assert.equal(duplicate.challenge.sharedProgress, 0.5);
 
-    const done = teamChallengeAttemptResultSchema.parse(
-      (await attempt("student-mateo", "ev-2")).json(),
-    );
+    const done = teamChallengeAttemptResultSchema.parse((await attempt(MATEO, "ev-2")).json());
     assert.equal(done.challenge.status, "completed");
     assert.deepEqual(done.unlockedAchievements.map((item) => [item.studentId, item.code]).sort(), [
-      ["student-lucia", "team-spark"],
-      ["student-mateo", "team-spark"],
+      [LUCIA, "team-spark"],
+      [MATEO, "team-spark"],
     ]);
     const again = teamChallengeAttemptResultSchema.parse((await attempt(LUCIA, "ev-3")).json());
     assert.deepEqual(again.unlockedAchievements, []);
 
-    assert.equal((await attempt("student-sofia", "ev-4")).statusCode, 403);
+    assert.equal((await attempt(SOFIA, "ev-4")).statusCode, 403);
     assert.equal((await app.inject({ method: "GET", url: "/api/teams/team-x" })).statusCode, 404);
     assert.equal(
       (
@@ -232,7 +237,12 @@ test("teams, challenges and attempts unlock team-spark once per member", () =>
         await app.inject({
           method: "POST",
           url: "/api/teams",
-          payload: { classId: "class-demo", name: "Solo", createdBy: LUCIA, memberIds: [LUCIA] },
+          payload: {
+            classId: athenaDemoIds.class,
+            name: "Solo",
+            createdBy: LUCIA,
+            memberIds: [LUCIA],
+          },
         })
       ).statusCode,
       400,
@@ -252,13 +262,13 @@ test("teams, challenges and attempts unlock team-spark once per member", () =>
 test("team challenges need distinct contributors and reward only them", () => {
   const world = new WorldService({ now: () => AT });
   const team = world.createTeam({
-    classId: "class-demo",
+    classId: athenaDemoIds.class,
     name: "Los Cubos",
     createdBy: LUCIA,
-    memberIds: [LUCIA, "student-mateo", "student-sofia"],
+    memberIds: [LUCIA, MATEO, SOFIA],
   });
   const challenge = world.createChallenge(team.id, {
-    topicId: "topic-geometry",
+    topicId: GEOMETRY,
     title: "Volúmenes",
     requiredSuccesses: 2,
   });
@@ -272,33 +282,33 @@ test("team challenges need distinct contributors and reward only them", () => {
   assert.equal(solo.challenge.sharedProgress, 0.5);
   assert.deepEqual(solo.unlockedAchievements, []);
   // A failed attempt is participation, not a contribution.
-  assert.equal(attempt("student-sofia", "ev-3", false).challenge.status, "active");
+  assert.equal(attempt(SOFIA, "ev-3", false).challenge.status, "active");
   // Re-using another member's evidence id does not make Mateo a contributor.
-  assert.equal(attempt("student-mateo", "ev-1").challenge.status, "active");
+  assert.equal(attempt(MATEO, "ev-1").challenge.status, "active");
 
-  const done = attempt("student-mateo", "ev-4");
+  const done = attempt(MATEO, "ev-4");
   assert.equal(done.challenge.status, "completed");
   assert.equal(done.challenge.sharedProgress, 1);
   assert.deepEqual(
     done.unlockedAchievements.map((item) => [item.studentId, item.code, item.evidenceIds]).sort(),
     [
       [LUCIA, "team-spark", ["ev-1", "ev-2"]],
-      ["student-mateo", "team-spark", ["ev-4"]],
+      [MATEO, "team-spark", ["ev-4"]],
     ],
   );
-  assert.deepEqual(world.listAchievements("student-sofia"), []);
+  assert.deepEqual(world.listAchievements(SOFIA), []);
 
   // requiredSuccesses above the team size needs every member, not more members than exist.
   const big = world.createChallenge(team.id, {
-    topicId: "topic-geometry",
+    topicId: GEOMETRY,
     title: "Maratón",
     requiredSuccesses: 5,
   });
   const go = (studentId: string, evidenceId: string) =>
     world.attemptChallenge(team.id, big.id, { studentId, evidenceId, success: true, at: AT });
-  for (const [index, id] of [LUCIA, LUCIA, "student-mateo", "student-mateo"].entries())
+  for (const [index, id] of [LUCIA, LUCIA, MATEO, MATEO].entries())
     assert.equal(go(id, `big-${index}`).challenge.status, "active");
-  assert.equal(go("student-sofia", "big-4").challenge.status, "completed");
+  assert.equal(go(SOFIA, "big-4").challenge.status, "completed");
 });
 
 test("learning event dedup is scoped per student", () => {
@@ -307,7 +317,7 @@ test("learning event dedup is scoped per student", () => {
     id: "evt-shared-id",
     type: "RetentionCheckPassed",
     studentId,
-    topicId: "topic-geometry",
+    topicId: GEOMETRY,
     evidenceIds: ["r-1"],
     occurredAt: AT,
   });
@@ -316,7 +326,7 @@ test("learning event dedup is scoped per student", () => {
     ["retention-star"],
   );
   assert.deepEqual(
-    world.handleLearningEvent(event("student-mateo")).map((item) => item.code),
+    world.handleLearningEvent(event(MATEO)).map((item) => item.code),
     ["retention-star"],
   );
   assert.deepEqual(world.handleLearningEvent(event(LUCIA)), []);
@@ -342,7 +352,7 @@ test("learning events map to idempotent unlocks without touching mastery", async
 
   const base = {
     studentId: LUCIA,
-    topicId: "topic-geometry",
+    topicId: GEOMETRY,
     evidenceIds: ["a-1"],
     occurredAt: AT,
   };

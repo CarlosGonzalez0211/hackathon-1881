@@ -1,5 +1,6 @@
 import { t } from "@/lib/i18n";
 import {
+  athenaDemoIds,
   mockClassOrbit,
   mockClassPlanets,
   mockPlanet,
@@ -8,12 +9,12 @@ import {
 } from "@athena/shared";
 import { api } from "./api";
 export const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS !== "false";
-export async function getPlanet(studentId = "student-2") {
+export async function getPlanet(studentId = athenaDemoIds.students.lucia) {
   return useMocks
     ? mockPlanet
     : planetStateSchema.parse(await api(`/planet/${encodeURIComponent(studentId)}`));
 }
-export async function getClassPlanets(classId = "class-demo") {
+export async function getClassPlanets(classId = athenaDemoIds.class) {
   return useMocks
     ? mockClassPlanets
     : planetStateSchema.array().parse(await api(`/class/${encodeURIComponent(classId)}/planets`));
@@ -24,7 +25,7 @@ export async function getClassPlanets(classId = "class-demo") {
  * Platform roster provides display names.
  */
 export async function getClassOrbit(
-  classId = "class-demo",
+  classId = athenaDemoIds.class,
   { students = 8 }: { students?: number } = {},
 ): Promise<ClassOrbit> {
   if (useMocks) return mockClassOrbit(students);

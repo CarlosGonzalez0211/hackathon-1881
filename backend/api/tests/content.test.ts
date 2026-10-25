@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
-import { athenaDemoIds } from "@athena/shared";
+import { athenaDemoIds, createDemoContentSeed } from "@athena/shared";
 import { createPlatformServices } from "@athena/platform";
 import {
   InMemoryChunkRepository,
@@ -29,12 +29,12 @@ import {
   uploadAndProcess,
 } from "./content-fixtures.js";
 
-test("content is registered in the app; mock mode lists the demo class material", async () => {
+test("content is registered in the app; mock mode lists the shared demo materials", async () => {
   const app = await createApp({ logger: false, dataMode: "mock" });
   try {
     const res = await app.inject({ method: "GET", url: `/api/content/classes/${CLASS}/materials` });
     assert.equal(res.statusCode, 200);
-    assert.deepEqual(res.json(), []);
+    assert.deepEqual(res.json(), createDemoContentSeed().materials);
   } finally {
     await app.close();
   }

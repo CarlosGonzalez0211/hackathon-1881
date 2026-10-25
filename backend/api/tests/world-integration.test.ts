@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  DEMO_COURSE_ID,
+  athenaDemoIds,
   demoClassPlanets,
-  demoCurriculumTopics,
   demoLuciaPlanet,
   demoLuciaPlanetAfterCheckpoint,
+  demoWorldTopics,
   houseEntryResultSchema,
   learningEventIngestResultSchema,
   worldLayoutSchema,
@@ -16,7 +16,7 @@ import { WorldService, createMockWorldPorts, worldRoutes } from "@athena/world";
 import { installPlatform } from "@athena/platform";
 import Fastify from "fastify";
 
-const LUCIA = "student-lucia";
+const LUCIA = athenaDemoIds.students.lucia;
 const AT = "2026-10-24T15:30:00.000Z";
 
 /** App with the world routes on fresh mock ports the test can also drive directly. */
@@ -48,14 +48,14 @@ const statusesOf = (planet: { houses: { topicId: string; status: string }[] }) =
 test("projection from mock Curriculum + Learning reproduces the demo planets", async () => {
   const { service } = await setup();
   assert.deepEqual(await service.getPlanet(LUCIA), demoLuciaPlanet);
-  assert.deepEqual(await service.getClassPlanets("class-demo"), demoClassPlanets);
+  assert.deepEqual(await service.getClassPlanets(athenaDemoIds.class), demoClassPlanets);
 });
 
 test("slot is the topic order; unpublished topics are absent; overflow goes to the 2D list", async () => {
   const { ports, service } = await setup();
   const extra = (id: string, order: number, published = true): CurriculumTopicSummary => ({
     id,
-    courseId: DEMO_COURSE_ID,
+    courseId: athenaDemoIds.course,
     title: `Tema ${order}`,
     order,
     prerequisiteTopicIds: [],
@@ -67,7 +67,7 @@ test("slot is the topic order; unpublished topics are absent; overflow goes to t
   const world = worldViewSchema.parse(await service.getWorld(LUCIA));
   assert.deepEqual(
     world.planet.houses.map((house) => [house.slot, house.topicId]),
-    demoCurriculumTopics.map((topic) => [topic.order, topic.id]),
+    demoWorldTopics.map((topic) => [topic.order, topic.id]),
   );
   assert.deepEqual(
     world.overflowTopics.map((house) => [house.slot, house.topicId, house.status]),
@@ -78,31 +78,46 @@ test("slot is the topic order; unpublished topics are absent; overflow goes to t
 
 test("house entry: granted modes, locked with prerequisites, unpublished and unknown", async () => {
   const { app, ports } = await setup();
-  const fractions = houseEntryResultSchema.parse((await enter(app, "topic-fractions")).body);
+  const fractions = houseEntryResultSchema.parse(
+    (await enter(app, athenaDemoIds.topics.fractions)).body,
+  );
   assert.equal(fractions.granted && fractions.mode, "review");
-  const geometry = houseEntryResultSchema.parse((await enter(app, "topic-geometry")).body);
+  const geometry = houseEntryResultSchema.parse(
+    (await enter(app, athenaDemoIds.topics.geometry)).body,
+  );
   assert.ok(geometry.granted);
   assert.equal(geometry.mode, "resume");
   assert.equal(geometry.mastery?.nextAction, "Practicar el área de triángulos");
-  const functions = houseEntryResultSchema.parse((await enter(app, "topic-functions")).body);
+  const functions = houseEntryResultSchema.parse(
+    (await enter(app, athenaDemoIds.topics.functions)).body,
+  );
   assert.equal(functions.granted && functions.mode, "enter");
 
-  const statistics = houseEntryResultSchema.parse((await enter(app, "topic-statistics")).body);
+  const statistics = houseEntryResultSchema.parse(
+    (await enter(app, athenaDemoIds.topics.statistics)).body,
+  );
   assert.equal(statistics.granted, false);
   assert.ok(!statistics.granted);
   assert.equal(statistics.reason, "locked");
   assert.deepEqual(statistics.missingPrerequisites, [
-    { topicId: "topic-geometry", title: "Geometría", status: "in_progress", slot: 1 },
+    {
+      topicId: athenaDemoIds.topics.geometry,
+      title: "Geometría",
+      status: "in_progress",
+      slot: 1,
+    },
   ]);
 
-  ports.curriculum.upsert({ ...demoCurriculumTopics[2]!, published: false });
-  const hidden = houseEntryResultSchema.parse((await enter(app, "topic-functions")).body);
+  ports.curriculum.upsert({ ...demoWorldTopics[2]!, published: false });
+  const hidden = houseEntryResultSchema.parse(
+    (await enter(app, athenaDemoIds.topics.functions)).body,
+  );
   assert.equal(!hidden.granted && hidden.reason, "not_published");
   assert.equal((await enter(app, "topic-nope")).status, 404);
   const stranger = await app.inject({
     method: "POST",
     url: "/api/world/houses/enter",
-    payload: { studentId: "nobody", topicId: "topic-geometry" },
+    payload: { studentId: "nobody", topicId: athenaDemoIds.topics.geometry },
   });
   assert.equal(stranger.statusCode, 404);
   assert.equal(
@@ -114,7 +129,11 @@ test("house entry: granted modes, locked with prerequisites, unpublished and unk
 test("entering houses and cosmetic interactions are never evidence", async () => {
   const { app, ports, service } = await setup();
   const before = await service.getPlanet(LUCIA);
-  for (const topicId of ["topic-geometry", "topic-geometry", "topic-functions"])
+  for (const topicId of [
+    athenaDemoIds.topics.geometry,
+    athenaDemoIds.topics.geometry,
+    athenaDemoIds.topics.functions,
+  ])
     await enter(app, topicId);
   await app.inject({
     method: "POST",
@@ -127,7 +146,7 @@ test("entering houses and cosmetic interactions are never evidence", async () =>
     payload: { studentId: LUCIA },
   });
   assert.deepEqual(await service.getPlanet(LUCIA), before);
-  const snapshot = await ports.mastery.getStudentMastery(LUCIA, ["topic-geometry"]);
+  const snapshot = await ports.mastery.getStudentMastery(LUCIA, [athenaDemoIds.topics.geometry]);
   assert.equal(snapshot.topics[0]?.mastery, 0.4);
 });
 
@@ -135,7 +154,7 @@ test("state machine: in_progress -> done unlocks the dependent house, with trans
   const { app, ports, service } = await setup();
   await service.getWorld(LUCIA); // baseline: what Lucía has seen
 
-  ports.mastery.set(LUCIA, [{ topicId: "topic-geometry", mastery: 0.6 }], 0.35);
+  ports.mastery.set(LUCIA, [{ topicId: athenaDemoIds.topics.geometry, mastery: 0.6 }], 0.35);
   const checkpoint = learningEventIngestResultSchema.parse(
     (
       await app.inject({
@@ -145,7 +164,7 @@ test("state machine: in_progress -> done unlocks the dependent house, with trans
           id: "evt-m-1",
           type: "MasteryUpdated",
           studentId: LUCIA,
-          topicId: "topic-geometry",
+          topicId: athenaDemoIds.topics.geometry,
           mastery: 0.6,
           previousMastery: 0.4,
           evidenceIds: ["attempt-1"],
@@ -157,12 +176,12 @@ test("state machine: in_progress -> done unlocks the dependent house, with trans
   assert.deepEqual(checkpoint.transitions, []); // still in progress, only progress moved
   assert.deepEqual(await service.getPlanet(LUCIA), demoLuciaPlanetAfterCheckpoint);
 
-  ports.mastery.set(LUCIA, [{ topicId: "topic-geometry", mastery: 0.85 }]);
+  ports.mastery.set(LUCIA, [{ topicId: athenaDemoIds.topics.geometry, mastery: 0.85 }]);
   const masteredEvent = {
     id: "evt-m-2",
     type: "MasteryUpdated",
     studentId: LUCIA,
-    topicId: "topic-geometry",
+    topicId: athenaDemoIds.topics.geometry,
     mastery: 0.85,
     previousMastery: 0.6,
     evidenceIds: ["attempt-2"],
@@ -174,9 +193,9 @@ test("state machine: in_progress -> done unlocks the dependent house, with trans
   assert.deepEqual(
     mastered.transitions.map((item) => [item.topicId, item.from, item.to, item.causeEventId]),
     [
-      ["topic-geometry", "in_progress", "done", "evt-m-2"],
+      [athenaDemoIds.topics.geometry, "in_progress", "done", "evt-m-2"],
       // Estadística needed Geometría: it unlocks in the same projection, without its own event.
-      ["topic-statistics", "locked", "available", undefined],
+      [athenaDemoIds.topics.statistics, "locked", "available", undefined],
     ],
   );
   assert.deepEqual(
@@ -184,12 +203,12 @@ test("state machine: in_progress -> done unlocks the dependent house, with trans
     ["geometry-builder"],
   );
   const world = worldViewSchema.parse(await service.getWorld(LUCIA));
-  assert.equal(statusesOf(world.planet)["topic-statistics"], "available");
+  assert.equal(statusesOf(world.planet)[athenaDemoIds.topics.statistics], "available");
   assert.deepEqual(
     world.pendingTransitions.map((item) => [item.topicId, item.from, item.to]),
     [
-      ["topic-geometry", "in_progress", "done"],
-      ["topic-statistics", "locked", "available"],
+      [athenaDemoIds.topics.geometry, "in_progress", "done"],
+      [athenaDemoIds.topics.statistics, "locked", "available"],
     ],
   );
 
@@ -212,28 +231,32 @@ test("state machine: in_progress -> done unlocks the dependent house, with trans
 test("houses with evidence never re-lock when the professor adds a prerequisite", async () => {
   const { ports, service } = await setup();
   ports.curriculum.upsert({
-    ...demoCurriculumTopics[1]!,
-    prerequisiteTopicIds: ["topic-fractions", "topic-critical-thinking"],
+    ...demoWorldTopics[1]!,
+    prerequisiteTopicIds: [athenaDemoIds.topics.fractions, athenaDemoIds.topics.criticalThinking],
   });
   ports.curriculum.upsert({
-    ...demoCurriculumTopics[0]!,
-    prerequisiteTopicIds: ["topic-critical-thinking"],
+    ...demoWorldTopics[0]!,
+    prerequisiteTopicIds: [athenaDemoIds.topics.criticalThinking],
   });
   const statuses = statusesOf(await service.getPlanet(LUCIA));
-  assert.equal(statuses["topic-geometry"], "in_progress");
-  assert.equal(statuses["topic-fractions"], "done");
+  assert.equal(statuses[athenaDemoIds.topics.geometry], "in_progress");
+  assert.equal(statuses[athenaDemoIds.topics.fractions], "done");
 });
 
 test("world layout shows where each published topic lands", async () => {
   const { app } = await setup();
   const response = await app.inject({
     method: "GET",
-    url: `/api/courses/${DEMO_COURSE_ID}/world-layout`,
+    url: `/api/courses/${athenaDemoIds.course}/world-layout`,
   });
   assert.equal(response.statusCode, 200);
   const layout = worldLayoutSchema.parse(response.json());
   assert.equal(layout.slots.length, 6);
-  assert.deepEqual(layout.slots[3], { slot: 3, topicId: "topic-statistics", title: "Estadística" });
+  assert.deepEqual(layout.slots[3], {
+    slot: 3,
+    topicId: athenaDemoIds.topics.statistics,
+    title: "Estadística",
+  });
   assert.deepEqual(layout.overflow, []);
   assert.equal(
     (await app.inject({ method: "GET", url: "/api/courses/course-x/world-layout" })).statusCode,
@@ -251,7 +274,10 @@ test("presenter demo steps replay Learning deterministically and reset", async (
     ["first-insight"],
   );
   assert.deepEqual((await step()).json(), { step: "GEOMETRY_MASTERED", remaining: 0 });
-  assert.equal(statusesOf(await service.getPlanet(LUCIA))["topic-statistics"], "available");
+  assert.equal(
+    statusesOf(await service.getPlanet(LUCIA))[athenaDemoIds.topics.statistics],
+    "available",
+  );
   assert.deepEqual((await step()).json(), { step: null, remaining: 0 });
 });
 

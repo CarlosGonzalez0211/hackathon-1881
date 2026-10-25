@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { idSchema, isoDateSchema } from "../common.js";
 import {
+  DEMO_GEOMETRY_TOPIC_ID,
   DEMO_STUDENT_ID,
   demoCheckpointEvents,
   demoClassPlanets,
@@ -97,7 +98,7 @@ export type WorldLearningEventIngestResult = LearningEventIngestResult;
 
 /** Header detail for Lucía's Geometry house (proposal 5.8). */
 export const demoLuciaGeometryDetail: TopicMastery = {
-  topicId: "topic-geometry",
+  topicId: DEMO_GEOMETRY_TOPIC_ID,
   mastery: 0.4,
   demonstratedConcepts: 2,
   totalConcepts: 5,
@@ -156,7 +157,7 @@ export const demoLearningScenario: DemoLearningStep[] = [
         id: "evt-mastery-updated-2",
         type: "MasteryUpdated",
         studentId: DEMO_STUDENT_ID,
-        topicId: "topic-geometry",
+        topicId: DEMO_GEOMETRY_TOPIC_ID,
         mastery: 0.85,
         previousMastery: 0.6,
         evidenceIds: ["attempt-checkpoint-3"],

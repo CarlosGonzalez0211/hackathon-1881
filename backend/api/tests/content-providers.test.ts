@@ -315,6 +315,10 @@ test("material patches clear columns for undefined and leave topics to their tab
   assert.deepEqual(parseVector([1, 2]), [1, 2]);
 });
 
-test("mock data and AI modes keep the module's own parts", () => {
-  assert.deepEqual(contentOptionsFor("mock", "mock"), {});
+test("mock data and AI modes share the seeded in-memory graph", async () => {
+  const options = contentOptionsFor("mock", "mock");
+  assert.ok(options.materials);
+  assert.ok(options.chunks);
+  assert.ok(options.objectives);
+  assert.equal((await options.materials.listByClass(CLASS)).length, 2);
 });

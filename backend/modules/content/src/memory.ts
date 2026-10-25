@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { athenaDemoIds } from "@athena/shared";
+import { athenaDemoIds, athenaDemoTopics } from "@athena/shared";
 import type {
   AiCallLedger,
   ChunkMatchInput,
@@ -22,6 +22,10 @@ const unfinished = new Set(["uploaded", "failed", "extracting", "chunking", "emb
 /** Mirrors the 0501 table and content_claim_material. Default in mock mode and tests. */
 export class InMemoryMaterialRepository implements MaterialRepository {
   readonly rows = new Map<string, MaterialRecord>();
+
+  constructor(seed: MaterialRecord[] = []) {
+    for (const record of seed) this.rows.set(record.id, clone(record));
+  }
 
   async insertOrGet(record: MaterialRecord) {
     const existing = [...this.rows.values()].find(
@@ -90,7 +94,12 @@ export class InMemoryMaterialRepository implements MaterialRepository {
 export class InMemoryChunkRepository implements ChunkRepository {
   readonly rows = new Map<string, ChunkRecord>();
 
-  constructor(private readonly materials: InMemoryMaterialRepository) {}
+  constructor(
+    private readonly materials: InMemoryMaterialRepository,
+    seed: ChunkRecord[] = [],
+  ) {
+    for (const record of seed) this.rows.set(record.id, clone(record));
+  }
 
   async insert(chunks: ChunkRecord[]) {
     for (const chunk of chunks) {
@@ -246,15 +255,7 @@ export class InMemoryMaterialStorage implements MaterialStorage {
 export const demoCurriculumCatalog: CurriculumCatalogPort = {
   async listTopics(courseId) {
     if (courseId !== athenaDemoIds.course) return [];
-    const { topics } = athenaDemoIds;
-    return [
-      { id: topics.fractions, title: "Fracciones" },
-      { id: topics.geometry, title: "Geometría" },
-      { id: topics.functions, title: "Funciones" },
-      { id: topics.statistics, title: "Estadística" },
-      { id: topics.probability, title: "Probabilidad" },
-      { id: topics.criticalThinking, title: "Pensamiento crítico" },
-    ];
+    return athenaDemoTopics.map(({ id, title }) => ({ id, title }));
   },
   async activeVersion() {
     return 1;
@@ -265,6 +266,10 @@ export class InMemoryVersionedRepository<
   T extends VersionedRecord,
 > implements VersionedRepository<T> {
   private readonly rows = new Map<string, T>();
+
+  constructor(seed: T[] = []) {
+    for (const record of seed) this.rows.set(record.id, clone(record));
+  }
 
   async list(classId: string) {
     return [...this.rows.values()]
@@ -356,6 +361,10 @@ export class InMemoryAiCallLedger implements AiCallLedger {
 
 export class InMemoryFlagRepository implements FlagRepository {
   readonly rows = new Map<string, FlagRecord>();
+
+  constructor(seed: FlagRecord[] = []) {
+    for (const record of seed) this.rows.set(record.id, clone(record));
+  }
 
   async create(flag: FlagRecord) {
     this.rows.set(flag.id, clone(flag));

@@ -47,6 +47,7 @@ export {
   DefaultDocumentExtractor,
   MOCK_EMBEDDING_MODEL,
   MockEmbeddingProvider,
+  mockTextEmbedding,
   ParagraphChunker,
   sha256Hex,
   sniffMatches,

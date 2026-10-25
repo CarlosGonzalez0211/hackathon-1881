@@ -1,8 +1,8 @@
 import {
-  DEMO_COURSE_ID,
+  athenaDemoCourse,
   demoClassMastery,
-  demoCurriculumTopics,
   demoRoster,
+  demoWorldTopics,
   type CurriculumTopicSummary,
   type StudentMasterySnapshot,
   type TopicMastery,
@@ -21,7 +21,7 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 export class MockCurriculumTopicPort implements CurriculumTopicPort {
   readonly topics: CurriculumTopicSummary[];
 
-  constructor(topics: CurriculumTopicSummary[] = demoCurriculumTopics) {
+  constructor(topics: CurriculumTopicSummary[] = demoWorldTopics) {
     this.topics = clone(topics);
   }
 
@@ -73,7 +73,7 @@ export class MockEnrollmentPort implements EnrollmentPort {
     private readonly classes: { classId: string; courseId: string; studentIds: string[] }[] = [
       {
         classId: demoRoster.classId,
-        courseId: DEMO_COURSE_ID,
+        courseId: athenaDemoCourse.id,
         studentIds: demoRoster.students.map((student) => student.id),
       },
     ],

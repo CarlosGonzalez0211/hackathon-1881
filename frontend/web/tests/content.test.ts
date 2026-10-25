@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { athenaDemoIds, CONTENT_LIMITS } from "@athena/shared";
+import {
+  athenaDemoIds,
+  CONTENT_LIMITS,
+  createDemoContentSeed,
+  demoContentTopics,
+} from "@athena/shared";
 import { MockContentClient } from "../src/features/content/api/mock-content-client";
 import { ContentApiError } from "../src/features/content/api/types";
 import { objectivesInScope, upcomingMilestones } from "../src/features/content/coverage";
@@ -52,6 +57,16 @@ test("upload helpers hash like the server and catch bad files before upload", as
   );
   assert.equal(uploadProblem({ name: "a.pdf", type: "", size: 100 }), null);
   assert.equal(titleFromFilename("notas_de-geometria.pdf"), "notas de geometria");
+});
+
+test("the browser client starts from the shared backend demo seed", async () => {
+  const client = new MockContentClient();
+  const seed = createDemoContentSeed();
+  assert.deepEqual(await client.listTopics(), demoContentTopics);
+  assert.deepEqual(await client.listMaterials(), seed.materials);
+  assert.deepEqual(await client.listObjectives(), seed.objectives);
+  assert.deepEqual(await client.listMilestones(), seed.milestones);
+  assert.deepEqual(await client.listFlags(), seed.flags);
 });
 
 test("the mock client walks a material from upload to ready in bounded steps", async () => {
