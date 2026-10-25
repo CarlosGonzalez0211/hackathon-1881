@@ -231,6 +231,29 @@ test("assessment grading supports deterministic partial credit", async () => {
   assert.equal(partial?.correct, false);
   assert.equal(partial?.score, 0.5);
   assert.equal(partial?.misconceptionId, undefined);
+
+  const distractor = await assessments.grade(
+    demoLearningIds.questions.diagnosticTriangleAreaDistractors,
+    "48",
+  );
+  assert.equal(distractor?.score, 0);
+  assert.equal(distractor?.misconceptionId, demoLearningIds.misconceptions.triangleMissingHalf);
+
+  const writtenPartial = await assessments.grade(
+    demoLearningIds.questions.checkpointTriangleExplanation,
+    "Dos triángulos iguales forman un rectángulo.",
+  );
+  assert.equal(writtenPartial?.correct, false);
+  assert.equal(writtenPartial?.score, 0.5);
+  assert.equal(writtenPartial?.misconceptionId, demoLearningIds.misconceptions.triangleMissingHalf);
+
+  const writtenComplete = await assessments.grade(
+    demoLearningIds.questions.checkpointTriangleExplanation,
+    "Dos triángulos iguales forman un rectángulo; cada uno ocupa la mitad.",
+  );
+  assert.equal(writtenComplete?.correct, true);
+  assert.equal(writtenComplete?.score, 1);
+  assert.equal(writtenComplete?.misconceptionId, undefined);
 });
 
 test("diagnostics can assess multiple concepts in one submission", async () => {
@@ -306,6 +329,8 @@ test("quiz route returns adaptive learner-safe questions without answer keys", a
     for (const question of response.json().questions) {
       assert.equal("answerKey" in question, false);
       assert.equal("misconceptionAnswers" in question, false);
+      assert.equal("rubricFeatures" in question, false);
+      assert.equal("passingScore" in question, false);
     }
   } finally {
     await app.close();
@@ -708,8 +733,37 @@ test("Supabase adapters satisfy assessment and core learning repository contract
     is_transfer: false,
     answer_key: 30,
     partial_credit_answers: { "15": 0.5 },
+    rubric_features: [],
+    passing_score: null,
     misconception_answers: { "60": demoLearningIds.misconceptions.triangleMissingHalf },
     strategy_context_key: "geometry:missing_half:foundation",
+    active: true,
+  });
+  await rest.insert("learning_questions", {
+    id: demoLearningIds.questions.checkpointTriangleExplanation,
+    purpose: "checkpoint",
+    topic_id: athenaDemoIds.topics.geometry,
+    concept_id: demoLearningIds.concepts.triangleArea,
+    prompt: "Explain triangle area",
+    format: "short_text",
+    choices: null,
+    difficulty: 0.65,
+    required_for_mastery: true,
+    is_transfer: true,
+    answer_key: "Two triangles form a rectangle and each is half.",
+    partial_credit_answers: {},
+    rubric_features: [
+      { id: "rectangle", phrases: ["two triangles", "form a rectangle"], weight: 0.5 },
+      {
+        id: "half",
+        phrases: ["half", "divide by two"],
+        weight: 0.5,
+        missingMisconceptionId: demoLearningIds.misconceptions.triangleMissingHalf,
+      },
+    ],
+    passing_score: 1,
+    misconception_answers: {},
+    strategy_context_key: "geometry:missing_half:explanation",
     active: true,
   });
   const assessments = new SupabaseAssessmentRepository(rest);
@@ -717,6 +771,12 @@ test("Supabase adapters satisfy assessment and core learning repository contract
     (await assessments.grade(demoLearningIds.questions.checkpointTriangleArea, 15))?.score,
     0.5,
   );
+  const written = await assessments.grade(
+    demoLearningIds.questions.checkpointTriangleExplanation,
+    "Two triangles form a rectangle.",
+  );
+  assert.equal(written?.score, 0.5);
+  assert.equal(written?.misconceptionId, demoLearningIds.misconceptions.triangleMissingHalf);
   assert.deepEqual(await assessments.listRequiredConceptIds(athenaDemoIds.topics.geometry), [
     demoLearningIds.concepts.triangleArea,
   ]);

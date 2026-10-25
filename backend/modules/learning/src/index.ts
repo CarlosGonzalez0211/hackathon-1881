@@ -1,4 +1,11 @@
-export { InMemoryAssessmentRepository, type AssessmentRepository } from "./assessment.js";
+export {
+  gradeAssessmentQuestion,
+  InMemoryAssessmentRepository,
+  type AssessmentQuestion,
+  type AssessmentRepository,
+  type AssessmentRubricFeature,
+  type ScoredAnswer,
+} from "./assessment.js";
 export { calculateMastery, type MasteryCalculationInput } from "./domain/mastery.js";
 export {
   defaultKnowledgeTracingParameters,

@@ -14,9 +14,18 @@ export interface AssessmentQuestion {
   transfer: boolean;
   answerKey: unknown;
   partialCreditAnswers?: Readonly<Record<string, number>>;
+  rubricFeatures?: readonly AssessmentRubricFeature[];
+  passingScore?: number;
   misconceptionAnswers: Readonly<Record<string, string>>;
   targetMisconceptionIds: readonly string[];
   strategyContextKey: string;
+}
+
+export interface AssessmentRubricFeature {
+  id: string;
+  phrases: readonly string[];
+  weight: number;
+  missingMisconceptionId?: string;
 }
 
 export interface ScoredAnswer {
@@ -72,6 +81,28 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
         partialCreditAnswers: { "15": 0.5 },
         misconceptionAnswers: {
           "60": demoLearningIds.misconceptions.triangleMissingHalf,
+        },
+        targetMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
+        strategyContextKey: "geometry:missing_half:foundation",
+      },
+    ],
+    [
+      demoLearningIds.questions.diagnosticTriangleAreaDistractors,
+      {
+        id: demoLearningIds.questions.diagnosticTriangleAreaDistractors,
+        purpose: "diagnostic",
+        topicId: athenaDemoIds.topics.geometry,
+        conceptId: demoLearningIds.concepts.triangleArea,
+        conceptTitle: "Área de triángulos",
+        prompt: "Un triángulo tiene base 8 y altura 6. ¿Cuál opción muestra su área?",
+        format: "multiple_choice",
+        choices: ["48", "24", "14", "28"],
+        difficulty: 0.4,
+        requiredForMastery: true,
+        transfer: false,
+        answerKey: "24",
+        misconceptionAnswers: {
+          "48": demoLearningIds.misconceptions.triangleMissingHalf,
         },
         targetMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
         strategyContextKey: "geometry:missing_half:foundation",
@@ -158,6 +189,40 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
       },
     ],
     [
+      demoLearningIds.questions.checkpointTriangleExplanation,
+      {
+        id: demoLearningIds.questions.checkpointTriangleExplanation,
+        purpose: "checkpoint",
+        topicId: athenaDemoIds.topics.geometry,
+        conceptId: demoLearningIds.concepts.triangleArea,
+        conceptTitle: "Área de triángulos",
+        prompt: "Explica por qué el área de un triángulo es base por altura dividido entre dos.",
+        format: "short_text",
+        difficulty: 0.65,
+        requiredForMastery: true,
+        transfer: true,
+        answerKey:
+          "Dos triángulos iguales forman un rectángulo, así que cada triángulo ocupa la mitad.",
+        rubricFeatures: [
+          {
+            id: "rectangle_relationship",
+            phrases: ["dos triángulos", "forman un rectángulo"],
+            weight: 0.5,
+          },
+          {
+            id: "half_relationship",
+            phrases: ["mitad", "divide entre dos", "dividir entre dos", "1/2"],
+            weight: 0.5,
+            missingMisconceptionId: demoLearningIds.misconceptions.triangleMissingHalf,
+          },
+        ],
+        passingScore: 1,
+        misconceptionAnswers: {},
+        targetMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
+        strategyContextKey: "geometry:missing_half:explanation",
+      },
+    ],
+    [
       demoLearningIds.questions.retentionTriangleArea,
       {
         id: demoLearningIds.questions.retentionTriangleArea,
@@ -183,16 +248,7 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
   async grade(questionId: string, answer: unknown): Promise<ScoredAnswer | null> {
     const question = this.questions.get(questionId);
     if (!question) return null;
-    const normalizedAnswer = normalizeAnswer(answer);
-    const correct = normalizedAnswer === normalizeAnswer(question.answerKey);
-    const score = correct ? 1 : (question.partialCreditAnswers?.[normalizedAnswer] ?? 0);
-    return {
-      question,
-      correct,
-      score,
-      misconceptionId:
-        correct || score > 0 ? undefined : question.misconceptionAnswers[normalizedAnswer],
-    };
+    return gradeAssessmentQuestion(question, answer);
   }
 
   async listByTopic(topicId: string, purpose: AssessmentPurpose) {
@@ -212,6 +268,54 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
   }
 }
 
+export function gradeAssessmentQuestion(
+  question: AssessmentQuestion,
+  answer: unknown,
+): ScoredAnswer {
+  const normalizedAnswer = normalizeAnswer(answer);
+  const rubric = gradeRubric(question, normalizedAnswer);
+  const exact = normalizedAnswer === normalizeAnswer(question.answerKey);
+  const score = exact
+    ? 1
+    : (rubric?.score ?? question.partialCreditAnswers?.[normalizedAnswer] ?? 0);
+  const passingScore = question.passingScore ?? 1;
+  assertProbability(passingScore, "Assessment passing score");
+  const correct = exact || score >= passingScore;
+  return {
+    question,
+    correct,
+    score,
+    misconceptionId: correct
+      ? undefined
+      : (rubric?.missingMisconceptionId ??
+        (score > 0 ? undefined : question.misconceptionAnswers[normalizedAnswer])),
+  };
+}
+
 function normalizeAnswer(answer: unknown) {
   return typeof answer === "string" ? answer.trim().toLowerCase() : String(answer);
+}
+
+function gradeRubric(question: AssessmentQuestion, normalizedAnswer: string) {
+  if (question.format !== "short_text" || !question.rubricFeatures?.length) return undefined;
+  let score = 0;
+  let missingMisconceptionId: string | undefined;
+  for (const feature of question.rubricFeatures) {
+    assertProbability(feature.weight, `Rubric feature ${feature.id} weight`);
+    if (feature.phrases.length === 0) {
+      throw new Error(`Rubric feature ${feature.id} must define at least one phrase`);
+    }
+    const matched = feature.phrases.some((phrase) =>
+      normalizedAnswer.includes(normalizeAnswer(phrase)),
+    );
+    if (matched) score += feature.weight;
+    else missingMisconceptionId ??= feature.missingMisconceptionId;
+  }
+  return { score: Math.min(1, Math.max(0, score)), missingMisconceptionId };
+}
+
+function assertProbability(value: number, label: string) {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error(`${label} must be between 0 and 1`);
+  }
 }

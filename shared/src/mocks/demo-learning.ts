@@ -19,10 +19,12 @@ export const demoLearningIds = {
   questions: {
     diagnosticTriangleArea: "00000000-0000-4000-8000-00000000d001",
     diagnosticTriangleBaseHeight: "00000000-0000-4000-8000-00000000d002",
+    diagnosticTriangleAreaDistractors: "00000000-0000-4000-8000-00000000d003",
     checkpointTriangleArea: "00000000-0000-4000-8000-00000000c001",
     checkpointTriangleBaseHeight: "00000000-0000-4000-8000-00000000c002",
     checkpointRectangleArea: "00000000-0000-4000-8000-00000000c003",
     checkpointTriangleAreaTransfer: "00000000-0000-4000-8000-00000000c004",
+    checkpointTriangleExplanation: "00000000-0000-4000-8000-00000000c005",
     retentionTriangleArea: "00000000-0000-4000-8000-00000000b001",
   },
   materials: {

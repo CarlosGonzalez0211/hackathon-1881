@@ -27,6 +27,7 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 - spaced-retention scheduling
 - deterministic adaptive question selection using required-concept coverage, active misconceptions,
   knowledge-adjusted difficulty, transfer practice and recent-question avoidance
+- deterministic short-text rubric features and misconception-targeted multiple-choice distractors
 - in-memory repositories and a deterministic assessment catalog
 - server-only Supabase/PostgREST assessment and learning repositories
 - domain events for diagnostics, misconceptions, checkpoints, mastery and strategy changes
@@ -52,7 +53,9 @@ intentionally centralized and provisional until Daniela and Vianey freeze the sh
 generic `/api/ai/prompt` endpoint remains a developer demo and must not be used as the tutor.
 
 The quiz route returns only learner-safe question fields. Answer keys and misconception-answer maps
-remain inside the backend assessment repository.
+remain inside the backend assessment repository. Written-response rubric phrases, weights and
+missing-feature misconception mappings are also server-only; they produce repeatable scores without
+asking a language model to grant credit or mastery.
 
 `data/supabase/migrations/0200_learning.sql` owns Daniela's database range. It enables RLS and
 revokes direct browser access by default; Carlos must review final production policies before a

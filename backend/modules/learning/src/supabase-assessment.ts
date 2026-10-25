@@ -1,5 +1,10 @@
 import type { AssessmentPurpose } from "@athena/shared";
-import type { AssessmentQuestion, AssessmentRepository, ScoredAnswer } from "./assessment.js";
+import {
+  gradeAssessmentQuestion,
+  type AssessmentQuestion,
+  type AssessmentRepository,
+  type ScoredAnswer,
+} from "./assessment.js";
 import type { LearningRestClient } from "./supabase-rest.js";
 
 interface QuestionRow {
@@ -15,6 +20,8 @@ interface QuestionRow {
   is_transfer: boolean;
   answer_key: unknown;
   partial_credit_answers: Record<string, number>;
+  rubric_features: AssessmentQuestion["rubricFeatures"] | null;
+  passing_score: number | null;
   misconception_answers: Record<string, string>;
   strategy_context_key: string;
   active: boolean;
@@ -32,16 +39,7 @@ export class SupabaseAssessmentRepository implements AssessmentRepository {
       })
     )[0];
     if (!row) return null;
-    const question = toQuestion(row);
-    const normalized = normalizeAnswer(answer);
-    const correct = normalized === normalizeAnswer(question.answerKey);
-    const score = correct ? 1 : (question.partialCreditAnswers?.[normalized] ?? 0);
-    return {
-      question,
-      correct,
-      score,
-      misconceptionId: correct || score > 0 ? undefined : question.misconceptionAnswers[normalized],
-    };
+    return gradeAssessmentQuestion(toQuestion(row), answer);
   }
 
   async listByTopic(topicId: string, purpose: AssessmentPurpose) {
@@ -78,12 +76,17 @@ function toQuestion(row: QuestionRow): AssessmentQuestion {
     transfer: row.is_transfer,
     answerKey: row.answer_key,
     partialCreditAnswers: row.partial_credit_answers,
+    rubricFeatures: row.rubric_features ?? undefined,
+    passingScore: row.passing_score == null ? undefined : Number(row.passing_score),
     misconceptionAnswers: row.misconception_answers,
-    targetMisconceptionIds: [...new Set(Object.values(row.misconception_answers))],
+    targetMisconceptionIds: [
+      ...new Set([
+        ...Object.values(row.misconception_answers),
+        ...(row.rubric_features ?? []).flatMap((feature) =>
+          feature.missingMisconceptionId ? [feature.missingMisconceptionId] : [],
+        ),
+      ]),
+    ],
     strategyContextKey: row.strategy_context_key,
   };
-}
-
-function normalizeAnswer(answer: unknown) {
-  return typeof answer === "string" ? answer.trim().toLowerCase() : String(answer);
 }

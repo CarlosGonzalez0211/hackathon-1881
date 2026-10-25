@@ -27,6 +27,8 @@ create table if not exists public.learning_questions (
   is_transfer boolean not null default false,
   answer_key jsonb not null,
   partial_credit_answers jsonb not null default '{}'::jsonb,
+  rubric_features jsonb not null default '[]'::jsonb,
+  passing_score numeric(5,4) check (passing_score between 0 and 1),
   misconception_answers jsonb not null default '{}'::jsonb,
   strategy_context_key text not null,
   active boolean not null default true
