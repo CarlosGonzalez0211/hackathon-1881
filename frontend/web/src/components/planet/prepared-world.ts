@@ -16,13 +16,12 @@ export interface PreparedWorld {
   sink: WorldSink;
 }
 
-/** A student who dived but never left the orbit: free the hidden world after this long. */
-const UNUSED_MS = 30000;
-let prepared: (PreparedWorld & { abort: AbortController; timer: number }) | null = null;
+let prepared: (PreparedWorld & { abort: AbortController; timer?: number }) | null = null;
 
 /**
- * Start building `state`'s world while the orbit camera dives, so the world page adopts a
- * ready engine instead of loading one. Until adopted it renders paused into a 1px host.
+ * Build `state`'s world ahead of the dive (the student's own, while the orbit idles; a
+ * classmate's, as the camera flies in), so the world page adopts a ready engine instead of
+ * loading one. Until adopted it sits paused in a 1px host and stops drawing after one frame.
  */
 export function prepareWorld(state: PlanetState) {
   if (prepared?.studentId === state.studentId) return;
@@ -63,7 +62,6 @@ export function prepareWorld(state: PlanetState) {
     engine,
     sink,
     abort,
-    timer: window.setTimeout(discardPreparedWorld, UNUSED_MS),
   };
 }
 
@@ -78,9 +76,17 @@ export function takePreparedWorld(studentId: string): PreparedWorld | null {
   return taken;
 }
 
-export function discardPreparedWorld() {
+/** Free the hidden world now, or `afterMs` later if no page has adopted it by then. */
+export function discardPreparedWorld(afterMs = 0) {
   const current = prepared;
   if (!current) return;
+  if (afterMs > 0) {
+    window.clearTimeout(current.timer);
+    current.timer = window.setTimeout(() => {
+      if (prepared === current) discardPreparedWorld();
+    }, afterMs);
+    return;
+  }
   prepared = null;
   window.clearTimeout(current.timer);
   // The engine disposes itself on abort, whether or not it finished building.

@@ -4,7 +4,8 @@ import { t } from "@/lib/i18n";
  * Orbit ↔ world hand-off. The live canvas of the scene being left (the orbit after its dive,
  * or a world after rising to its overview) is lifted into a fixed veil, keeps rendering
  * through the route change, and fades once the next scene has drawn its first frames in the
- * matching pose: one continuous shot, no cut and no loading screen.
+ * matching pose: one continuous shot, no cut and no loading screen. A slow scene simply keeps
+ * the held planet spinning a little longer.
  */
 export type ArrivalTarget = "world" | "orbit";
 interface Pending {
@@ -17,8 +18,11 @@ interface Pending {
 }
 let pending: Pending | null = null;
 
-/** Never strand the student behind the veil if the next scene fails to open. */
-const GIVE_UP_MS = 15000;
+/**
+ * Never strand the student behind the veil if the next scene fails to open. Generous: on a
+ * slow network the spinning planet is the loading state.
+ */
+const GIVE_UP_MS = 45000;
 
 export const reducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -36,11 +40,13 @@ export function holdArrival(
   releaseArrival(0);
   const veil = document.createElement("div");
   veil.className = "planet-arrival-veil";
-  veil.setAttribute("aria-hidden", "true");
-  const caption = document.createElement("p");
-  caption.className = "planet-arrival-caption";
-  caption.textContent = target === "world" ? t("Landing on the planet") : t("Flying to your class");
-  veil.append(host, caption);
+  host.setAttribute("aria-hidden", "true");
+  // Announced, never shown: on screen the shot itself says where the student is going.
+  const status = document.createElement("p");
+  status.className = "sr-only";
+  status.setAttribute("role", "status");
+  status.textContent = target === "world" ? t("Landing on the planet") : t("Flying to your class");
+  veil.append(host, status);
   document.body.appendChild(veil);
   pending = {
     target,

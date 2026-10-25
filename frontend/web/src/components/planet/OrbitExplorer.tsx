@@ -1,11 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClassOrbit, ClassOrbitStudent, PlanetState } from "@athena/shared";
 import { OrbitCanvas, Planet } from "./Planet";
 import { arrivalFor, revealWhenDrawn } from "./arrival";
-import { prepareWorld } from "./prepared-world";
+import { discardPreparedWorld, prepareWorld } from "./prepared-world";
 import { VisitPlanetDialog } from "./VisitPlanetDialog";
 import { WorldSketchIcon } from "@/features/world/components/WorldSketchIcon";
 import { useOutsideDismiss } from "@/components/ui/useOutsideDismiss";
@@ -14,8 +14,9 @@ import { t } from "@/lib/i18n";
 /**
  * Class orbit: one planet per enrolled student. The signed-in student's planet leads back to
  * their world; a classmate's planet offers a visit to theirs. Either way the camera dives into
- * the planet while its world is built, and the world takes over the same shot. Coming back
- * from a world, the orbit opens on that planet and climbs out to the class.
+ * the planet and its world takes over the same shot, with nothing left to load: the student's
+ * own world is built offscreen while the orbit idles, a classmate's during the dive. Coming
+ * back from a world, the orbit opens on that planet and climbs out to the class.
  */
 export function OrbitExplorer({
   orbit,
@@ -34,6 +35,9 @@ export function OrbitExplorer({
   const [landing, setLanding] = useState<string | null>(null);
   // Returning from a world: hold its planet until the handed-back shot has faded.
   const [returning, setReturning] = useState(() => arrivalFor("orbit"));
+  const [ready, setReady] = useState(false);
+  const landingRef = useRef<string | null>(null);
+  landingRef.current = landing;
   const states = useMemo(() => orbit.students.map((student) => student.planet), [orbit]);
   const byId = useMemo(
     () => new Map(orbit.students.map((student) => [student.studentId, student])),
@@ -43,7 +47,27 @@ export function OrbitExplorer({
     studentId === viewerStudentId
       ? "/world"
       : `/visit/${encodeURIComponent(studentId)}?alumnos=${orbit.students.length}`;
-  /** Dive into a planet; its world (route and 3D engine) is prepared during the flight. */
+  // Build the student's own world while the orbit idles (after any climb-out), so diving
+  // home never waits on it. Leaving the orbit any other way frees it.
+  useEffect(() => {
+    const own = byId.get(viewerStudentId);
+    if (!ready || returning || !own) return;
+    let idle = 0;
+    const timer = window.setTimeout(() => {
+      const start = () => {
+        router.prefetch("/world");
+        prepareWorld(own.planet);
+      };
+      if ("requestIdleCallback" in window) idle = window.requestIdleCallback(start);
+      else start();
+    }, 800);
+    return () => {
+      window.clearTimeout(timer);
+      if (idle) window.cancelIdleCallback(idle);
+    };
+  }, [ready, returning, byId, viewerStudentId, router]);
+  useEffect(() => () => discardPreparedWorld(landingRef.current ? 30000 : 0), []);
+  /** Dive into a planet; its world (route and 3D engine) is ready or prepared in flight. */
   const land = (planet: PlanetState) => {
     if (landing || returning) return;
     router.prefetch(worldHref(planet.studentId));
@@ -77,6 +101,7 @@ export function OrbitExplorer({
         focus={returning}
         start={returning}
         onReady={() => {
+          setReady(true);
           if (returning) revealWhenDrawn(() => setReturning(null));
         }}
         landing={landing}

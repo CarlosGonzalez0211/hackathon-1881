@@ -126,15 +126,19 @@ export async function createOrbitEngine(
       });
       let last = 0;
       scope.events$1.on("prerender", () => {
-        const time = scope.renderInfo.time;
-        const dt = Math.min(0.1, Math.max(0, time - previous));
+        // Wall-clock time: the runtime's render clock is shared with a world being built
+        // alongside (prepared during the dive) and drifts. The dive follows real elapsed time
+        // even through a long frame; orbits keep the clamped step.
+        const time = performance.now() / 1000;
+        const elapsed = previous ? Math.min(0.5, Math.max(0, time - previous)) : 0;
+        const dt = Math.min(0.1, elapsed);
         previous = time;
         // Switching planets climbs out to the class first, then dives into the next one.
         if (weight === 0) diveId = focusId;
         const goal = focusId && focusId === diveId ? 1 : 0;
         if (prefersReducedMotion()) weight = goal;
-        else if (weight < goal) weight = Math.min(1, weight + dt / orbitDive.inSeconds);
-        else weight = Math.max(goal, weight - dt / orbitDive.outSeconds);
+        else if (weight < goal) weight = Math.min(1, weight + elapsed / orbitDive.inSeconds);
+        else weight = Math.max(goal, weight - elapsed / orbitDive.outSeconds);
         if (weight === 0) diveId = focusId;
         const e = easeInOut(weight);
         orbitClock += dt * (1 - e);

@@ -514,26 +514,6 @@ progress {
 .world-app.is-leaving .house-markers {
   visibility: hidden;
 }
-.planet-arrival-caption {
-  position: absolute;
-  left: 50%;
-  bottom: 48px;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 6px 16px;
-  border-radius: var(--athena-radius-pill);
-  background: var(--athena-veil);
-  color: var(--athena-ink);
-  font-size: var(--athena-text-sm);
-  opacity: 0;
-  /* Only a slow world load ever shows it. */
-  animation: planet-arrival-caption 400ms var(--athena-ease) 1.6s forwards;
-}
-@keyframes planet-arrival-caption {
-  to {
-    opacity: 1;
-  }
-}
 .visit-dialog {
   /* The global reset strips the UA's auto margins: centre the modal explicitly. */
   position: fixed;

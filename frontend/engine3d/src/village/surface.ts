@@ -279,6 +279,11 @@ export async function createSurfaceEngine(
       if (disposed) return;
       const dt = Math.min((now - previous) / 1000, 0.05);
       previous = now;
+      // Built offscreen ahead of time (a 1px host): one frame compiles it, then it idles.
+      if (cameraReady && host.clientWidth <= 1) {
+        lifecycle.requestAnimationFrame(render);
+        return;
+      }
       if (!paused) {
         const x =
           Number(keys.has("KeyD") || keys.has("ArrowRight")) -
