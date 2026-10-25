@@ -1,4 +1,6 @@
 "use client";
+import { t } from "@/lib/i18n";
+
 import { useCallback, useEffect } from "react";
 import { useWorld, type WorldToast } from "../WorldProvider";
 import styles from "./WorldToasts.module.css";
@@ -21,7 +23,7 @@ function Toast({ toast }: { toast: WorldToast }) {
     <li className={`${styles.toast} ${styles[toast.tone]}`}>
       <span aria-hidden="true">{symbols[toast.tone]}</span>
       <span>{toast.message}</span>
-      <button onClick={onDismiss} aria-label="Cerrar aviso">
+      <button onClick={onDismiss} aria-label={t("Dismiss notification")}>
         ×
       </button>
     </li>
@@ -32,7 +34,7 @@ function Toast({ toast }: { toast: WorldToast }) {
 export function WorldToasts() {
   const { toasts } = useWorld();
   return (
-    <ol className={styles.region} aria-live="polite" aria-label="Avisos del mundo">
+    <ol className={styles.region} aria-live="polite" aria-label={t("World notifications")}>
       {toasts.map((toast) => (
         <Toast key={toast.id} toast={toast} />
       ))}

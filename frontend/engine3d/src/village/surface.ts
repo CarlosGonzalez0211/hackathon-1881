@@ -37,6 +37,7 @@ export async function createSurfaceEngine(
   host: HTMLElement,
   options: SurfaceOptions,
 ): Promise<SurfaceHandle> {
+  const spanish = options.locale === "es";
   const context = await createVillageContext();
   const { scope: s, lifecycle, assets } = context;
   const scene = new s.Scene();
@@ -95,7 +96,9 @@ export async function createSurfaceEngine(
     renderer.domElement.tabIndex = 0;
     renderer.domElement.setAttribute(
       "aria-label",
-      "Planeta de Athena. Usa WASD o las flechas para caminar, Espacio para saltar, E para interactuar y V para ver el planeta.",
+      spanish
+        ? "Planeta de Athena. Usa WASD o las flechas para caminar, Espacio para saltar, E para interactuar y V para ver el planeta."
+        : "Athena planet. Use WASD or arrow keys to walk, Space to jump, E to interact, and V for the planet overview.",
     );
     host.appendChild(renderer.domElement);
     // Painterly materials add their own radial sky/ground fill; this only lifts deep shade.
@@ -225,8 +228,8 @@ export async function createSurfaceEngine(
     const controls = document.createElement("div");
     controls.className = "village-touch-controls";
     for (const [label, action] of [
-      ["Saltar", () => walker.jump()],
-      ["Interactuar", interact],
+      [spanish ? "Saltar" : "Jump", () => walker.jump()],
+      [spanish ? "Interactuar" : "Interact", interact],
     ] as const) {
       const button = document.createElement("button");
       button.type = "button";
@@ -551,9 +554,9 @@ export async function createSurfaceEngine(
           paused || overview
             ? ""
             : house
-              ? `E \u00b7 Entrar a ${house.title}`
+              ? `E · ${spanish ? "Entrar a" : "Enter"} ${house.title}`
               : npcName
-                ? `E \u00b7 Hablar con ${npcName}`
+                ? `E · ${spanish ? "Hablar con" : "Talk to"} ${npcName}`
                 : "";
         if (hint.textContent !== text) hint.textContent = text;
         hint.hidden = !text;
