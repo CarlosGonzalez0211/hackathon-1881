@@ -252,7 +252,7 @@ pnpm lint
 pnpm format:check
 ```
 
-The last implementation check passed **63 curriculum module tests**. The existing
+The last implementation check passed **114 curriculum module tests**. The existing
 root test command also covers shared contracts and API smoke tests. The explicit
 module command is necessary: existing CI has not been changed to include it.
 
@@ -260,36 +260,91 @@ Curriculum now builds as the `@athena/curriculum` workspace package introduced
 by main. Shared contracts and fixtures are imported through `@athena/shared`;
 the module no longer compiles shared source files outside its package root.
 `tsconfig.json` builds `src/` into `dist/`, and `tsconfig.tests.json` checks both
-source and tests without emitting. The existing `curriculumRoutes` stub is
-preserved; these exports do not register new HTTP routes.
+source and tests without emitting. The existing module registry now calls our implemented `curriculumRoutes`,
+which registers the two read endpoints documented in `API_ROUTES.md`.
+
+## World curriculum API routes
+
+Person 1 now serves `GET /api/courses/:courseId/topics` and
+`GET /api/topics/:topicId/sources` through the existing module registry, using
+Platform identity/authorization and unchanged World response schemas.
+See [the route guide](API_ROUTES.md) for filters, locale, errors, mock-auth/data
+limits, and tests. History is published by default for authorized course readers.
+
+## World-facing topic adapter
+
+`WorldCurriculumTopicAdapter` now implements World's `listTopics(courseId)` shape
+inside Person 1. Its default Mathematics output preserves the shipped IDs, six
+house slots, and World prerequisite behavior through an explicit demo compatibility
+view. History stays separate and is published by default. Publication requires
+ready material. No running World wiring is changed.
+
+See [the World adapter guide](WORLD_ADAPTER.md) for the publication manifest,
+remaining prerequisite differences, and actual WorldService integration tests.
+`WorldHouseContentAdapter` now supplies the existing `HouseContent` shape with
+TXT source cards and bilingual History resource bodies; see
+[the HouseContent guide](HOUSE_CONTENT.md). UI wiring and publishing endpoints remain separate tasks; the two authenticated
+read routes are now described in `API_ROUTES.md`.
+
+## Daniela contract integration check
+
+`tests/learning-handoff.test.ts` checks our adapter against exact copies of the
+consumer Zod schemas from the latest published Learning branch inspected:
+`origin/feat/learning-policy-freeze` at `4306284`. The copies and their checksums
+are isolated under `tests/fixtures/daniela-contract/`; production schemas and
+Learning implementation files are unchanged.
+
+```sh
+pnpm --filter @athena/api exec tsx --test ../modules/curriculum/tests/learning-handoff.test.ts
+```
+
+This verifies all three Geometry concepts, UUID aliases, citation grounding, the
+four unsupported reason codes, and the evidence shape consumed by Learning.
+It does not run the full Learning service. The exact query
+`Hint for question <id>` now selects approved concept-scoped evidence without
+trying to match the question ID as lesson text. All scope, locale, version, and
+access checks still apply. Daniela remains responsible for validating the question
+and turning evidence into a hint that does not reveal the answer. See the fixture
+README for the test scope and refresh instructions.
 
 ## Git sharing and remaining integration
 
-Work is on `feat/vianey-workspace`. `495738f912f9c67ee15f823f8cea95ff2ed0de03`
-contains the initial foundation. Concepts, adapters, capability discovery, and
-History resources belong to the subsequent handoff commit; use `git log -1` for
-the current commit SHA. The handoff is published on this branch through
-`a89110c`. The subsequent merge of main and build compatibility changes remain
-local and uncommitted until Vianey approves a merge commit and push.
+Work is on `feat/vianey-workspace`. Commit `0036ff9` is the published merge of main
+and package-build compatibility fixes. The subsequent Learning handoff tests,
+hint retrieval fix, World adapters, authenticated read routes, and API-backed
+Material panel are **pending local changes** until Vianey approves a commit and
+push. Daniela and the World owner cannot fetch these pending additions yet.
 
-After the branch is pushed, Daniela can inspect it without switching her branch:
+After publication, inspect the branch without switching an existing checkout:
 
 ```sh
 git fetch origin
 git worktree add --detach ../athena-vianey-preview origin/feat/vianey-workspace
 ```
 
-Use an unused destination folder. Coordinate incorporation into Daniela's branch;
-these commands only create a separate preview checkout of the published work;
-they do not include the uncommitted local merge.
+Use an unused destination folder. These commands only preview committed,
+published work; they do not include the current pending local changes.
 
-Main's overlapping files and package-build configuration are reconciled in the
-uncommitted merge. Before wiring consumers, map the preserved World IDs and
-resolve the prerequisite differences in `INTEGRATION_IDS.md`. The new interfaces are not wired into Learning, World, or
-HTTP routes. Run the current workspace and Person 1 checks before finalizing this merge;
-consumer wiring remains a separate milestone.
+The prerequisite differences in `INTEGRATION_IDS.md` still exist in the source
+fixtures. The new World adapter preserves the shipped Mathematics demo graph
+through an explicit compatibility projection. No World mock, student progress,
+house assignment, or authoritative source fixture was rewritten.
 
-Deferred Person 1 work includes persistent storage, publishing workflows, production
-authorization integration, course-management UI, and live resource generation.
-File uploads, PDF processing, and embeddings are outside the current TXT milestone.
-No assessments, student mastery, World progression, or analytics are implemented here.
+Person 1 now provides the two read routes, but the running World mock and
+Daniela's Learning implementation have not been switched to the new adapters.
+The API-backed frontend panel is ready under
+`frontend/web/src/features/curriculum/`; see
+[its integration guide](../../../frontend/web/src/features/curriculum/MATERIAL_TAB.md).
+The user requested that World files stay unchanged, so the Material slot re-export
+has not been applied. A real authenticated browser session has not been verified.
+History also remains unpublished by default and requires authorized course access before showing its resources.
+
+The most recently fetched main advanced to `9f53ff1` after the published merge.
+That update is not included here. Review/synchronize it separately before final
+cross-team integration; these tests cover this feature branch and pending work.
+
+Deferred Person 1 work includes persistent storage, publishing workflows,
+production authorization integration, course-management UI, and live resource
+generation. File uploads, PDF processing, and embeddings remain outside the
+current TXT milestone. No assessment, mastery, World progression, or analytics
+implementation is added here.

@@ -1,4 +1,4 @@
-import type { Citation } from "@athena/shared";
+import { sourceChunkSchema, validateRetrievedContext, type Citation } from "@athena/shared";
 import { geometryConceptCatalog } from "./geometry-concept-catalog.js";
 import { geometrySourceBindings } from "./geometry-source-map.js";
 import {
@@ -170,17 +170,58 @@ export class LearningCurriculumContextAdapter {
     const materials = await this.service.listSources(scope, this.access);
     const readyIds = new Set(materials.map((item) => item.id));
     const approvedIds = new Set<string>(binding.approvedChunkIds);
-    const candidates = (await this.repository.listChunks(scope)).filter(
-      (item) =>
-        approvedIds.has(item.id) &&
-        readyIds.has(item.materialId) &&
-        item.courseId === courseId &&
-        item.topicId === topicId &&
-        item.curriculumVersion === currentVersion &&
-        (request.locale === undefined || item.locale === request.locale),
-    );
+    const candidates = sourceChunkSchema
+      .array()
+      .parse(await this.repository.listChunks(scope))
+      .filter(
+        (item) =>
+          approvedIds.has(item.id) &&
+          readyIds.has(item.materialId) &&
+          item.courseId === courseId &&
+          item.topicId === topicId &&
+          item.curriculumVersion === currentVersion &&
+          (request.locale === undefined || item.locale === request.locale),
+      );
     if (candidates.length === 0) return unsupported("no_approved_content");
     if (!binding.sufficientForExplanation) return unsupported("insufficient_evidence");
+    // Learning sends this exact intent without content-bearing query terms.
+    // The question ID is opaque: only the validated concept determines evidence.
+    if (/^Hint for question [A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(request.query)) {
+      const topic = (await this.service.listTopics(scope, this.access)).find(
+        (t) => t.id === topicId,
+      );
+      if (!topic) return unsupported("concept_not_found");
+      const evidence = validateRetrievedContext(
+        {
+          ...scope,
+          chunks: [...candidates]
+            .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+            .slice(0, request.limit ?? 5)
+            .map((chunk) => ({
+              text: chunk.text,
+              // Validation helper expects a score; no lexical relevance score is exposed.
+              similarity: 0,
+              citation: {
+                materialId: chunk.materialId,
+                materialTitle: materials.find((m) => m.id === chunk.materialId)!.title,
+                chunkId: chunk.id,
+                section: chunk.section,
+                excerpt: chunk.text,
+              },
+            })),
+        },
+        { courses: [], topics: [topic], materials, chunks: candidates },
+      );
+      return {
+        chunks: evidence.chunks.map(({ text, citation }) => ({
+          text,
+          citation,
+          conceptId: concept.conceptId,
+        })),
+        curriculumVersion: currentVersion,
+        unsupported: false,
+      };
+    }
     const candidateIds = new Set(candidates.map((item) => item.id));
     // Rank all topic chunks, then scope to the approved concept before applying the caller's limit.
     const context = await this.service.retrieve(

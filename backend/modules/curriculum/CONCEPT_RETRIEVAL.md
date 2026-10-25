@@ -85,6 +85,31 @@ locale. With no locale specified, matching authored source text is returned.
 History remains available through topic-level retrieval; this task does not add
 History concepts or silently reuse Geometry concepts for History.
 
+## Question-ID-only hint evidence
+
+Daniela's existing hint flow sends `Hint for question <id>` alongside the concept
+ID. For that exact query form, the adapter uses the concept's explicitly approved
+chunks instead of searching for the question ID in lesson text. It still checks
+access, course, topic, active version, readiness, approval, evidence sufficiency,
+and locale before selecting content. Missing approved content stays unsupported.
+
+The accepted opaque question key is one ASCII letter/digit followed by up to 199
+letters, digits, dots, underscores, colons, or hyphens. Additional words or embedded
+newlines do not activate this policy. Other queries keep lexical matching; an
+ordinary unmatched query is not converted into a concept-wide fallback.
+
+Evidence is sorted by chunk ID and limited by the existing request limit. Exact
+source text and citations are preserved. The optional `relevanceScore` is omitted
+because the hint evidence was not selected using lexical relevance. Request and
+response schemas are unchanged.
+
+The question ID neither grants access nor determines the concept. Person 1 has
+no assessment lookup and does not claim a question exists or belongs to a concept.
+Daniela must supply the correct concept and validate the assessment relationship.
+Returned evidence can contain worked calculations; it is tutor input, not a
+student-facing hint. Person 2 owns producing a hint without revealing an answer.
+No hint text, mastery update, or assessment logic is generated here.
+
 ## Unsupported results and errors
 
 Unsupported results always have `chunks: []`, `unsupported: true`, the active
