@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import { classSchema, athenaDemoIds, type Class } from "@athena/shared";
 import { api } from "@/lib/api";
 import { useMocks } from "@/lib/mode";
@@ -13,7 +14,7 @@ export class MockClassesClient implements ClassesClient {
         id: athenaDemoIds.class,
         courseId: athenaDemoIds.course,
         professorId: athenaDemoIds.professorRuiz,
-        title: "Matemáticas I – Grupo A",
+        title: t("Mathematics I – Group A"),
         createdAt: "2026-10-24T00:00:00.000Z",
       },
     ];

@@ -1,4 +1,6 @@
 "use client";
+import { appLocale, localizeContent, t } from "@/lib/i18n";
+
 import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
@@ -53,11 +55,12 @@ export function useWorld() {
 const POLL_MS = 30_000;
 
 function transitionMessage(transition: HouseTransition) {
-  if (transition.to === "done") return `¡Completaste ${transition.title}!`;
+  if (transition.to === "done") return t("You completed {0}!", { 0: transition.title });
   if (transition.from === "locked" && transition.to === "available")
-    return `¡Desbloqueaste ${transition.title}!`;
-  if (transition.from === "absent") return `Nueva casa en tu planeta: ${transition.title}`;
-  return `${transition.title} cambió de estado`;
+    return t("You unlocked {0}!", { 0: transition.title });
+  if (transition.from === "absent")
+    return t("New house on your planet: {0}", { 0: transition.title });
+  return t("{0} changed state", { 0: transition.title });
 }
 
 /**
@@ -91,10 +94,12 @@ export function WorldProvider({
 
   const refresh = useCallback(async () => {
     try {
-      setWorld(await client.getWorld(studentId));
+      const next = localizeContent(await client.getWorld(studentId));
+      next.accessibility.locale = appLocale;
+      setWorld(next);
       setError(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se pudo cargar tu mundo.");
+      setError(cause instanceof Error ? cause.message : t("Could not load your world."));
     }
   }, [client, studentId]);
 
@@ -135,7 +140,8 @@ export function WorldProvider({
       if (announced.current.has(celebrationId)) continue;
       announced.current.add(celebrationId);
       const definition = achievementCatalogue.find((item) => item.celebrationId === celebrationId);
-      if (definition) notify(`Insignia: ${definition.longLabel.es}`, "achievement");
+      if (definition)
+        notify(t("Badge: {0}", { 0: definition.longLabel[appLocale] }), "achievement");
       void client.recordInteraction({
         studentId,
         kind: "celebration_seen",
@@ -157,7 +163,7 @@ export function WorldProvider({
           ? world?.planet.houses.find((item) => item.slot === target.slot)
           : houses.find((item) => item.topicId === target.topicId);
       if (!house) {
-        notify("Esta casa aún no tiene contenido.");
+        notify(t("This house has no content yet."));
         return;
       }
       // Locked houses open the compact explanation page; the server re-checks every entry.

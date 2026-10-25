@@ -1,4 +1,4 @@
-import type { ClassSummary, HouseState, PlanetState } from "./learning.js";
+import type { ClassOrbit, ClassSummary, HouseState, PlanetState } from "./learning.js";
 
 const titles = [
   "Fracciones",
@@ -36,6 +36,61 @@ export const mockClassPlanets: PlanetState[] = Array.from({ length: 8 }, (_, ind
   planet(index),
 );
 export const mockClassPlanets8 = mockClassPlanets;
+/** Class roster names for the mocked orbit; Lucía is the demo student (`student-lucia`). */
+const rosterNames = [
+  "Lucía",
+  "Mateo",
+  "Sofía",
+  "Diego",
+  "Valeria",
+  "Andrés",
+  "Camila",
+  "Nicolás",
+  "Emma",
+  "Tomás",
+  "Julia",
+  "Gabriel",
+  "Martina",
+  "Samuel",
+  "Isabella",
+  "Bruno",
+  "Renata",
+  "Joaquín",
+  "Elena",
+  "Pablo",
+  "Daniela",
+  "Leo",
+  "Ximena",
+  "Hugo",
+  "Paula",
+  "Iker",
+  "Abril",
+  "Simón",
+  "Olivia",
+  "Marco",
+];
+const slug = (name: string) =>
+  name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+/**
+ * Mock class orbit with `count` students (default 8): one deterministic planet each, so the
+ * orbit can be exercised at any class size. Names repeat with a number past the roster.
+ */
+export function mockClassOrbit(count = 8): ClassOrbit {
+  const size = Math.max(0, Math.min(60, Math.floor(count)));
+  return {
+    classId: "class-demo",
+    students: Array.from({ length: size }, (_, index) => {
+      const base = rosterNames[index % rosterNames.length]!;
+      const round = Math.floor(index / rosterNames.length);
+      const displayName = round ? `${base} ${round + 1}` : base;
+      const studentId = `student-${slug(base)}${round ? `-${round + 1}` : ""}`;
+      return { studentId, displayName, planet: { ...planet(index), studentId } };
+    }),
+  };
+}
 export const mockPlanet: PlanetState = mockClassPlanets[1]!;
 const usage = () => ({ chat: 0, podcast: 0, video: 0, summary: 0, hint: 0, quiz_answer: 0 });
 export const mockSummary: ClassSummary = {
