@@ -18,6 +18,7 @@
     "zod": "^3.24.1",
     "@athena/ai": "workspace:*",
     "@athena/analytics": "workspace:*",
+    "@athena/content": "workspace:*",
     "@athena/curriculum": "workspace:*",
     "@athena/learning": "workspace:*",
     "@athena/platform": "workspace:*",

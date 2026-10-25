@@ -50,6 +50,9 @@ importers:
       '@athena/analytics':
         specifier: workspace:*
         version: link:../modules/analytics
+      '@athena/content':
+        specifier: workspace:*
+        version: link:../modules/content
       '@athena/curriculum':
         specifier: workspace:*
         version: link:../modules/curriculum
@@ -100,6 +103,28 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
+      fastify:
+        specifier: ^5.2.0
+        version: 5.12.7
+
+  backend/modules/content:
+    dependencies:
+      '@athena/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@athena/shared':
+        specifier: workspace:*
+        version: link:../../../shared
+      unpdf:
+        specifier: 1.9.1
+        version: 1.9.1
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.5
       fastify:
         specifier: ^5.2.0
         version: 5.12.7
@@ -2355,6 +2380,15 @@ packages:
   uniq@1.0.1:
     resolution: {integrity: sha512-Gw+zz50YNKPDKXs+9d+aKAjVwpjNwqzvNpLigIruT4HA9lMZNdMqs9x07kKHB/L9WRzqp4+DlTU5s4wG2esdoA==}
 
+  unpdf@1.9.1:
+    resolution: {integrity: sha512-nO1npM2kNyd4hj1fKzUVU6bvnWjDSxI97eycM/DgzI83dYyW+pNRI9NeMQVEfef8fI3Q06i9lkMeE1HxrQqKoA==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@napi-rs/canvas': ^0.1.69 || ^1.0.0
+    peerDependenciesMeta:
+      '@napi-rs/canvas':
+        optional: true
+
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
@@ -4332,6 +4366,8 @@ snapshots:
   undici-types@6.21.0: {}
 
   uniq@1.0.1: {}
+
+  unpdf@1.9.1: {}
 
   uri-js@4.4.1:
     dependencies:
