@@ -1,8 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { forbidden } from "@athena/platform";
 import {
   CONTENT_LIMITS,
   contentChatRequestSchema,
+  readContentAccessibility,
   createContentMaterialRequestSchema,
   updateContentMaterialRequestSchema,
   upsertContentMilestoneRequestSchema,
@@ -38,6 +40,7 @@ import type {
   ProfilePreferencesPort,
   VersionedRepository,
 } from "./ports.js";
+import { courseOfClass } from "./scope.js";
 import { ContentService } from "./service.js";
 
 const classParams = z.object({ classId: z.string().uuid() });
@@ -84,6 +87,7 @@ export async function contentRoutes(app: FastifyInstance, options: ContentRoutes
   const { platform } = app;
   const embeddings = options.embeddings ?? new MockEmbeddingProvider();
   const catalog = options.catalog ?? demoCurriculumCatalog;
+  const preferences = options.preferences ?? defaultProfilePreferences;
   const ingestion = new MaterialIngestionService(
     {
       materials,
@@ -121,7 +125,7 @@ export async function contentRoutes(app: FastifyInstance, options: ContentRoutes
     embeddings,
     generator: options.generator ?? new MockAnswerGenerator(),
     classifier: options.classifier ?? new LayeredGuardrailClassifier(),
-    preferences: options.preferences ?? defaultProfilePreferences,
+    preferences,
     ledger: options.ledger ?? new InMemoryAiCallLedger(),
     flags: options.flags ?? new InMemoryFlagRepository(),
     events: platform.events,
@@ -137,6 +141,21 @@ export async function contentRoutes(app: FastifyInstance, options: ContentRoutes
     const result = await chat.chat(request.auth, classId, body);
     if (result.status === 429) reply.header("retry-after", result.body.retryAfterSeconds);
     return reply.status(result.status).send(result.body);
+  });
+
+  // Topics of the class's course, for upload tagging and the chat's scope picker.
+  app.get("/content/classes/:classId/topics", async (request) => {
+    const { classId } = classParams.parse(request.params);
+    if (!platform.authorization.canAccessClass(request.auth, classId)) {
+      throw forbidden("Not a member of this class");
+    }
+    return catalog.listTopics(await courseOfClass(platform.classes, request.auth, classId));
+  });
+
+  // The caller's own locale and accessibility settings, for every content screen.
+  app.get("/content/me/preferences", async (request) => {
+    const own = await preferences.get(request.auth.userId);
+    return { locale: own.locale, accessibility: readContentAccessibility(own.accessibility) };
   });
 
   app.get("/content/classes/:classId/flags", async (request) =>

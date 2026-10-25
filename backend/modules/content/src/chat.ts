@@ -4,6 +4,7 @@ import {
   contentChatResponseSchema,
   contentFlagSchema,
   contentGuardrailPolicy,
+  readContentAccessibility,
   type AuthContext,
   type ContentChatOutcome,
   type ContentChatRequest,
@@ -228,7 +229,7 @@ export class ChatService {
       // Fail closed: an unchecked message never reaches the tutor.
       return this.fixed("abstained", "abstain", locale, await this.suggestions(classId, courseId));
     }
-    const simplifiedLanguage = accessibility.simplifiedLanguage === true;
+    const { simplifiedLanguage } = readContentAccessibility(accessibility);
 
     if (verdict.category === "ok") {
       const matches = await this.retrieve(classId, request);
