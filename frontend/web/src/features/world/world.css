@@ -49,3 +49,29 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Presenter-only demo panel (/world?presenter=1, never in production). */
+.presenter-controls {
+  position: fixed;
+  right: var(--athena-space-medium);
+  bottom: 4.5rem;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--athena-space-small);
+  padding: var(--athena-space-small) var(--athena-space-medium);
+  background: var(--athena-veil);
+  border: 1px dashed var(--athena-border);
+  border-radius: var(--athena-radius-small);
+  font-size: var(--athena-text-sm);
+}
+.presenter-controls button {
+  min-height: var(--athena-target-min);
+  padding: 0 var(--athena-space-medium);
+  border: 1px solid var(--athena-hairline);
+  border-radius: var(--athena-radius-pill);
+  background: var(--athena-surface);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}

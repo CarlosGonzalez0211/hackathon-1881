@@ -2,23 +2,38 @@ import {
   achievementCatalogue,
   createTeamChallengeRequestSchema,
   createTeamRequestSchema,
+  diffHouses,
   easterEggDiscoveryRequestSchema,
+  houseEntryMode,
+  houseEntryRequestSchema,
   learningEventSchema,
+  missingPrerequisiteIds,
+  projectPlanet,
+  buildWorldLayout,
   teamChallengeAttemptSchema,
   worldInteractionSchema,
   type Achievement,
   type AchievementCode,
+  type CurriculumTopicSummary,
   type EasterEggDiscoveryResult,
+  type HouseEntryResult,
+  type HouseTransition,
   type LearningEvent,
+  type LearningEventIngestResult,
+  type PlanetProjection,
   type PlanetState,
+  type StudentMasterySnapshot,
   type QuestState,
   type TeamChallengeAttemptResult,
   type TeamChallenge,
   type TeamState,
   type WorldInteractionResult,
-  type WorldState,
+  type WorldLayout,
+  type WorldView,
 } from "@athena/shared";
 import { badRequest, forbidden, notFound } from "./errors.js";
+import { createMockWorldPorts } from "./mock-ports.js";
+import type { Enrollment, WorldPorts } from "./ports.js";
 import { achievementCodesFor, type WorldEvent } from "./rules.js";
 import { InMemoryWorldStore } from "./store.js";
 
@@ -26,6 +41,17 @@ export interface WorldServiceOptions {
   store?: InMemoryWorldStore;
   /** Injected clock keeps demos and tests deterministic. */
   now?: () => string;
+  /** Curriculum, Learning and Enrollment readers. Defaults to the demo mocks. */
+  ports?: WorldPorts;
+}
+
+/** Everything one projection read: who, which course, what topics and mastery. */
+interface StudentProjection extends PlanetProjection {
+  enrollment: Enrollment;
+  topics: CurriculumTopicSummary[];
+  mastery: StudentMasterySnapshot;
+  /** Transitions detected by this read (also queued until acknowledged). */
+  newTransitions: HouseTransition[];
 }
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -37,28 +63,76 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
  */
 export class WorldService {
   readonly store: InMemoryWorldStore;
+  readonly ports: WorldPorts;
   private readonly now: () => string;
 
   constructor(options: WorldServiceOptions = {}) {
     this.store = options.store ?? InMemoryWorldStore.seeded();
+    this.ports = options.ports ?? createMockWorldPorts();
     this.now = options.now ?? (() => new Date().toISOString());
+  }
+
+  // ---- Projection (Curriculum topics + Learning mastery -> planet) ---------
+
+  /**
+   * Projects the student's planet and records status changes against what the student was
+   * last shown. The first read only sets the baseline. Never writes mastery or topics.
+   */
+  async project(studentId: string): Promise<StudentProjection> {
+    const enrollment = await this.ports.enrollment.getEnrollment(studentId);
+    if (!enrollment) throw notFound("Student", studentId);
+    const topics = await this.ports.curriculum.listTopics(enrollment.courseId);
+    const mastery = await this.ports.mastery.getStudentMastery(
+      studentId,
+      topics.map((topic) => topic.id),
+    );
+    const projection = projectPlanet({ studentId, topics, mastery });
+    const shown = [...projection.planet.houses, ...projection.overflowTopics];
+    const seen = this.store.seenHouses.get(studentId);
+    const newTransitions: HouseTransition[] = seen
+      ? diffHouses(seen, shown).map(({ house, from }) => {
+          const causeEventId = this.store.lastLearningEvent.get(`${studentId}:${house.topicId}`);
+          return {
+            id: this.store.nextId("transition"),
+            studentId,
+            topicId: house.topicId,
+            title: house.title,
+            slot: house.slot,
+            from,
+            to: house.status,
+            ...(causeEventId ? { causeEventId } : {}),
+            at: this.now(),
+          };
+        })
+      : [];
+    this.store.seenHouses.set(studentId, clone(shown));
+    if (newTransitions.length > 0)
+      this.store.transitions.set(studentId, [
+        ...(this.store.transitions.get(studentId) ?? []),
+        ...newTransitions,
+      ]);
+    return { ...projection, enrollment, topics, mastery, newTransitions };
   }
 
   // ---- Read models -------------------------------------------------------
 
-  getPlanet(studentId: string): PlanetState {
-    const planet = this.store.planets.get(studentId);
-    if (!planet) throw notFound("Student", studentId);
-    return clone(planet);
+  async getPlanet(studentId: string): Promise<PlanetState> {
+    return (await this.project(studentId)).planet;
   }
 
-  getClassPlanets(classId: string): PlanetState[] {
-    const studentIds = this.store.classStudents.get(classId);
+  async getClassPlanets(classId: string): Promise<PlanetState[]> {
+    const studentIds = await this.ports.enrollment.listStudents(classId);
     if (!studentIds) throw notFound("Class", classId);
-    return studentIds.flatMap((id) => {
-      const planet = this.store.planets.get(id);
-      return planet ? [clone(planet)] : [];
-    });
+    const planets: PlanetState[] = [];
+    for (const id of studentIds) planets.push(await this.getPlanet(id));
+    return planets;
+  }
+
+  /** Where each published topic of a course lands (professor-facing). */
+  async getWorldLayout(courseId: string): Promise<WorldLayout> {
+    const topics = await this.ports.curriculum.listTopics(courseId);
+    if (topics.length === 0) throw notFound("Course", courseId);
+    return buildWorldLayout(courseId, topics);
   }
 
   listAchievements(studentId: string): Achievement[] {
@@ -73,11 +147,13 @@ export class WorldService {
     return clone(this.store.quests.get(studentId) ?? []);
   }
 
-  getWorld(studentId: string): WorldState {
-    const planet = this.getPlanet(studentId);
+  async getWorld(studentId: string): Promise<WorldView> {
+    const { planet, overflowTopics } = await this.project(studentId);
     return {
       studentId,
       planet,
+      overflowTopics,
+      pendingTransitions: clone(this.store.transitions.get(studentId) ?? []),
       achievements: this.listAchievements(studentId),
       quests: this.listQuests(studentId),
       easterEggs: clone([...this.store.easterEggs.values()]),
@@ -136,11 +212,24 @@ export class WorldService {
     return this.applyEvent(learningEventSchema.parse(input));
   }
 
+  /**
+   * Learning -> World sink (`POST /world/events`). Learning has already stored the new
+   * mastery, so after the unlocks World re-projects and reports the house transitions.
+   */
+  async ingestLearningEvent(input: LearningEvent | unknown): Promise<LearningEventIngestResult> {
+    const event = learningEventSchema.parse(input);
+    const unlockedAchievements = this.applyEvent(event);
+    const { newTransitions } = await this.project(event.studentId);
+    return { unlockedAchievements, transitions: newTransitions };
+  }
+
   private applyEvent(event: WorldEvent): Achievement[] {
     this.assertStudent(event.studentId);
     const eventKey = `${event.studentId}:${event.id}`;
     if (this.store.processedEventIds.has(eventKey)) return [];
     this.store.processedEventIds.add(eventKey);
+    if ("topicId" in event)
+      this.store.lastLearningEvent.set(`${event.studentId}:${event.topicId}`, event.id);
     const codes = achievementCodesFor(event, this.store.ruleContext(event.studentId));
     const evidenceIds = event.evidenceIds.length > 0 ? event.evidenceIds : [event.id];
     return codes.flatMap((code) => {
@@ -189,7 +278,7 @@ export class WorldService {
   // ---- Cosmetic interactions ----------------------------------------------
 
   /** Records a cosmetic interaction. It is never learning evidence. */
-  recordInteraction(body: unknown): WorldInteractionResult {
+  async recordInteraction(body: unknown): Promise<WorldInteractionResult> {
     const interaction = worldInteractionSchema.parse(body);
     this.assertStudent(interaction.studentId);
     const id = this.store.nextId("interaction");
@@ -206,7 +295,73 @@ export class WorldService {
         queue.filter((celebrationId) => celebrationId !== interaction.targetId),
       );
     }
-    return { interactionId: id, world: this.getWorld(interaction.studentId) };
+    if (interaction.kind === "transition_seen" && interaction.targetId)
+      this.store.transitions.set(
+        interaction.studentId,
+        (this.store.transitions.get(interaction.studentId) ?? []).filter(
+          (transition) => transition.id !== interaction.targetId,
+        ),
+      );
+    return { interactionId: id, world: await this.getWorld(interaction.studentId) };
+  }
+
+  // ---- Houses ------------------------------------------------------------
+
+  /**
+   * A student activates a house (3D door or 2D list). The server re-checks the gate the
+   * client already applied, records a cosmetic `house_opened` visit and tells the house page
+   * how to open. A visit is never learning evidence and never changes status.
+   */
+  async enterHouse(body: unknown): Promise<HouseEntryResult> {
+    const { studentId, topicId } = houseEntryRequestSchema.parse(body);
+    const { planet, overflowTopics, topics, mastery, enrollment } = await this.project(studentId);
+    const house = [...planet.houses, ...overflowTopics].find((item) => item.topicId === topicId);
+    if (!house) {
+      if (!topics.some((topic) => topic.id === topicId)) throw notFound("Topic", topicId);
+      return { granted: false, reason: "not_published", missingPrerequisites: [] };
+    }
+    const mode = houseEntryMode(house.status);
+    if (!mode) {
+      const published = new Map(
+        topics.filter((topic) => topic.published).map((topic) => [topic.id, topic]),
+      );
+      const topic = published.get(topicId)!;
+      const all = [...planet.houses, ...overflowTopics];
+      return {
+        granted: false,
+        reason: "locked",
+        house,
+        missingPrerequisites: missingPrerequisiteIds(topic, published, mastery).map((id) => {
+          const prerequisite = all.find((item) => item.topicId === id);
+          return {
+            topicId: id,
+            title: prerequisite?.title ?? topics.find((item) => item.id === id)?.title ?? id,
+            status: prerequisite?.status ?? "locked",
+            // Only 3D houses have a slot to walk to; overflow topics live in the 2D list.
+            ...(prerequisite && planet.houses.includes(prerequisite)
+              ? { slot: prerequisite.slot }
+              : {}),
+          };
+        }),
+      };
+    }
+    const entryId = this.store.nextId("entry");
+    this.store.interactions.push({
+      id: entryId,
+      studentId,
+      kind: "house_opened",
+      targetId: topicId,
+      at: this.now(),
+    });
+    const detail = mastery.topics.find((item) => item.topicId === topicId);
+    return {
+      granted: true,
+      entryId,
+      mode,
+      house,
+      courseId: enrollment.courseId,
+      ...(detail ? { mastery: detail } : {}),
+    };
   }
 
   // ---- Teams -------------------------------------------------------------
@@ -317,6 +472,6 @@ export class WorldService {
   }
 
   private assertStudent(studentId: string): void {
-    if (!this.store.planets.has(studentId)) throw notFound("Student", studentId);
+    if (!this.store.studentIds.has(studentId)) throw notFound("Student", studentId);
   }
 }

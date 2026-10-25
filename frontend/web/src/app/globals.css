@@ -244,6 +244,25 @@ kbd {
 .house-marker.locked {
   border-style: dashed;
 }
+/* Wayfinding label only: not clickable until the student is within reach. */
+.house-marker.far {
+  pointer-events: none;
+  opacity: 0.85;
+}
+.house-marker.near {
+  cursor: pointer;
+  border-color: var(--athena-accent);
+  box-shadow: 0 0 0 2px var(--athena-accent);
+  font-weight: 600;
+}
+.house-marker kbd {
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--athena-ink);
+  color: var(--athena-paper);
+  font-family: var(--athena-font-mono);
+  font-size: 10px;
+}
 .house-dialog {
   position: relative;
   border: 1px solid var(--athena-hairline);

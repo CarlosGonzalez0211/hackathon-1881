@@ -323,7 +323,7 @@ test("learning event dedup is scoped per student", () => {
 
 test("learning events map to idempotent unlocks without touching mastery", async () => {
   const world = new WorldService({ now: () => AT });
-  const planetBefore = world.getPlanet(LUCIA);
+  const planetBefore = await world.getPlanet(LUCIA);
 
   const [resolved, mastery] = demoCheckpointEvents;
   assert.deepEqual(
@@ -337,7 +337,7 @@ test("learning events map to idempotent unlocks without touching mastery", async
   assert.equal(repeated.created, false);
   assert.equal(repeated.achievement.sourceEventId, "evt-misconception-resolved-1");
   assert.equal(world.listAchievements(LUCIA).length, 1);
-  assert.deepEqual(world.getWorld(LUCIA).activeCelebrationIds, ["insight-lantern"]);
+  assert.deepEqual((await world.getWorld(LUCIA)).activeCelebrationIds, ["insight-lantern"]);
 
   const base = {
     studentId: LUCIA,
@@ -372,7 +372,7 @@ test("learning events map to idempotent unlocks without touching mastery", async
     ["retention-star"],
   );
   assert.throws(() => world.handleLearningEvent({ ...base, id: "bad", type: "Unknown" }));
-  assert.deepEqual(world.getPlanet(LUCIA), planetBefore);
+  assert.deepEqual(await world.getPlanet(LUCIA), planetBefore);
 });
 
 test("world routes accept an injected service", async () => {

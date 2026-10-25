@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { easterEggCodeSchema } from "@athena/shared";
+import { demoWorldStepRequestSchema, easterEggCodeSchema } from "@athena/shared";
 import { z } from "zod";
+import { DemoWorldDriver } from "./demo.js";
 import { WorldService } from "./service.js";
 
 const id = z.string().min(1).max(200);
@@ -9,10 +10,16 @@ const classParams = z.object({ classId: id });
 const teamParams = z.object({ teamId: id });
 const attemptParams = z.object({ teamId: id, challengeId: id });
 const eggParams = z.object({ code: easterEggCodeSchema });
+const courseParams = z.object({ courseId: id });
 
 export interface WorldRoutesOptions {
   /** Defaults to a fresh in-memory service seeded with the demo fixtures. */
   service?: WorldService;
+  /**
+   * Presenter-only `/demo/world/*` routes that play Learning's role on mock ports.
+   * Defaults to on outside production; never enable in production.
+   */
+  demoControls?: boolean;
 }
 
 /**
@@ -20,7 +27,8 @@ export interface WorldRoutesOptions {
  * WorldError carries 403/404 through the app error handler.
  */
 export async function worldRoutes(app: FastifyInstance, options: WorldRoutesOptions = {}) {
-  const world = options.service ?? new WorldService();
+  let world = options.service ?? new WorldService();
+  let demo = new DemoWorldDriver(world);
 
   app.get("/planet/:studentId", async (req) =>
     world.getPlanet(studentParams.parse(req.params).studentId),
@@ -32,8 +40,30 @@ export async function worldRoutes(app: FastifyInstance, options: WorldRoutesOpti
     world.getWorld(studentParams.parse(req.params).studentId),
   );
   app.post("/world/interactions", async (req, reply) =>
-    reply.status(201).send(world.recordInteraction(req.body)),
+    reply.status(201).send(await world.recordInteraction(req.body)),
   );
+  app.post("/world/houses/enter", async (req) => world.enterHouse(req.body));
+  app.get("/courses/:courseId/world-layout", async (req) =>
+    world.getWorldLayout(courseParams.parse(req.params).courseId),
+  );
+  // Learning -> World event sink. Service-to-service only: protect with platform auth (P4)
+  // before production.
+  app.post("/world/events", async (req) => world.ingestLearningEvent(req.body));
+
+  if (options.demoControls ?? process.env.NODE_ENV !== "production") {
+    app.post("/demo/world/step", async (req) => {
+      const { studentId } = demoWorldStepRequestSchema.parse(req.body ?? {});
+      return demo.step(studentId);
+    });
+    app.post("/demo/world/reset", async (_req, reply) => {
+      // Only a service this plugin created can be replaced; an injected one keeps its state.
+      if (!options.service) {
+        world = new WorldService();
+        demo = new DemoWorldDriver(world);
+      } else demo = new DemoWorldDriver(world);
+      return reply.status(204).send();
+    });
+  }
   app.get("/students/:studentId/achievements", async (req) =>
     world.listAchievements(studentParams.parse(req.params).studentId),
   );

@@ -29,7 +29,8 @@
     "recharts": "^2.15.0",
     "tailwind-merge": "^2.6.0",
     "@athena/engine3d": "workspace:*",
-    "@athena/brand": "workspace:*"
+    "@athena/brand": "workspace:*",
+    "@athena/world": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
