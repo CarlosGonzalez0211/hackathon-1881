@@ -42,18 +42,24 @@ authentication unless Platform's verified auth mode is configured.
   empty state and never substitutes another language.
 - History topics are published by default through the curriculum API and require
   authorized course access. World still uses its existing Mathematics connection;
-  mounting this panel and connecting course selection remain World integration work.
+  connecting History course selection remains separate World integration work.
 - `studentId` remains a view-context prop. It is not used to grant API access;
   authenticated server identity controls access.
 
 ## World boundary
 
-The prepared integration is a props-preserving re-export in
-`features/world/components/HouseContentPanel.tsx`, which is documented as the
-P1-owned Material slot inside the World directory. The user requested that World files remain unchanged, so this re-export has
-not been applied. The existing `house-content-client.ts`, HousePage,
-WorldProvider, stylesheet, and engine stay unchanged. The running World tab still uses its existing component and mock/API selection;
-this prepared Person 1 panel is not mounted there.
+World mounts this panel through a props-preserving client re-export in
+`features/world/components/HouseContentPanel.tsx`. HousePage retains its existing
+props and `showStart={false}` behavior, so its separate start controls remain in
+charge. Topic/student changes cancel stale requests; retry and language selection
+are handled inside the panel.
+
+The existing `house-content-client.ts`, HousePage, WorldProvider, stylesheets,
+engine, course selection, and progress behavior are unchanged. The Material slot
+now always uses authenticated curriculum API content, including when the rest of
+World uses mocks. A missing session shows the sign-in state instead of mock content.
+History content is available when World opens an authorized History topic; this
+change does not add History enrollment or course navigation.
 
 ## Checks from repository root
 
