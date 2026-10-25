@@ -277,7 +277,7 @@ export class InMemoryVersionedRepository<
     return row && !row.deletedAt ? clone(row) : null;
   }
 
-  async upsert(record: T, expectedUpdatedAt?: string) {
+  async upsert(record: T, expectedUpdatedAt?: string, _actorId?: string) {
     const existing = this.rows.get(record.id);
     if (existing && existing.classId !== record.classId) return "conflict" as const;
     if (expectedUpdatedAt !== undefined && existing?.updatedAt !== expectedUpdatedAt) {

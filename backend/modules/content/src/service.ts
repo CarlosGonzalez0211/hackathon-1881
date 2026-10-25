@@ -253,6 +253,7 @@ export class ContentService {
     const saved = await this.deps.objectives.upsert(
       { ...fields, id: objectiveId, classId, updatedAt: this.now() },
       expectedUpdatedAt,
+      context.userId,
     );
     if (saved === "conflict") throw new ContentConflictError("The objective changed; reload it");
     return saved;
@@ -302,6 +303,7 @@ export class ContentService {
         updatedAt: this.now(),
       },
       expectedUpdatedAt,
+      context.userId,
     );
     if (saved === "conflict") throw new ContentConflictError("The milestone changed; reload it");
     return saved;

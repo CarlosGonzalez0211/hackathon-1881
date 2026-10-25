@@ -82,7 +82,7 @@ UI shows four states, mapped from six: `uploaded` → Subido / Uploaded, `extrac
 - **Index:** at hackathon scale (a class has at most a few thousand chunks) retrieval is an **exact scan** over the class's rows via the btree, so filtering by class cannot lose recall. HNSW is added later with `hnsw.iterative_scan = relaxed_order` if a class grows past ~50k chunks.
 - **Mock:** deterministic hashed bag-of-words → 768-dim normalized vector, so similarity is meaningful in tests and mock mode with no key.
 - **Objectives/concepts:** chunks inherit the material's topics. Objective tagging embeds each objective statement and links chunks above a threshold; professors can correct it. An objective's optional `concept_id` is how the Learning adapter filters by `conceptId` (Q5).
-- **Model ids** come from env with these defaults, checked with `models.list` in the real-provider PR (docs disagree on `gemini-embedding-2` vs `gemini-embedding-2-preview`): `CONTENT_CHAT_MODEL=gemini-3.8-flash`, `CONTENT_GUARD_MODEL=gemini-3.5-flash-lite`, `CONTENT_EMBED_MODEL=gemini-embedding-2`.
+- **Model ids** come from env, with defaults checked against the Gemini docs and changelog on 2026-10-25: `CONTENT_CHAT_MODEL=gemini-3.8-flash` (GA 2026-09-02), `CONTENT_GUARD_MODEL=gemini-3.5-flash-lite` (GA 2026-07-21), `CONTENT_EMBED_MODEL=gemini-embedding-2` (GA 2026-04-22; the models table still lists the `-preview` code). `pnpm --filter @athena/api content:models` confirms them for a given key. `CONTENT_MIN_SIMILARITY` (default 0.55) is the retrieval evidence threshold for real embeddings; tune it after the first real run.
 
 ## 5. Retrieval and citation
 
