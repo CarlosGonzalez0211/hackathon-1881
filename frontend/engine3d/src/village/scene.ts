@@ -11,7 +11,7 @@ import { createLivingLandmarks } from "./landscape-life";
 import { createWelcomeCourtyard } from "./welcome";
 import { createTerrace } from "./terrace";
 import { createBridges } from "./bridges";
-import { createCliffShells, createIslets, createRockScatter } from "./cliffs";
+import { createCliffShells, createCliffTerraces, createIslets, createRockScatter } from "./cliffs";
 import { dressWithCloth, type Cloth } from "./cloth";
 import { illuminateLumen } from "./lumen";
 import { createSpiritDressing } from "./spirit";
@@ -189,6 +189,7 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
   const clouds = createCloudBelt(ctx, root);
   // Rocks: the obstacle boulders plus talus, edge stones and shore pebbles (visual only).
   tasks.push(createRockScatter(ctx, root, low, rocks));
+  tasks.push(createCliffTerraces(ctx, root, low));
   // Floating islets far beyond the cloud belt (high tier).
   let islets: { tick(time: number): void } | undefined;
   tasks.push(

@@ -19,6 +19,7 @@ import {
   surfacePoint,
   surfaceRadius,
   tangent,
+  TAU,
   waterDepth,
   type Vec,
 } from "./layout";
@@ -40,7 +41,7 @@ const smooth = (a: number, b: number, v: number) => {
   return t * t * (3 - 2 * t);
 };
 /** Ease-out rise used for the plateau risers: always at or above the linear ramp. */
-const ramp = (f: number) => 1 - Math.pow(1 - clamp(f / 0.72, 0, 1), 2);
+const ramp = (f: number) => 1 - Math.pow(1 - clamp(f / 0.4, 0, 1), 2);
 
 interface Sun {
   readonly x: number;
@@ -155,7 +156,7 @@ export function createCliffShells(ctx: AthenaInstallContext, root: LegacyContext
         // emerges from the ground: no rim, no notches along a staircase of cells.
         radii[k] = !valid(k) ? base[k]! + h[k]! - 0.3 : base[k]! + shell + offset;
         positions.push(...mul(up, radii[k]!));
-        levels.push(shell, mountainIndex, valid(k) ? 1 : 0);
+        levels.push(shell, level >= steps ? 1 : clamp(f / 0.4, 0, 1), valid(k) ? 1 : 0);
       }
     const raw = new Float32Array(count * 3);
     // Normals from the height field itself (central differences), not from the triangles:
@@ -181,7 +182,7 @@ export function createCliffShells(ctx: AthenaInstallContext, root: LegacyContext
         raw[k * 3 + 1] = n[1];
         raw[k * 3 + 2] = n[2];
       }
-    for (let pass = 0; pass < 2; pass++) {
+    for (let pass = 0; pass < 1; pass++) {
       const source = new Float32Array(raw);
       for (let j = 1; j < nz; j++)
         for (let i = 1; i < nx; i++) {
@@ -241,6 +242,7 @@ export function createCliffShells(ctx: AthenaInstallContext, root: LegacyContext
   const grassMid = new s.Color("#6ca66e");
   const grassLight = new s.Color("#a8c97a");
   const lichen = new s.Color("#d9d2b0");
+  const strataDark = new s.Color("#6f8491");
   const ink = new s.Color("#2b2936");
   const c = new s.Color();
   const grass = new s.Color();
@@ -260,10 +262,15 @@ export function createCliffShells(ctx: AthenaInstallContext, root: LegacyContext
     const shell = allLevels[i * 3]!;
     const bottom = allLevels[i * 3 + 2] === 0;
     const heightT = clamp((shell - WALL) / 7, 0, 1);
-    // Strata: soft horizontal bands that follow the plateau levels.
-    const band =
-      0.5 + 0.5 * Math.sin(shell * 6.2 + 1.6 * Math.sin(px * 0.35 + pz * 0.27 + py * 0.2));
-    c.copy(stoneLow).lerp(stoneMid, 0.3 + 0.45 * band + 0.25 * heightT);
+    // Each riser runs from shade stone at its foot to lit stone at its lip, with two darker
+    // strata bands across it; the flats above are the grass caps.
+    const riser = allLevels[i * 3 + 1]!;
+    c.copy(stoneLow).lerp(stoneMid, 0.34 + 0.62 * Math.pow(riser, 0.8));
+    for (const at of [0.3, 0.68]) {
+      const d = Math.abs(riser - at) / 0.1;
+      if (d < 1) c.lerp(strataDark, 0.5 * (1 - d * d));
+    }
+    c.lerp(stoneMid, 0.12 * heightT);
     // Sun side warms the stone.
     const sunSide = clamp((nxv * sun.x + nyv * sun.y + nzv * sun.z) / sunLength, 0, 1);
     c.lerp(warm, 0.28 * sunSide);
@@ -304,6 +311,10 @@ interface Placement {
   up: Vec;
   scale: number;
   yaw: number;
+  /** Heading of the model's +Z in the tangent plane (overrides `yaw`). */
+  forward?: Vec;
+  /** Offset along `up` from the terrain surface (overrides the batch `lift`). */
+  lift?: number;
 }
 
 /** Instance every mesh part of a kit model at the given placements (one draw per part). */
@@ -328,9 +339,9 @@ export async function instanceKit(
     batch.name = `village-${key.split("/").pop()}-${part.name}`;
     batch.castShadow = shadows && !part.userData.athenaInk;
     batch.receiveShadow = !part.userData.athenaInk;
-    placements.forEach(({ up, scale, yaw }, i) => {
-      transform.position.set(...surfacePoint(up, lift));
-      const forward = tangent([Math.sin(yaw), 0.7, Math.cos(yaw)], up);
+    placements.forEach(({ up, scale, yaw, forward: heading, lift: own }, i) => {
+      transform.position.set(...surfacePoint(up, own ?? lift));
+      const forward = tangent(heading ?? [Math.sin(yaw), 0.7, Math.cos(yaw)], up);
       const y = new s.Vector3(...up);
       const z = new s.Vector3(...forward);
       const x = new s.Vector3().crossVectors(y, z).normalize();
@@ -344,6 +355,103 @@ export async function instanceKit(
     batch.computeBoundingSphere();
     root.add(batch);
   });
+}
+
+/**
+ * Plateau terraces: three or four stacked rings of kit slabs per mountain (flat tops, steep
+ * strata sides, an overhanging lip), each ring at a fixed top height so every terrace reads as
+ * one flat step. A slab is 2.2 m tall with its foot sunk into the slope; it is placed only
+ * where the whole footprint stays inside the unwalkable mountain (`mountainHeight > 1.25`
+ * with a margin), and it registers no obstacle: the ground there is already refused.
+ */
+export function planCliffTerraces() {
+  const lists: Record<"a" | "b", Placement[]> = { a: [], b: [] };
+  let serial = 0;
+  mountains.forEach((mountain, mountainIndex) => {
+    const side = tangent([1, 0, 0], mountain.up);
+    const along = cross(mountain.up, side);
+    const at = (phi: number, r: number): Vec =>
+      norm(
+        add(
+          mountain.up,
+          add(mul(side, (Math.cos(phi) * r) / RADIUS), mul(along, (Math.sin(phi) * r) / RADIUS)),
+        ),
+      );
+    let peak = 0;
+    for (let k = 0; k < 40; k++) {
+      const up = at((k / 40) * TAU, 0.6 * (k % 3));
+      peak = Math.max(peak, mountainHeight(up));
+    }
+    if (peak < 5) return;
+    // Terrace tops from 4.3 m (the lowest a slab can stand on and keep its whole footprint on
+    // unwalkable ground) to just under the summit; two to four of them per mountain.
+    const first = 4.3;
+    const last = peak - 0.35;
+    const steps = Math.max(1, Math.min(4, Math.floor((last - first) / 0.95) + 1));
+    for (let level = 0; level < steps; level++) {
+      const top = steps === 1 ? last : first + ((last - first) * level) / (steps - 1);
+      // The slab grows with its height: a taller step may stand further out on the slope.
+      const scale = Math.min(2.3, Math.max(0.85, ((top - 1.45) / 3.0) * 1.15));
+      const target = top - 0.7 * scale;
+      // Radius of the contour `mountainHeight = target` along every heading.
+      const contour = (phi: number) => {
+        let found = -1;
+        for (let r = 0; r < 14; r += 0.12) if (mountainHeight(at(phi, r)) >= target) found = r;
+        return found;
+      };
+      const samples = 24;
+      let circumference = 0;
+      let previous = contour(TAU - TAU / samples);
+      for (let k = 0; k < samples; k++) {
+        const r = contour((k / samples) * TAU);
+        circumference += (Math.max(r, 0) * TAU) / samples;
+        previous = r;
+      }
+      void previous;
+      const count = Math.max(1, Math.round(circumference / (2.1 * scale)));
+      for (let k = 0; k < count; k++) {
+        serial++;
+        const phi = (k / count) * TAU + level * 0.5 + 0.35 * Math.sin(serial * 1.7 + mountainIndex);
+        const r = contour(phi);
+        if (r < 0.2 && level < steps - 1) continue;
+        const up = at(phi, Math.max(0, r));
+        // The footprint must stay on unwalkable ground: its downhill edge and both ends.
+        const reach = 1.2 * scale;
+        const out = [Math.cos(phi), Math.sin(phi)];
+        const probes: Vec[] = [
+          at(phi, r + reach),
+          at(phi + (reach * 0.8) / Math.max(r, 1), r),
+          at(phi - (reach * 0.8) / Math.max(r, 1), r),
+        ];
+        void out;
+        if (probes.some((probe) => mountainHeight(probe) < WALL + 0.15)) continue;
+        if (mountainHeight(up) < WALL + 0.8) continue;
+        // +Z of the slab is the downhill direction; its long axis (+X) runs along the contour.
+        const downhill = add(mul(side, Math.cos(phi)), mul(along, Math.sin(phi)));
+        lists[serial % 2 === 0 ? "a" : "b"].push({
+          up,
+          scale: scale * (0.92 + 0.16 * Math.abs(Math.sin(serial * 2.3))),
+          yaw: 0,
+          forward: downhill,
+          lift: -2.3 * scale,
+        });
+      }
+    }
+  });
+  return lists;
+}
+
+export function createCliffTerraces(ctx: AthenaInstallContext, root: LegacyContext, low: boolean) {
+  if (low) return Promise.resolve();
+  const lists = planCliffTerraces();
+  const optional = (promise: Promise<unknown>) =>
+    promise.catch((error) =>
+      console.warn("[Athena] optional village decoration unavailable", error),
+    );
+  return Promise.all([
+    optional(instanceKit(ctx, root, "models/nature/athena-cliff-slab-a.glb", lists.a)),
+    optional(instanceKit(ctx, root, "models/nature/athena-cliff-slab-b.glb", lists.b)),
+  ]);
 }
 
 /** Golden-angle points over the globe: stable, evenly spread, independent of activity. */
@@ -422,13 +530,24 @@ export async function createIslets(ctx: AthenaInstallContext, root: LegacyContex
   const group = new s.Group();
   group.name = "athena-floating-islets";
   const tilt = 0.42;
-  const ring: { angle: number; reach: number; scale: number; yaw: number; lift: number }[] = [
-    { angle: Math.PI - 0.52, reach: 21, scale: 1.7, yaw: 0.6, lift: 1.5 },
-    { angle: Math.PI - 0.12, reach: 17, scale: 1.25, yaw: 2.1, lift: 3.2 },
-    { angle: Math.PI + 0.36, reach: 23, scale: 2.1, yaw: 4.0, lift: 0.4 },
-    { angle: 0.7, reach: 19, scale: 1.5, yaw: 1.2, lift: 2.0 },
-    { angle: 2.0, reach: 24, scale: 2.3, yaw: 3.3, lift: -1.0 },
-    { angle: 4.35, reach: 18, scale: 1.4, yaw: 5.2, lift: 2.6 },
+  // Placement angles follow the sun: most islets hang on the sun side of the ring (where the
+  // eye is drawn and the light is warm), the rest are spread around it.
+  const sun = sunOf(ctx);
+  const sunAngle = Math.atan2(sun.y * Math.sin(tilt) + sun.z * Math.cos(tilt), sun.x);
+  const onRing = (angle: number): Vec => [
+    Math.cos(angle),
+    Math.sin(angle) * Math.sin(tilt),
+    Math.sin(angle) * Math.cos(tilt),
+  ];
+  // Three islets hang in the sky ahead of the arrival spot (beyond the plaza, 35 to 55 degrees
+  // along the main loop: what a newcomer sees first), the rest on the sun side of the ring.
+  const ring: { dir: Vec; reach: number; scale: number; yaw: number; lift: number }[] = [
+    { dir: direction(-0.8, -0.5), reach: 18, scale: 1.5, yaw: 0.6, lift: 0 },
+    { dir: direction(-0.8, 0.12), reach: 17, scale: 1.7, yaw: 2.1, lift: 1.5 },
+    { dir: direction(-0.62, 0.34), reach: 16, scale: 1.45, yaw: 4.0, lift: 0.4 },
+    { dir: onRing(sunAngle - 0.4), reach: 16, scale: 1.7, yaw: 1.2, lift: 2.4 },
+    { dir: onRing(sunAngle + 0.5), reach: 14, scale: 1.45, yaw: 3.3, lift: 0.6 },
+    { dir: onRing(sunAngle + 1.5), reach: 17, scale: 1.6, yaw: 5.2, lift: 2.6 },
   ];
   const parts: { batch: LegacyContext; matrices: LegacyContext[] }[] = [];
   const transform = new s.Object3D();
@@ -440,15 +559,22 @@ export async function createIslets(ctx: AthenaInstallContext, root: LegacyContex
     batch.castShadow = false;
     batch.receiveShadow = false;
     const matrices: LegacyContext[] = [];
-    ring.forEach(({ angle, reach, scale, yaw, lift }, i) => {
-      const v: Vec = [
-        Math.cos(angle),
-        Math.sin(angle) * Math.sin(tilt),
-        Math.sin(angle) * Math.cos(tilt),
-      ];
+    ring.forEach(({ dir, reach, scale, yaw, lift }, i) => {
+      const v = dir;
       const position = mul(v, RADIUS + reach);
-      transform.position.set(position[0], position[1] + lift, position[2]);
-      transform.rotation.set(0.12 * Math.sin(i * 1.7), yaw, 0.1 * Math.cos(i * 2.3));
+      transform.position.set(
+        position[0] + v[0] * lift,
+        position[1] + v[1] * lift,
+        position[2] + v[2] * lift,
+      );
+      // Stand on its own radial: up points away from the globe, then yaw and a small lean.
+      transform.quaternion
+        .setFromUnitVectors(new s.Vector3(0, 1, 0), new s.Vector3(...v))
+        .multiply(
+          new s.Quaternion().setFromEuler(
+            new s.Euler(0.12 * Math.sin(i * 1.7), yaw, 0.1 * Math.cos(i * 2.3)),
+          ),
+        );
       transform.scale.setScalar(scale);
       transform.updateMatrix();
       const placed = new s.Matrix4().multiplyMatrices(transform.matrix, part.matrixWorld);

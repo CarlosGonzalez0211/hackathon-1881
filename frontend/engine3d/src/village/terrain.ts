@@ -1,5 +1,6 @@
 import type { AthenaInstallContext } from "../athena/install";
 import type { LegacyContext } from "../runtime/legacy-context";
+import { softUniforms } from "./shade";
 import { direction, mountainHeight, pathDistance, surfacePoint, TAU, waterDepth } from "./layout";
 
 /** Grass, paths and illustrated rock are painted on ONE mesh: no overlapping road ribbons. */
@@ -47,6 +48,7 @@ export function createTerrain(ctx: AthenaInstallContext, low: boolean) {
     uRockInk: { value: new s.Color("#6b929a") },
     uLichen: { value: new s.Color("#c9d3a3") },
     uWet: { value: new s.Color("#a58b6a") },
+    uTerrainSun: softUniforms(ctx).uAthenaSun,
   };
   const material = mesh.material,
     previous = material.onBeforeCompile.bind(material);
@@ -66,7 +68,8 @@ export function createTerrain(ctx: AthenaInstallContext, low: boolean) {
       .replace(
         "#include <common>",
         `#include <common>
-      varying vec3 vLand,vLandPoint;uniform float uLandTime;uniform vec3 uGrass,uGrassLight,uPath,uRock,uRockInk,uLichen,uWet;
+      varying vec3 vLand,vLandPoint;uniform float uLandTime;uniform vec3 uGrass,uGrassLight,uPath,uRock,uRockInk,uLichen,uWet,uTerrainSun;
+      float pathWarm=0.0;
       float landHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       float landNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(landHash(i),landHash(i+vec2(1,0)),f.x),mix(landHash(i+vec2(0,1)),landHash(i+vec2(1,1)),f.x),f.y);}
     `,
@@ -78,16 +81,19 @@ export function createTerrain(ctx: AthenaInstallContext, low: boolean) {
       float wash=landNoise(p.yz*.8)*axis.x+landNoise(p.xz*.8)*axis.y+landNoise(p.xy*.8)*axis.z;
       float brush=landNoise(p.yz*vec2(10.0,2.5))*axis.x+landNoise(p.xz*vec2(10.0,2.5))*axis.y+landNoise(p.xy*vec2(10.0,2.5))*axis.z;
       // Meadow: two broad tonal washes (deep emerald, sunlit olive) and large pale glades.
-      vec3 grass=mix(uGrass,uGrassLight,smoothstep(.27,.72,wash)*.7);
+      vec3 grass=mix(uGrass*.9,uGrassLight*1.04,smoothstep(.34,.64,wash)*.95);
       float field=landNoise(p.yz*.22)*axis.x+landNoise(p.xz*.22)*axis.y+landNoise(p.xy*.22)*axis.z;
-      grass=mix(grass,uGrassLight,smoothstep(.5,.7,field)*.34);
+      grass=mix(grass,uGrassLight,smoothstep(.48,.68,field)*.4);
       grass=mix(grass,uGrass*.84,(1.0-smoothstep(.3,.62,field))*(1.0-smoothstep(.2,.45,wash))*.4);
-      grass*=.95+brush*.10;
+      grass*=.93+brush*.14;
       // Brush strokes lean one way, as if combed toward the sun.
-      float stroke=pow(max(0.0,sin(p.x*37.0+p.z*12.0+wash*8.0)*sin(p.y*41.0+p.x*17.0)),18.0);
-      grass=mix(grass,uGrassLight,stroke*.24);
-      float dark=pow(max(0.0,sin(p.z*31.0-p.y*9.0+wash*6.0)*sin(p.x*29.0+p.y*21.0)),22.0);
-      grass=mix(grass,uGrass*.78,dark*.2);
+      float stroke=pow(max(0.0,sin(p.x*37.0+p.z*12.0+wash*8.0)*sin(p.y*41.0+p.x*17.0)),9.0);
+      grass=mix(grass,uGrassLight*1.08,stroke*.5);
+      float dark=pow(max(0.0,sin(p.z*31.0-p.y*9.0+wash*6.0)*sin(p.x*29.0+p.y*21.0)),12.0);
+      grass=mix(grass,uGrass*.7,dark*.34);
+      // Warm highlight: ground facing the sun drifts toward a sunlit yellow-green.
+      float sunFacing=smoothstep(.15,.95,dot(normalize(p),normalize(uTerrainSun)));
+      grass=mix(grass,grass*vec3(1.2,1.1,.72)+vec3(.03,.02,0.),sunFacing*.6);
       float edgeNoise=(wash-.5)*.36+sin(p.x*3.0+p.z*2.0)*.025;
       // Path: worn pale centre, warmer sandstone toward the edges, drawn pebbles and a ridge of edge stones.
       float road=1.0-smoothstep(1.22+edgeNoise,1.44+edgeNoise,vLand.x);
@@ -122,10 +128,17 @@ export function createTerrain(ctx: AthenaInstallContext, low: boolean) {
       float wet=smoothstep(.0,.04,vLand.z)*(1.0-smoothstep(.1,.3,vLand.z));
       ground=mix(ground,uWet,wet*.6);
       diffuseColor.rgb=ground;
+      pathWarm=road*(1.0-rocky);
     `,
+      )
+      .replace(
+        "#include <opaque_fragment>",
+        `// The road keeps its warm sand in shade: lift the shadow band toward the path colour.
+      outgoingLight=mix(outgoingLight,max(outgoingLight,uPath*.82),pathWarm*.85);
+      #include <opaque_fragment>`,
       );
   };
-  material.customProgramCacheKey = () => "athena-single-surface-toon-v3";
+  material.customProgramCacheKey = () => "athena-single-surface-toon-v4";
   return {
     mesh,
     tick(t: number) {

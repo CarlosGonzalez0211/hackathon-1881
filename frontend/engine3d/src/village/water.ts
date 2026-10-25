@@ -97,35 +97,35 @@ export function createWater(ctx: AthenaInstallContext, low = false) {
         float bend=sin(p.z*.84+p.y*.62+flow*.6)*.7+sin(p.x*.5-p.y*.8-flow*.3)*.3;
 
         // Depth tint: shallow turquoise to deep teal, with a lighter lip over the bed.
-        vec3 shallow=lin(vec3(.22,.70,.66)), deep=lin(vec3(.04,.32,.40));
-        float basin=smoothstep(.06,1.7,vDepth);
+        vec3 shallow=lin(vec3(.129,.569,.561)), deep=lin(vec3(.024,.220,.247));
+        float basin=smoothstep(.05,1.4,vDepth);
         vec3 color=mix(shallow,deep,basin);
-        color=mix(color,lin(vec3(.42,.84,.76)),(1.0-smoothstep(.02,.34,vDepth))*.22);
+        color=mix(color,lin(vec3(.20,.66,.62)),(1.0-smoothstep(.02,.3,vDepth))*.18);
 
         // Sky reflection: the zenith blue overhead, the peach horizon toward the sun.
         float sunSide=clamp(dot(reflect(-view,n),uSun)*.5+.5,0.0,1.0);
         vec3 sky=mix(lin(vec3(.40,.70,.93)),lin(vec3(1.0,.80,.60)),pow(sunSide,2.2));
         float fresnel=pow(1.0-max(0.0,dot(n,view)),3.0);
-        color=mix(color,sky,clamp(.04+fresnel*.4,0.0,.5));
+        color=mix(color,sky,clamp(.02+fresnel*.25,0.0,.25));
 
         #if WATER_LOW == 0
         float ribbons=sin(p.x*2.2+p.z*1.6+p.y*1.2-flow+bend);
         float highlights=smoothstep(.94,.995,ribbons)*smoothstep(.05,.65,sin(p.z*.8-p.x*.55+flow*.3));
-        color=mix(color,lin(vec3(.85,.97,.90)),highlights*.55);
+        color=mix(color,lin(vec3(.62,.90,.84)),highlights*.35);
         float sparkle=pow(max(0.0,sin(p.x*8.0+flow*2.0)*cos(p.z*7.0-flow)*sin(p.y*9.0)),32.0);
         color+=lin(vec3(.9,.78,.5))*sparkle*.4;
         #endif
 
         // Foam, band one: laps against the shore and breaks into soft crescents.
-        float shore=1.0-smoothstep(.025,.26,vDepth);
-        float lap=sin(vDepth*30.0-flow*3.2+bend*2.0);
+        float shore=1.0-smoothstep(.03,.12,vDepth);
+        float lap=sin(vDepth*60.0-flow*3.2+bend*2.0);
         float crescents=.55+.45*sin(p.x*5.0+p.z*4.0+bend*3.0);
         float foam=smoothstep(.25,.9,lap)*shore*crescents;
         // Foam, band two: a thin line over the shallows that drifts out and fades.
         float drift=fract(vDepth*1.7-uTime*.045);
-        float line=(1.0-smoothstep(.0,.05,abs(drift-.5)-.012))*smoothstep(.05,.3,vDepth)*(1.0-smoothstep(.6,1.3,vDepth));
+        float line=(1.0-smoothstep(.0,.025,abs(drift-.5)-.004))*smoothstep(.05,.3,vDepth)*(1.0-smoothstep(.6,1.3,vDepth));
         line*=.5+.5*sin(p.x*3.0-p.y*2.0+bend*4.0);
-        color=mix(color,lin(vec3(.97,.99,.90)),clamp(foam*.8+line*.55,0.0,.88));
+        color=mix(color,lin(vec3(.95,.98,.92)),clamp(foam*.8+line*.5,0.0,.85));
         gl_FragColor = vec4(color, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>

@@ -121,24 +121,46 @@ function loadAtlas(ctx: AthenaInstallContext) {
 function atlasCards(
   ctx: AthenaInstallContext,
   wind: { value: number },
-  glow?: readonly [number, number],
+  { glow, tinted = false }: { glow?: readonly [number, number]; tinted?: boolean } = {},
 ) {
-  const material = toonCardMaterial(ctx, null, { sphericalNormals: true, wind, alphaTest: 0.45 });
-  patchMaterial(material, glow ? "atlas-rect-v1-glow" : "atlas-rect-v1", (shader) => {
-    if (glow) translucent(shader, glow[0], glow[1]);
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        "#include <common>",
-        "#include <common>\n#ifdef USE_INSTANCING\n  attribute vec4 aAtlasRect;\n#endif",
-      )
-      .replace(
-        "#include <uv_vertex>",
-        `#include <uv_vertex>
+  const material = toonCardMaterial(ctx, null, {
+    sphericalNormals: true,
+    wind,
+    alphaTest: tinted ? 0.5 : 0.45,
+  });
+  patchMaterial(
+    material,
+    `atlas-rect-v2${glow ? "-glow" : ""}${tinted ? "-tint" : ""}`,
+    (shader) => {
+      if (glow) translucent(shader, glow[0], glow[1]);
+      if (tinted) {
+        // Crown fringe: the atlas supplies only the leaf shapes and their light-to-dark
+        // variation; the hue is the crown's own (instance colour), so the cards sit in the mass.
+        shader.fragmentShader = shader.fragmentShader
+          .replace(
+            "#include <map_fragment>",
+            `#ifdef USE_MAP
+  vec4 athenaTexel = texture2D( map, vMapUv );
+  diffuseColor.rgb *= clamp( dot( athenaTexel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) / 0.32, 0.45, 1.45 );
+  diffuseColor.a *= athenaTexel.a;
+#endif`,
+          )
+          .replace("* uAthenaRimStrength;", "* uAthenaRimStrength * 0.0;");
+      }
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          "#include <common>",
+          "#include <common>\n#ifdef USE_INSTANCING\n  attribute vec4 aAtlasRect;\n#endif",
+        )
+        .replace(
+          "#include <uv_vertex>",
+          `#include <uv_vertex>
 #if defined( USE_MAP ) && defined( USE_INSTANCING )
   vMapUv = vec2( aAtlasRect.x + uv.x * aAtlasRect.z, aAtlasRect.y + ( 1.0 - uv.y ) * aAtlasRect.w );
 #endif`,
-      );
-  });
+        );
+    },
+  );
   return material;
 }
 
@@ -186,6 +208,8 @@ interface Profile {
   /** Base size range (a tree is scaled 0.85 .. 1.2 of this). */
   readonly size: number;
   readonly fringe: { width: number; height: number };
+  /** The crown's baked ramp (deep at `lo`, light at `hi`), to tint the fringe like the crown. */
+  readonly ramp: { deep: string; light: string; lo: number; hi: number; curve: number };
 }
 const SPECIES: Record<Species, Profile> = {
   broadleaf: {
@@ -193,21 +217,24 @@ const SPECIES: Record<Species, Profile> = {
     centre: [0.1, 3.5, 0],
     radii: [1.75, 1.1, 1.5],
     size: 1,
-    fringe: { width: 1.55, height: 1.25 },
+    fringe: { width: 0.95, height: 0.8 },
+    ramp: { deep: "#3f7a5b", light: "#a8c97a", lo: 2.4, hi: 4.7, curve: 0.95 },
   },
   cypress: {
     key: "models/nature/athena-tree-cypress",
     centre: [0.1, 3.7, 0],
     radii: [0.75, 2.4, 0.75],
     size: 1.05,
-    fringe: { width: 0.78, height: 0.72 },
+    fringe: { width: 0.42, height: 0.4 },
+    ramp: { deep: "#3f7a5b", light: "#8db677", lo: 1.25, hi: 6.3, curve: 1.15 },
   },
   blossom: {
     key: "models/nature/athena-tree-blossom",
     centre: [0.05, 2.8, 0],
     radii: [2.1, 0.95, 1.85],
     size: 1,
-    fringe: { width: 1.65, height: 1.15 },
+    fringe: { width: 1.1, height: 0.85 },
+    ramp: { deep: "#c98a93", light: "#f3c9c4", lo: 2.05, hi: 3.8, curve: 0.85 },
   },
 };
 /** Cypress silhouette radius at height y (the profile of `nature.mjs`, ring bulges smoothed out). */
@@ -365,7 +392,7 @@ export function createGroves(
   windMaterial(leaf, time);
   windMaterial(bark, time);
   // The one tree in twenty that turns ginkgo gold keeps the gradient's light and shade.
-  patchMaterial(leaf, "ginkgo-v1", (shader) => {
+  patchMaterial(leaf, "ginkgo-v2", (shader) => {
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
@@ -379,13 +406,12 @@ export function createGroves(
   vColor = mix( vColor, vec3( 0.92, 0.56, 0.12 ) * ( athenaLuma / 0.34 ), aGinkgo );
 #endif`,
       );
-    // Round crowns catch the sun-backlit rim all around their silhouette; keep a gentle one so
-    // the gradient and the lobes stay readable (the rim itself is the toon pipeline's).
+    // No rim on crowns: a pale silhouette edge is what makes foliage read as plastic.
     shader.fragmentShader = shader.fragmentShader.replace(
       "* uAthenaRimStrength;",
-      "* uAthenaRimStrength * 0.4;",
+      "* uAthenaRimStrength * 0.0;",
     );
-    translucent(shader, 0.16, 0.34);
+    translucent(shader, 0.1, 0.1);
   });
 
   // Species per tree: the blossom is only planted close to a house (the topic houses).
@@ -443,7 +469,7 @@ export function createGroves(
   // The fringe: six painted leaf cards per tree around the crown, shaded as part of it.
   const fringe = new s.InstancedMesh(
     cardGeometry(s, 1, 1, 1, 0.82, 1),
-    atlasCards(ctx, time, [0.08, 0.16]),
+    atlasCards(ctx, time, { glow: [0.1, 0.1], tinted: true }),
     points.length * 6,
   );
   fringe.name = "athena-crown-fringe";
@@ -489,10 +515,14 @@ export function createGroves(
     object.updateMatrix();
     shadows.setMatrixAt(i, matrix.multiplyMatrices(parent.matrix, object.matrix));
 
-    // Six cards laid on the crown surface, more of them toward the lit upper half.
+    // Six cards lying on the crown surface (tangent to it, never standing off it), more of
+    // them toward the lit upper half, each tinted like the crown at its height.
     const [cx, cy, cz] = profile.centre;
     const [rx, ry, rz] = profile.radii;
     const inverse = new s.Matrix4();
+    const ramp = profile.ramp;
+    const deep = new s.Color(ramp.deep);
+    const light = new s.Color(ramp.light);
     for (let k = 0; k < 6; k++) {
       const theta = (k / 6) * TAU + i * 0.83 + Math.sin(i + k * 1.7) * 0.25;
       const along = [0.05, 0.3, 0.55, 0.18, 0.42, 0.1][(k + i) % 6]!;
@@ -501,28 +531,29 @@ export function createGroves(
       if (name === "cypress") {
         // The spire: follow its silhouette, not an ellipsoid.
         py = 1.95 + along * 3.4;
-        const r = spireRadius(py) * 0.9;
+        const r = spireRadius(py) * 0.85;
         px = cx + Math.cos(theta) * r;
         pz = cz + Math.sin(theta) * r;
-        outward.set(Math.cos(theta), 0.35, Math.sin(theta)).normalize();
+        outward.set(Math.cos(theta), 0.3, Math.sin(theta)).normalize();
       } else {
-        const phi = -0.3 + along * 1.1;
-        px = cx + Math.cos(theta) * Math.cos(phi) * rx * 0.9;
-        py = cy + Math.sin(phi) * ry * 0.95;
-        pz = cz + Math.sin(theta) * Math.cos(phi) * rz * 0.9;
+        const phi = 0.05 + along * 1.0;
+        px = cx + Math.cos(theta) * Math.cos(phi) * rx * 0.84;
+        py = cy + Math.sin(phi) * ry * 0.88;
+        pz = cz + Math.sin(theta) * Math.cos(phi) * rz * 0.84;
         outward
           .set((px - cx) / (rx * rx), (py - cy) / (ry * ry), (pz - cz) / (rz * rz))
           .normalize();
       }
+      // z = surface normal, y = the surface's uphill tangent, x across it.
       const z = outward.clone();
-      const lean = new s.Vector3(0, 1, 0).addScaledVector(z, -z.y).normalize();
-      const y = lean.multiplyScalar(0.9).addScaledVector(z, 0.42).normalize();
+      const y = new s.Vector3(0, 1, 0).addScaledVector(z, -z.y);
+      if (y.lengthSq() < 1e-4) y.set(1, 0, 0);
+      y.normalize();
       const x = new s.Vector3().crossVectors(y, z).normalize();
-      card.position.set(px, py - 0.2 * profile.fringe.height, pz);
-      card.quaternion.setFromRotationMatrix(
-        matrix.makeBasis(x, y.crossVectors(z, x).normalize(), z),
-      );
-      const grown = 1.0 + 0.3 * Math.abs(Math.sin(i * 1.3 + k));
+      card.position.set(px, py, pz).addScaledVector(z, 0.02);
+      card.quaternion.setFromRotationMatrix(matrix.makeBasis(x, y, z));
+      card.rotateZ(Math.sin(i * 2.1 + k * 1.3) * 0.7);
+      const grown = 0.85 + 0.3 * Math.abs(Math.sin(i * 1.3 + k));
       card.scale.set(profile.fringe.width * grown, profile.fringe.height * grown, 1);
       card.updateMatrix();
       const index = i * 6 + k;
@@ -531,15 +562,20 @@ export function createGroves(
       inverse.makeRotationFromQuaternion(card.quaternion).invert();
       const n = outward.clone().applyMatrix4(inverse);
       cardNormals.set([n.x, n.y, n.z], index * 3);
-      const rect = ginkgo[i]
-        ? ATLAS_RECTS.ginkgoCluster
-        : name === "blossom"
-          ? ATLAS_RECTS.blossomCluster
-          : ATLAS_RECTS.leafCluster;
-      cardRects.set(rect, index * 4);
-      // Lighter than the crown beneath, lighter still toward the top: the lit edge of the mass.
-      const base = 1.0 + 0.22 * along + 0.08 * Math.abs(Math.sin(i * 0.7 + k));
-      fringe.setColorAt(index, tint.setRGB(base, base, base));
+      cardRects.set(ATLAS_RECTS.leafCluster, index * 4);
+      // The crown's colour at this height, a touch darker (x 0.9): the card is part of the mass.
+      const t = Math.pow(
+        Math.min(1, Math.max(0, (py - ramp.lo) / (ramp.hi - ramp.lo))),
+        ramp.curve,
+      );
+      tint.copy(deep).lerp(light, t);
+      if (ginkgo[i]) {
+        // Gold on the crown and on its fringe alike, the fringe slightly darker.
+        const luma = 0.2126 * tint.r + 0.7152 * tint.g + 0.0722 * tint.b;
+        tint.setRGB(0.92, 0.56, 0.12).multiplyScalar(luma / 0.34);
+        tint.multiplyScalar(0.85);
+      } else tint.multiplyScalar(0.9);
+      fringe.setColorAt(index, tint);
     }
   });
   fringe.geometry.setAttribute("aCardNormal", new s.InstancedBufferAttribute(cardNormals, 3));
@@ -621,7 +657,7 @@ export function createMeadows(
     points.push(up);
   }
   const tufts = new s.InstancedMesh(
-    cardGeometry(s, 0.66, 0.62, 2, 0.5, 1),
+    cardGeometry(s, 0.46, 0.43, 2, 0.8, 1),
     atlasCards(ctx, time),
     points.length,
   );
@@ -638,7 +674,7 @@ export function createMeadows(
     basis(s, object, up, [Math.sin(i * 1.9), 0.1, Math.cos(i * 1.9)]);
     object.rotateX(0.14 * Math.sin(i * 3.1));
     object.rotateZ(0.12 * Math.cos(i * 2.3));
-    object.scale.setScalar(0.72 + (i % 7) * 0.085);
+    object.scale.setScalar(0.6 + (((i * 5) % 7) / 6) * 0.7);
     object.updateMatrix();
     tufts.setMatrixAt(i, object.matrix);
     tufts.setColorAt(i, near ? straw : greens[i % 2]!);

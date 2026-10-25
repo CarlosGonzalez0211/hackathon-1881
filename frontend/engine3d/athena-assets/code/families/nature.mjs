@@ -40,9 +40,13 @@ function limb(THREE, T, points, { radius, tubular, radial, foot = true }) {
 }
 
 /**
- * A crown: smooth-min union of ellipsoid lobes, optional flat underside, polygonised and
- * decimated. Colour: deep foliage at the bottom to light foliage at the top, extra light on
- * the faces that look toward the sun side, a little cavity darkening between lobes.
+ * A crown: smooth-min union of ellipsoid lobes with an optional flat underside. Instead of
+ * decimating a marching-cubes mesh (uneven slivers, a polygonal silhouette) the surface is a
+ * latitude/longitude grid whose vertices are ray-marched onto the field from a point inside
+ * the mass: every triangle is the same size, so the ~300 triangles spread evenly and the
+ * silhouette stays round. Normals are the analytic field gradient (fully smooth, no creases).
+ * Colour: deep foliage at the bottom to light foliage at the top, extra light on the faces
+ * that look toward the sun side, a little cavity darkening between lobes.
  */
 async function sdfCrown(
   T,
@@ -50,8 +54,9 @@ async function sdfCrown(
     lobes,
     blend = 0.34,
     cutY,
-    size = 72,
-    triangles,
+    centre,
+    segments = 15,
+    rings = 11,
     bottom = LEAF.deep,
     top = LEAF.light,
     sunTint = LEAF.light,
@@ -59,10 +64,106 @@ async function sdfCrown(
   },
 ) {
   const { sdf } = T;
-  const union = sdf.smin(blend, ...lobes.map(([centre, radii]) => sdf.ellipsoid(centre, radii)));
+  const union = sdf.smin(blend, ...lobes.map(([c, radii]) => sdf.ellipsoid(c, radii)));
   const field =
     cutY === undefined ? union : sdf.subtract(union, sdf.halfspace([0, 1, 0], cutY), 0.08);
-  const geometry = await T.polygonise(field, { size, maxTriangles: triangles });
+  const reach = Math.max(...union.bounds[1].map((v, i) => v - union.bounds[0][i])) * 1.2;
+  const grid = [];
+  const index = [];
+  const verts = [];
+  const surface = (dx, dy, dz) => {
+    // March out until the field turns positive, then bisect.
+    let near = 0;
+    let far = 0;
+    const stepLength = 0.04;
+    for (let t = stepLength; t < reach; t += stepLength) {
+      if (field(centre[0] + dx * t, centre[1] + dy * t, centre[2] + dz * t) > 0) {
+        far = t;
+        break;
+      }
+      near = t;
+    }
+    if (!far) far = reach;
+    for (let i = 0; i < 12; i++) {
+      const mid = (near + far) / 2;
+      if (field(centre[0] + dx * mid, centre[1] + dy * mid, centre[2] + dz * mid) > 0) far = mid;
+      else near = mid;
+    }
+    const t = (near + far) / 2;
+    return [centre[0] + dx * t, centre[1] + dy * t, centre[2] + dz * t];
+  };
+  // Top pole, (rings - 1) rows of `segments`, bottom pole.
+  verts.push(surface(0, 1, 0));
+  for (let r = 1; r < rings; r++) {
+    const phi = (Math.PI * r) / rings;
+    const row = [];
+    for (let s = 0; s < segments; s++) {
+      const theta = (2 * Math.PI * s) / segments + 0.2;
+      row.push(verts.length);
+      verts.push(
+        surface(Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta)),
+      );
+    }
+    grid.push(row);
+  }
+  const bottomPole = verts.length;
+  verts.push(surface(0, -1, 0));
+  for (let s = 0; s < segments; s++) {
+    const n = (s + 1) % segments;
+    index.push(0, grid[0][n], grid[0][s]);
+    index.push(bottomPole, grid[rings - 2][s], grid[rings - 2][n]);
+  }
+  for (let r = 0; r < rings - 2; r++)
+    for (let s = 0; s < segments; s++) {
+      const n = (s + 1) % segments;
+      const a = grid[r][s];
+      const b = grid[r][n];
+      const c = grid[r + 1][s];
+      const d = grid[r + 1][n];
+      index.push(a, b, c, b, d, c);
+    }
+  const positions = new Float32Array(verts.flat());
+  const normals = new Float32Array(positions.length);
+  const h = 0.02;
+  for (let i = 0; i < verts.length; i++) {
+    const [x, y, z] = verts[i];
+    // Gradient of the un-cut union keeps the flat underside from creasing the rim.
+    const g = [
+      union(x + h, y, z) - union(x - h, y, z),
+      union(x, y + h, z) - union(x, y - h, z),
+      union(x, y, z + h) - union(x, y, z - h),
+    ];
+    let gx = g[0];
+    let gy = g[1];
+    let gz = g[2];
+    if (cutY !== undefined && y < cutY + 0.12) {
+      // Blend toward straight down on the underside.
+      const k = Math.min(1, Math.max(0, (cutY + 0.12 - y) / 0.12));
+      const l = Math.hypot(gx, gy, gz) || 1;
+      gx = (gx / l) * (1 - k);
+      gy = (gy / l) * (1 - k) - k;
+      gz = (gz / l) * (1 - k);
+    }
+    const l = Math.hypot(gx, gy, gz) || 1;
+    normals.set([gx / l, gy / l, gz / l], i * 3);
+  }
+  // Orient the triangles outward (against the analytic normals).
+  let agree = 0;
+  for (let t = 0; t < index.length; t += 3) {
+    const [a, b, c] = [index[t], index[t + 1], index[t + 2]].map((v) => verts[v]);
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+    const i = index[t] * 3;
+    agree += Math.sign(n[0] * normals[i] + n[1] * normals[i + 1] + n[2] * normals[i + 2]);
+  }
+  if (agree < 0)
+    for (let t = 0; t < index.length; t += 3)
+      [index[t + 1], index[t + 2]] = [index[t + 2], index[t + 1]];
+  const geometry = new T.THREE.BufferGeometry();
+  geometry.setAttribute("position", new T.THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new T.THREE.BufferAttribute(normals, 3));
+  geometry.setIndex(index);
   T.bake.fill(geometry, "#FFFFFF");
   T.bake.gradient(geometry, { bottom, top, curve });
   T.bake.direction(geometry, {
@@ -122,8 +223,8 @@ function broadleafTrunk(THREE, T) {
       [0.3, 3.15, 0.04],
     ],
     {
-      tubular: 4,
-      radial: 6,
+      tubular: 3,
+      radial: 5,
       // Root flare: wide at the foot, a slim waist, a quiet taper into the crown.
       radius: (t) => 0.1 + 0.075 * (1 - t) + 0.19 * Math.pow(1 - t, 7),
     },
@@ -137,7 +238,7 @@ function broadleafTrunk(THREE, T) {
       [0.6, 2.35, 0.1],
       [1.05, 2.62, 0.25],
     ],
-    { tubular: 2, radial: 4, radius: (t) => 0.075 * Math.pow(1 - t, 0.7), foot: false },
+    { tubular: 2, radial: 3, radius: (t) => 0.075 * Math.pow(1 - t, 0.7), foot: false },
   );
   return { trunk, branch };
 }
@@ -146,8 +247,9 @@ async function buildBroadleaf(THREE, T, { lod = false } = {}) {
   const crown = await sdfCrown(T, {
     lobes: BROADLEAF_LOBES,
     cutY: 2.4,
-    triangles: lod ? 110 : 285,
-    size: lod ? 36 : 56,
+    centre: [0.05, 3.5, 0.05],
+    segments: lod ? 9 : 17,
+    rings: lod ? 7 : 12,
   });
   const { trunk, branch } = lod
     ? { trunk: limbStub(THREE, T), branch: null }
@@ -199,7 +301,7 @@ async function buildCypress(THREE, T, { lod = false } = {}) {
   const crown = T.lathe(
     lod ? profile.filter((_, i) => i % 2 === 0 || i === profile.length - 1) : profile,
     {
-      segments: lod ? 6 : 10,
+      segments: lod ? 7 : 12,
       divisions: 1,
       scallop: lod ? undefined : { folds: 5, depth: 0.07, from: 0.12 },
     },
@@ -213,7 +315,7 @@ async function buildCypress(THREE, T, { lod = false } = {}) {
     position.setX(i, position.getX(i) + 0.05 * (y - 1.2) * (y - 1.2) * 0.12);
   }
   position.needsUpdate = true;
-  T.smoothNormals(crown, 55);
+  T.smoothNormals(crown, 180);
   T.bake.fill(crown, "#FFFFFF");
   T.bake.gradient(crown, { bottom: LEAF.deep, top: "#8DB677", curve: 1.15 });
   T.bake.direction(crown, {
@@ -279,8 +381,9 @@ async function buildBlossom(THREE, T, { lod = false } = {}) {
     lobes: BLOSSOM_LOBES,
     cutY: 2.05,
     blend: 0.4,
-    triangles: lod ? 110 : 285,
-    size: lod ? 36 : 56,
+    centre: [0.1, 2.9, -0.05],
+    segments: lod ? 9 : 18,
+    rings: lod ? 7 : 12,
     bottom: BLOSSOM.deep,
     top: BLOSSOM.light,
     sunTint: "#FBF3E4",
@@ -304,8 +407,8 @@ async function buildBlossom(THREE, T, { lod = false } = {}) {
             [0.3, 2.7, 0.0],
           ],
           {
-            tubular: 4,
-            radial: 6,
+            tubular: 3,
+            radial: 5,
             radius: (t) => 0.13 + 0.07 * (1 - t) + 0.2 * Math.pow(1 - t, 7),
           },
         ),
@@ -321,7 +424,7 @@ async function buildBlossom(THREE, T, { lod = false } = {}) {
             [-0.5, 1.7, 0.2],
             [-0.85, 2.05, 0.4],
           ],
-          { tubular: 2, radial: 4, radius: (t) => 0.08 * Math.pow(1 - t, 0.7), foot: false },
+          { tubular: 2, radial: 3, radius: (t) => 0.08 * Math.pow(1 - t, 0.7), foot: false },
         ),
         barkMaterial(T),
       ),
@@ -408,32 +511,72 @@ function buildPebble(_THREE, T) {
 }
 
 // --------------------------------------------------------------------------- cliff slabs
-/** A rounded slab of cool stone with a grass cap and a slightly overhanging lip. */
-async function buildCliffSlab(THREE, T, variant) {
-  const { sdf } = T;
+/**
+ * A plateau step: flat top, steep sides with two darker strata bands, a slight overhanging lip
+ * and a foliage cap. 3 m tall with the foot buried (the runtime sinks it into the slope).
+ * Shared by the slabs and the islet rock, so both read as the same stone.
+ */
+const STONE_DARK = "#6F8491";
+const PLATEAU_PROFILE = [
+  [0.96, 0.0],
+  [1.0, 0.8],
+  [0.97, 1.6],
+  [1.0, 2.3],
+  [1.0, 2.55],
+  [1.13, 2.66, 1],
+  [1.16, 2.8, 1],
+  [1.0, 3.0, 1],
+  [0.5, 3.0],
+  [0.0, 3.0],
+];
+
+/** Colour a plateau mesh whose height spans [0, top]: shade to lit stone, strata, grass cap. */
+function paintPlateau(THREE, T, geometry, { top = 3.0, strata = [1.5, 2.05], radiusX = 1 } = {}) {
+  const position = geometry.attributes.position;
+  const normal = geometry.attributes.normal;
+  const color = new Float32Array(position.count * 3);
+  const low = new THREE.Color(STONE.low);
+  const mid = new THREE.Color(STONE.mid);
+  const dark = new THREE.Color(STONE_DARK);
+  const grass = new THREE.Color(LEAF.mid);
+  const grassEdge = new THREE.Color(LEAF.light);
+  const c = new THREE.Color();
+  for (let i = 0; i < position.count; i++) {
+    const y = position.getY(i);
+    const t = Math.min(1, Math.max(0, y / top));
+    c.copy(low).lerp(mid, 0.35 + 0.65 * Math.pow(t, 0.9));
+    for (const band of strata) {
+      const d = Math.abs(y - band) / 0.14;
+      if (d < 1) c.lerp(dark, 0.55 * (1 - d * d));
+    }
+    const cap = Math.min(1, Math.max(0, (normal.getY(i) - 0.35) / 0.3)) * (y > top * 0.86 ? 1 : 0);
+    const rim = Math.min(1, Math.hypot(position.getX(i), position.getZ(i)) / (radiusX * 1.0));
+    c.lerp(grass.clone().lerp(grassEdge, 0.35 * rim * rim), cap);
+    color.set([c.r, c.g, c.b], i * 3);
+  }
+  geometry.setAttribute("color", new THREE.BufferAttribute(color, 3));
+  T.bake.occlusion(geometry, { radius: 0.3, strength: 0.3 });
+}
+
+function buildCliffSlab(THREE, T, variant) {
   const a = variant === "a";
-  const body = sdf.smin(
-    0.22,
-    sdf.roundBox([0, 0.55, 0], a ? [1.15, 0.55, 0.85] : [0.95, 0.65, 1.0], 0.3),
-    sdf.ellipsoid(
-      a ? [0.25, 1.1, 0.1] : [-0.2, 1.2, -0.1],
-      a ? [0.9, 0.34, 0.7] : [0.75, 0.38, 0.8],
-    ),
-    sdf.ellipsoid(a ? [-0.7, 0.2, 0.55] : [0.7, 0.25, -0.6], [0.5, 0.3, 0.42]),
-  );
-  const field = sdf.subtract(body, sdf.halfspace([0, 1, 0], 0.0), 0.04);
-  const geometry = await T.polygonise(field, { size: 64, maxTriangles: a ? 385 : 395 });
-  T.bake.fill(geometry, STONE.mid);
-  T.bake.gradient(geometry, { bottom: STONE.low, top: "#D4DAD6", curve: 1.1 });
-  // Strata: two soft darker bands across the sides.
-  T.bake.direction(geometry, {
-    color: LEAF.mid,
-    direction: [0, 1, 0],
-    threshold: 0.62,
-    strength: 0.95,
-  });
-  T.bake.occlusion(geometry, { sdf: field, radius: 0.3, strength: 0.4 });
-  const root = T.group(`athena-cliff-slab-${variant}`, T.mesh("slab", geometry, rockMaterial(T)));
+  const slab = T.lathe(PLATEAU_PROFILE, { segments: 22, divisions: 1 });
+  const noise = T.createNoise(a ? 41 : 59);
+  const position = slab.attributes.position;
+  // An irregular footprint: radius breathes with the angle, the oblong is stretched.
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i);
+    const z = position.getZ(i);
+    const y = position.getY(i);
+    const angle = Math.atan2(z, x);
+    const breathe =
+      1 + 0.12 * noise.fbm3(Math.cos(angle) * 1.4, y * 0.35, Math.sin(angle) * 1.4, { octaves: 2 });
+    position.setXYZ(i, x * breathe * (a ? 1.3 : 0.98), y, z * breathe * (a ? 0.95 : 1.18));
+  }
+  position.needsUpdate = true;
+  T.smoothNormals(slab, 50);
+  paintPlateau(THREE, T, slab, { radiusX: a ? 1.3 : 1 });
+  const root = T.group(`athena-cliff-slab-${variant}`, T.mesh("slab", slab, rockMaterial(T)));
   return { root: T.ground(root) };
 }
 
@@ -448,15 +591,21 @@ function buildIslet(THREE, T) {
       [0.86, -2.4],
       [1.45, -1.5],
       [1.95, -0.7],
-      [2.28, -0.1],
-      [2.32, 0.1, 1],
-      [1.7, 0.22],
-      [0.9, 0.3],
-      [0.0, 0.3],
+      [2.2, -0.15],
+      [2.25, 0.0, 1],
+      [2.4, 0.1, 1],
+      [2.4, 0.24, 1],
+      [2.2, 0.34, 1],
+      [1.1, 0.34],
+      [0.0, 0.34],
     ],
     { segments: 40, divisions: 2 },
   );
-  T.displace(body, (p) => 0.22 * noise.fbm3(p.x * 0.9, p.y * 0.6, p.z * 0.9, { octaves: 2 }));
+  // Only the flanks wobble; the top stays a flat plateau.
+  T.displace(
+    body,
+    (p) => (p.y > 0.2 ? 0 : 0.18) * noise.fbm3(p.x * 0.9, p.y * 0.6, p.z * 0.9, { octaves: 2 }),
+  );
   T.smoothNormals(body, 55);
   // Colour: stone sides darkening toward the point, grass cap on the upward faces, a pale
   // waterfall thread falling from the lip along one azimuth.
@@ -470,6 +619,7 @@ function buildIslet(THREE, T) {
   const hi = new THREE.Color(STONE.mid);
   const warm = new THREE.Color(STONE.warm);
   const foam = new THREE.Color("#DDF2F0");
+  const strata = new THREE.Color(STONE_DARK);
   const mixed = new THREE.Color();
   for (let i = 0; i < position.count; i++) {
     const y = position.getY(i);
@@ -481,7 +631,12 @@ function buildIslet(THREE, T) {
       .copy(lo)
       .lerp(hi, Math.pow(heightT, 0.8))
       .lerp(warm, Math.max(0, x / 2.4) * 0.35 * heightT);
-    const cap = Math.min(1, Math.max(0, (ny - 0.45) / 0.3));
+    // Two darker strata bands, like the cliff slabs.
+    for (const band of [-0.55, -1.5]) {
+      const d = Math.abs(y - band) / 0.2;
+      if (d < 1) stone.lerp(strata, 0.5 * (1 - d * d));
+    }
+    const cap = Math.min(1, Math.max(0, (ny - 0.45) / 0.3)) * (y > 0.2 ? 1 : 0);
     mixed.copy(grassLow).lerp(grassHigh, Math.min(1, Math.max(0, 0.45 + (x * 0.15 + z * 0.1))));
     stone.lerp(mixed, cap);
     const azimuth = Math.atan2(z, x);

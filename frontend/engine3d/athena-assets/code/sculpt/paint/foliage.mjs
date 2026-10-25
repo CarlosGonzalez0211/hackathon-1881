@@ -159,13 +159,13 @@ function paintBladeTuft(raster, random, noise) {
       y: base,
       angle: lean + (random() - 0.5) * 0.12,
       length: height * (0.94 + random() * 0.12),
-      width: 24 - Math.abs(u) * 5 - (k > 6 ? 6 : 0),
+      width: 34 - Math.abs(u) * 6 - (k > 6 ? 6 : 0),
       bend: bend + (random() - 0.5) * 12,
-      color: (s) => foliage(0.06 + s * 0.9),
+      color: (s) => foliage(0.5 + s * 0.5),
     });
   });
   raster.simplexFill(noise, rect, [PALETTE.deep, PALETTE.light], { scale: 0.05, strength: 0.14 });
-  shadeVertically(raster, rect, { bottom: 0.6, top: 1.05, deepen: 0.35 });
+  shadeVertically(raster, rect, { bottom: 0.88, top: 1.08, deepen: 0.08 });
 }
 
 /** A fan of small rounded petals or leaves: blossom and ginkgo crown fringes. */
