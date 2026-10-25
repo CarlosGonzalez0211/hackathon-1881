@@ -27,3 +27,7 @@ graphify-out
 # Athena build output (frontend/engine3d/scripts/build-athena-assets.mjs)
 frontend/web/public/athena/
 .claude/worktrees/
+
+# World art tooling: generated kit cache and render-review output
+frontend/engine3d/.kit-cache/
+frontend/engine3d/review/

@@ -23,6 +23,13 @@ clips without constructing Messenger's world or replacing its scene objects.
 - `look.ts` adds subtle architectural wear and synchronised foliage/ink-hull wind.
 - `atmosphere.ts` supplies a gravity-aware illustrated sky, drifting cloud shapes,
   a sun disc, and a warm horizon. Surface lighting uses a warm key, cool fill, and haze.
+- `shade.ts` shares shading with the pieces the toon conversion cannot reach. `toonCardMaterial`
+  builds alpha-card materials (spherical per-instance normals via `aCardNormal`, lit on both
+  faces, optional wind) and `loadVillageTexture` loads their atlases. `SOFT_LIGHT_GLSL` and
+  `softUniforms` let a hand-written `ShaderMaterial` light like the toon program, and
+  `SKY_GLSL` is the sky palette `atmosphere.ts` splices into its shader. `geometry.ts` also
+  gained `lathe` (scalloped profile revolve), `sweep` (tube along a curve, moved out of
+  `lumen.ts`), `displace` and `bakeVertexColor` for the toolkit in `docs/art/ART_DIRECTION.md`.
 - `ambience.ts` animates the kit's butterfly and bird clips, floating mote sprites,
   and topic banners. These effects freeze under reduced motion and dispose with the world.
 - `surface.ts` connects walking, NPC intent, house intent, projected labels, sound,
@@ -136,3 +143,23 @@ Luminous art pass (Sky-inspired):
 - `waypoint.ts` marks the next topic with a light column and a HUD medallion that docks to
   the screen edge; NPCs are spread over the whole globe and the nearest target wins, except
   that Lumen never hides a door.
+
+Render review (art direction, `docs/art/ART_DIRECTION.md` section 9):
+
+- `shots.mjs` (types in `shots.d.mts`) lists the twelve deterministic world shots. Opening
+  `/world?shot=<id>` poses the student and the camera, hides the HUD and the touch controls,
+  freezes the clock (`shot.time`, default 0), stops every animation at its first pose, disables
+  the quality auto-downgrade and sets `dataset.athenaShot` on the canvas once three composed
+  frames are out. `window.__athenaShot.go(idOrShot)` re-poses without a reload; `.list()` and
+  `.stats()` (draw calls and triangles of one main pass, fps) are exposed too. Without
+  `?shot=` none of this runs. The camera of a shot only avoids the ground, not walls.
+- `/dev/asset?key=<manifest key>&yaw=&elev=&fit=&grid=1&ref=1&clip=&t=&quality=` (dev only, 404 in
+  production) renders one GLB through the same loader, toon pass, lights and HDR grade
+  (`src/scenes/asset-viewer.ts`, exported as `@athena/engine3d/dev`). The model stands at
+  `(0, RADIUS + 0.2, 0)` at its in-game scale, with a paper ground disc, an optional 1 m grid and an
+  avatar silhouette for scale. Its draw calls and triangles are static counts of the asset.
+- `pnpm --filter @athena/engine3d review:render -- --world --assets=buildings,npcs --yaws=0,180 --port 3100`
+  drives both with Playwright (SwiftShader) and writes `frontend/engine3d/review/<run>/`
+  (PNG tiles, `report.json`, `index.html`, `contact-*.png`, and `compare-*.png` with
+  `--compare=<run>`) plus `review/latest`. Options and timings are in the header of
+  `scripts/render-review.mjs`.

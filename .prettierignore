@@ -10,5 +10,9 @@ frontend/engine3d/src/vendor
 tools/reverse-engineering/output
 
 frontend/engine3d/src/workers
-frontend/engine3d/athena-assets
+frontend/engine3d/athena-assets/*
+!frontend/engine3d/athena-assets/code
+frontend/engine3d/athena-assets/code/athena-models.js
+frontend/engine3d/athena-assets/code/tokens.*
+frontend/engine3d/.kit-cache
 .claude/worktrees
