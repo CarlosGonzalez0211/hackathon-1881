@@ -9,6 +9,29 @@ import {
 import { InMemoryDomainEventStore } from "@athena/platform";
 import { createApp } from "../src/app.js";
 
+test("health and CORS preflight never need a caller; real mode refuses the allow-all stub", async () => {
+  let calls = 0;
+  const app = await createApp({
+    logger: false,
+    platform: {
+      auth: {
+        authenticate: async () => {
+          calls++;
+          throw new Error("no token");
+        },
+      },
+    },
+  });
+  try {
+    assert.equal((await app.inject({ method: "GET", url: "/api/health" })).statusCode, 200);
+    await app.inject({ method: "OPTIONS", url: "/api/auth/me" });
+    assert.equal(calls, 0);
+  } finally {
+    await app.close();
+  }
+  await assert.rejects(createApp({ logger: false, dataMode: "real" }), /real AuthService/);
+});
+
 const event = (overrides: Partial<DomainEvent> = {}) => ({
   id: "00000000-0000-4000-8000-0000000000e1",
   type: "MasteryUpdated",
