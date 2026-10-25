@@ -20,17 +20,24 @@ export function ChatPanel({
   topics,
   preview = false,
   initialTopicId,
+  onTopicChange,
 }: {
   classId: string;
   topics: ContentTopic[];
   preview?: boolean;
   initialTopicId?: string;
+  /** Told whenever the scope changes, so a page can show that topic's objectives. */
+  onTopicChange?: (topicId: string) => void;
 }) {
   const { t, a11y } = useContentView();
   const id = useId();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
-  const [topicId, setTopicId] = useState(initialTopicId ?? "");
+  const [topicId, setScope] = useState(initialTopicId ?? "");
+  const setTopicId = (next: string) => {
+    setScope(next);
+    onTopicChange?.(next);
+  };
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const end = useRef<HTMLDivElement>(null);
