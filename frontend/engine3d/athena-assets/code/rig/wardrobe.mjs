@@ -76,14 +76,14 @@ const chain = (sdf, points, radii) => {
 };
 
 /** Hair volumes (SDF, polygonised) plus a few swept locks, in head space. */
-export async function addHair(F, style, hex) {
+export async function addHair(F, style, hex, { covered = false } = {}) {
   const { THREE, T } = F;
   if (style === "bald") return;
   const { sdf } = T;
   const dark = new THREE.Color(hex).multiplyScalar(0.7);
   const mid = new THREE.Color(hex);
   const light = new THREE.Color(hex).lerp(new THREE.Color("#FBF3E4"), 0.16);
-  const skull = sdf.ellipsoid([0, 0.7, -0.03], [0.485, 0.465, 0.5]);
+  const skull = sdf.ellipsoid([0, 0.7, -0.03], [0.5, 0.47, 0.515]);
   const faceCut = sdf.ellipsoid([0, 0.46, 0.5], [0.37, 0.46, 0.36]);
   const lower =
     (y, k = 0.05) =>
@@ -146,11 +146,11 @@ export async function addHair(F, style, hex) {
           sdf,
           [
             [0, 0.98, -0.42],
-            [0, 0.78, -0.72],
-            [0.03, 0.3, -0.8],
-            [0.0, -0.18, -0.7],
+            [0, 0.78, -0.7],
+            [0.03, 0.4, -0.76],
+            [0.0, 0.02, -0.66],
           ],
-          [0.12, 0.13, 0.11, 0.05],
+          [0.085, 0.095, 0.08, 0.035],
         ),
       ),
     curls: () => {
@@ -253,6 +253,68 @@ export async function addHair(F, style, hex) {
       0.06,
       0.015,
     );
+  // visible strands on every style: swept locks from a crown whorl across the head, and a
+  // fringe falling over the forehead (the student's swept hair is the model)
+  {
+    const C = [0, 0.7, -0.03];
+    const R = [0.5, 0.47, 0.515];
+    const onSkull = (phi, theta, lift) => [
+      C[0] + R[0] * lift * Math.sin(phi) * Math.sin(theta),
+      C[1] + R[1] * lift * Math.cos(phi),
+      C[2] + R[2] * lift * Math.sin(phi) * Math.cos(theta),
+    ];
+    const strand = (name, a, b, r0, r1, color, bow = 0.03) =>
+      F.add(
+        "hair",
+        name,
+        tube(
+          T,
+          THREE,
+          Array.from({ length: 5 }, (_, i) => {
+            const t = i / 4;
+            return onSkull(
+              a[0] + (b[0] - a[0]) * t,
+              a[1] + (b[1] - a[1]) * t,
+              0.975 + bow * Math.sin(t * Math.PI),
+            );
+          }),
+          (t) => r0 + (r1 - r0) * t,
+          F.detail < 0.7 ? { tubular: 3, radial: 3 } : { tubular: 6, radial: 4 },
+        ),
+        { part: "hair", style: STYLE.hair, material: "hair", color },
+      );
+    const lean = F.detail < 0.5;
+    const count = covered
+      ? 0 // a hat sits over the crown: the strands would poke through it
+      : lean
+        ? ({ crop: 2, bun: 2, curls: 2, bob: 2, long: 2, braids: 2, ponytail: 2 }[style] ?? 0)
+        : ({ crop: 4, bun: 4, curls: 3, bob: 3, long: 3, braids: 3, ponytail: 3 }[style] ?? 0);
+    const streak = `#${new THREE.Color(hex).lerp(new THREE.Color("#FBF3E4"), 0.34).getHexString()}`;
+    const shadow = `#${new THREE.Color(hex).multiplyScalar(0.62).getHexString()}`;
+    for (let i = 0; i < count; i++) {
+      const u = count === 1 ? 0.5 : i / (count - 1);
+      strand(
+        `lock_${i}`,
+        [0.34, 2.5 - 0.5 * u],
+        [1.04 + 0.05 * (i % 2), -0.85 + 1.5 * u],
+        0.075,
+        0.026,
+        i % 2 ? shadow : streak,
+        0.14,
+      );
+    }
+    if (count)
+      for (let k = -1; k <= 1; k += lean ? 2 : 1)
+        strand(
+          `fringe_${k + 1}`,
+          [0.62, 0.3 * k - 0.15],
+          [1.12 - 0.04 * Math.abs(k), 0.35 * k + 0.5],
+          0.085,
+          0.03,
+          k === 0 ? streak : shadow,
+          0.14,
+        );
+  }
   if (style === "ponytail")
     F.add("hair", "hair_tie", ellipsoid(THREE, [0.1, 0.07, 0.1]).translate(0, 0.95, -0.45), {
       part: "hair",
@@ -278,6 +340,16 @@ export async function addHair(F, style, hex) {
 }
 
 // ---------------------------------------------------------------------------- tops
+/** Radius of a bottom-to-top limb profile at height `y` (linear between its points). */
+const radiusAt = (profile, y) => {
+  for (let i = 0; i < profile.length - 1; i++) {
+    const [r0, y0] = profile[i];
+    const [r1, y1] = profile[i + 1];
+    if (y >= y0 && y <= y1) return r0 + ((r1 - r0) * (y - y0)) / (y1 - y0 || 1);
+  }
+  return profile[profile.length - 1][0];
+};
+
 const TOP_TRAITS = {
   poncho: { sleeves: "long", hem: 0.02, fat: 0.014 },
   tee: { sleeves: "short", hem: 0.0, fat: 0.016 },
@@ -294,16 +366,16 @@ const TOP_TRAITS = {
 function tunicProfile(plan, { hem, fat, flare = 0 }) {
   const L = plan.torsoLen / plan.hh;
   const w = plan.w;
-  const pts = [[0.262 * w + fat + flare, hem]];
-  if (hem < -0.1) pts.push([0.262 * w + fat + flare * 0.45, hem * 0.5]);
+  const pts = [[0.29 * w + fat + flare, hem]];
+  if (hem < -0.1) pts.push([0.29 * w + fat + flare * 0.45, hem * 0.5]);
   pts.push(
-    [0.268 * w + fat, 0.1],
-    [0.246 * w + fat, 0.4 * L],
-    [0.276 * w + fat, 0.68 * L],
-    [0.306 * w + fat, L - 0.3],
-    [0.286 * w + fat, L - 0.13],
-    [0.19 * w + fat * 0.5, L - 0.02],
-    [0.138, L + 0.03],
+    [0.312 * w + fat, 0.1],
+    [0.27 * w + fat, 0.4 * L],
+    [0.308 * w + fat, 0.68 * L],
+    [0.335 * w + fat, L - 0.3],
+    [0.308 * w + fat, L - 0.13],
+    [0.208 * w + fat * 0.5, L - 0.02],
+    [0.148, L + 0.03],
   );
   return pts;
 }
@@ -351,6 +423,7 @@ export function addTop(F, top) {
   const fa = plan.forearm / plan.hh;
   const sleeveColor =
     style === "vest" ? hex2 : style === "poncho" ? (top.color2 ?? "#F1E4D0") : hex;
+  const cuffColor = shade(THREE, sleeveColor, style === "labcoat" ? 0.9 : 1.2);
   for (const side of ["l", "r"]) {
     const upper = grow(upperArmProfile(plan), 0.022)
       .slice(1)
@@ -358,20 +431,43 @@ export function addTop(F, top) {
     add(
       `arm_${side}`,
       `sleeve_upper_${side}`,
-      revolve(T, upper, { segments: 10, divisions: 1, rz: 0.96 }),
+      revolve(T, upper, { segments: F.seg(10), divisions: 1, rz: 0.96 }),
       {
         color: gradient(THREE, sleeveColor, { from: -ua, to: 0.1, low: 0.84 }),
         group: `sleeve_${side}`,
       },
     );
+    if (traits.sleeves === "short") {
+      // a folded hem on the short sleeve
+      const y = -ua * 0.5;
+      add(
+        `arm_${side}`,
+        `sleeve_hem_${side}`,
+        ring(THREE, radiusAt(upperArmProfile(plan), y) + 0.03, 0.026, {
+          tubular: F.seg(12),
+          radial: 3,
+        }).translate(0, y, 0),
+        { color: cuffColor, group: `sleeve_${side}` },
+      );
+    }
     if (traits.sleeves === "long") {
+      // a cuff at the wrist
+      add(
+        `elbow_${side}`,
+        `sleeve_cuff_${side}`,
+        ring(THREE, radiusAt(forearmProfile(plan), -fa * 0.93) + 0.034, 0.03, {
+          tubular: F.seg(12),
+          radial: 3,
+        }).translate(0, -fa * 0.93, 0),
+        { color: cuffColor, group: `sleeve_${side}` },
+      );
       const lowerArm = grow(forearmProfile(plan), 0.02)
         .slice(1)
         .filter(([, y]) => y >= -fa * 0.93);
       add(
         `elbow_${side}`,
         `sleeve_lower_${side}`,
-        revolve(T, lowerArm, { segments: 10, divisions: 1, rz: 0.96 }),
+        revolve(T, lowerArm, { segments: F.seg(10), divisions: 1, rz: 0.96 }),
         {
           color: gradient(THREE, sleeveColor, {
             from: -fa,
@@ -610,7 +706,7 @@ export function addTop(F, top) {
 function poncho(F) {
   const { T, plan } = F;
   const L = plan.torsoLen / plan.hh;
-  const w = plan.w;
+  const w = plan.w * 0.9;
   const hemY = 0.12 * L;
   const outside = [
     [0.6 * w, hemY],
@@ -688,10 +784,10 @@ export function addBottom(F, bottom) {
       revolve(
         T,
         [
-          [0.215 * w + extra, -0.1],
-          [0.262 * w + extra, 0.02],
-          [0.272 * w + extra, 0.14],
-          [0.25 * w + extra, depth],
+          [0.245 * w + extra, -0.1],
+          [0.296 * w + extra, 0.02],
+          [0.315 * w + extra, 0.14],
+          [0.27 * w + extra, depth],
         ],
         { rz: 0.8, segments: F.detail < 0.7 ? 10 : 14, divisions: 1 },
       ),
@@ -739,19 +835,25 @@ export function addBottom(F, bottom) {
     const sign = side === "l" ? -1 : 1;
     let thigh = grow(thighProfile(plan), d).slice(1);
     let calf = grow(calfProfile(plan), d).slice(1);
+    // the hem stops at the ankle, above the shoe: tall shoes stand proud of the trouser leg
+    const hemY = -cf + 0.17;
+    calf = [[radiusAt(calf, hemY), hemY], ...calf.filter(([, y]) => y > hemY)];
     if (style === "shorts") thigh = thigh.filter(([, y]) => y >= -th * 0.55);
     if (flareR) calf = calf.map(([r, y]) => [r + flareR * smooth(-cf * 0.2, -cf, y), y]);
+    // trousers flare a little at the hem (leggings and wide legs have their own cut)
+    if (style === "trousers" || style === "cargo" || style === "overalls")
+      calf = calf.map(([r, y]) => [r > 0 ? r + 0.032 * smooth(-cf * 0.45, hemY, y) : r, y]);
     add(
       `leg_${side}`,
       `${style}_thigh_${side}`,
-      revolve(T, thigh, { segments: 10, divisions: 1, rz: 0.96 }),
+      revolve(T, thigh, { segments: F.seg(10), divisions: 1, rz: 0.96 }),
       { group: `trouser_${side}` },
     );
     if (style !== "shorts")
       add(
         `knee_${side}`,
         `${style}_calf_${side}`,
-        revolve(T, calf.slice(0, -1), { segments: 10, divisions: 1, rz: 0.96 }),
+        revolve(T, calf.slice(0, -1), { segments: F.seg(10), divisions: 1, rz: 0.96 }),
         { group: `trouser_low_${side}` },
       );
     if (style === "shorts")
@@ -772,7 +874,11 @@ export function addBottom(F, bottom) {
       add(
         `knee_${side}`,
         `turnup_${side}`,
-        ring(THREE, 0.105 + d, 0.03, { tubular: 12, radial: 3 }).translate(0, -cf + 0.14, 0),
+        ring(THREE, radiusAt(calf, -cf + 0.25) + 0.012, 0.03, { tubular: 12, radial: 3 }).translate(
+          0,
+          -cf + 0.25,
+          0,
+        ),
         { color: "#E6CCA5", group: `trouser_low_${side}` },
       );
   }
@@ -829,6 +935,7 @@ const SHOE_TOP = {
   sandals: 0.08,
   fins: 0.2,
 };
+const FOOT = 1.2;
 
 export async function addShoes(F, shoes) {
   const { THREE, T, plan } = F;
@@ -841,11 +948,14 @@ export async function addShoes(F, shoes) {
     const geo = await footGeometry(T, THREE, kind, { triangles: Math.round(150 * F.detail) });
     const cream = new THREE.Color("#F4EFE6");
     const tmp = new THREE.Color();
+    const lightColor = new THREE.Color(light);
     const paintFoot = (p, n) => {
-      if (p.y < 0.075) return tmp.set(sole);
+      // the geometry hangs `cf` below its node: y = 0 is the underside of the sole
+      const y = p.y + cf;
+      if (y < 0.075 * FOOT) return tmp.set(sole);
       tmp.set(base);
-      if (kind === "sneakers" && p.z > 0.2 && p.y < 0.16) tmp.lerp(cream, 0.55);
-      return tmp.lerp(new THREE.Color(light), smooth(0.08, 0.5, p.y) * 0.3 + (n.y > 0.7 ? 0.1 : 0));
+      if (kind === "sneakers" && p.z > 0.2 * FOOT && y < 0.16 * FOOT) tmp.lerp(cream, 0.55);
+      return tmp.lerp(lightColor, smooth(0.1, 0.6, y) * 0.3 + (n.y > 0.7 ? 0.1 : 0));
     };
     F.add(`knee_${side}`, "upper", geo, {
       part: "shoes",
@@ -858,7 +968,7 @@ export async function addShoes(F, shoes) {
     });
     const top = SHOE_TOP[kind];
     const detail = (name, geometry, o = {}) =>
-      F.add(`knee_${side}`, `${name}_${side}`, geometry, {
+      F.add(`knee_${side}`, `${name}_${side}`, geometry.scale(FOOT, FOOT, FOOT), {
         part: "shoes",
         material: "shoes",
         origin: [0, cf, 0],
@@ -870,8 +980,8 @@ export async function addShoes(F, shoes) {
     if (["boots", "rainboots", "hiking"].includes(kind))
       detail(
         "shoe_cuff",
-        ring(THREE, 0.1, 0.034, { tubular: 14, radial: 4 }).translate(0, top - 0.015, -0.02),
-        { color: shoes.trim ?? light },
+        ring(THREE, 0.128, 0.04, { tubular: 14, radial: 4 }).translate(0, top - 0.02, -0.02),
+        { color: shoes.trim ?? (kind === "boots" ? "#E7CDA6" : light) },
       );
     if (kind === "loafers")
       detail("loafer_bit", roundBox(THREE, [0.09, 0.025, 0.07], 0.01).translate(0, 0.165, 0.2), {
@@ -911,25 +1021,47 @@ export async function addShoes(F, shoes) {
 export function addMantle(F, mantle) {
   const { THREE, T, plan } = F;
   const L = plan.torsoLen / plan.hh;
-  const w = plan.w;
+  const w = plan.w * (plan.heads < 4 ? 0.86 : 1);
   const { kind = "capelet", color: hex, trim = GOLD } = mantle;
   const part = mantle.part ?? "top";
-  const drop = kind === "shawl" ? 0.62 : kind === "collar" ? 0.28 : 0.46;
+  const drop = { shawl: 0.62, collar: 0.3, shoulder: 0.56 }[kind] ?? 0.46;
   const hemY = L - drop;
+  // wide enough to lie over the rounded shoulder caps and the tops of the arms
   const outside = [
     [0.5 * w + (kind === "shawl" ? 0.05 : 0), hemY],
-    [0.51 * w, hemY + 0.07],
-    [0.47 * w, hemY + 0.22],
-    [0.4 * w, L - 0.28],
-    [0.3 * w, L - 0.1],
+    [0.515 * w, hemY + 0.07],
+    [0.5 * w, hemY + 0.2],
+    [0.47 * w, L - 0.28],
+    [0.4 * w, L - 0.14],
+    [0.28 * w, L - 0.05],
     [0.2, L + 0.01],
   ];
   const g = sheet(T, outside, 0.02, {
     rz: kind === "shawl" ? 0.74 : 0.82,
     segments: F.detail < 0.7 ? 12 : 20,
     divisions: 1,
-    scallop: { folds: kind === "shawl" ? 5 : 4, depth: 0.1, from: 0.55, lift: 0 },
+    scallop: {
+      folds: kind === "shawl" ? 5 : kind === "shoulder" ? 6 : 4,
+      depth: 0.1,
+      from: 0.55,
+      lift: 0,
+    },
   });
+  // the trim band follows the hem, so colour by the height before the drape pulls it down
+  const flatY = Float32Array.from({ length: g.attributes.position.count }, (_, i) =>
+    g.attributes.position.getY(i),
+  );
+  if (kind !== "shawl" && kind !== "collar") {
+    // the hem dips at the front and the back and rides up over the arms, like a draped mantle
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const y = p.getY(i);
+      const k = smooth(L - 0.26, hemY, y);
+      const z = Math.min(1, Math.abs(p.getZ(i)) / (0.45 * w));
+      p.setY(i, y - 0.16 * k * z * z);
+    }
+    T.smoothNormals(g, 60);
+  }
   if (kind === "shawl") {
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
@@ -944,14 +1076,35 @@ export function addMantle(F, mantle) {
     part,
     style: STYLE.mantle,
     material: "top",
-    color: gradient(THREE, hex, { from: hemY, to: L, low: 0.84, high: 1.06, trim, band: 0.05 }),
+    color: (() => {
+      const paintMantle = gradient(THREE, hex, {
+        from: hemY,
+        to: L,
+        low: 0.84,
+        high: 1.06,
+        trim,
+        band: kind === "shoulder" ? 0.07 : 0.05,
+      });
+      const at = new THREE.Vector3();
+      return (p, n, i) => paintMantle(at.set(p.x, flatY[i], p.z));
+    })(),
     group: "mantle",
   });
+  if (kind === "shoulder") {
+    // gold studs on the shoulders hold the mantle in place
+    for (const s of [-1, 1])
+      F.add(
+        "top_detail",
+        `mantle_stud_${s}`,
+        ellipsoid(THREE, [0.05, 0.035, 0.05], { w: 8, h: 4 }).translate(s * 0.4 * w, L - 0.1, 0.08),
+        { part, material: "gold", color: GOLD, group: "mantle" },
+      );
+  }
   if (mantle.clasp !== false) {
     F.add(
       "top_detail",
       "mantle_clasp",
-      ellipsoid(THREE, [0.06, 0.06, 0.035], { w: 8, h: 5 }).translate(0, L - 0.1, 0.32),
+      ellipsoid(THREE, [0.06, 0.06, 0.035], { w: 8, h: 5 }).translate(0, L - 0.1, 0.34),
       { part, material: "gold", color: GOLD, group: "mantle" },
     );
     F.add(
@@ -959,7 +1112,7 @@ export function addMantle(F, mantle) {
       "mantle_clasp_ring",
       ring(THREE, 0.068, 0.012, { tubular: 12, radial: 3 })
         .rotateX(Math.PI / 2)
-        .translate(0, L - 0.1, 0.325),
+        .translate(0, L - 0.1, 0.345),
       { part, material: "gold", color: GOLD, group: "mantle" },
     );
   }

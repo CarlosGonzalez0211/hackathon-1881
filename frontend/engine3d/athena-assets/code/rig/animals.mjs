@@ -49,7 +49,7 @@ const gradientFn = (THREE, dark, light, from, to, axis = "y") => {
 };
 
 /** Two round eyes on the `face` node: ink disc, coloured iris ring, two highlights. */
-function eyes(THREE, F, node, { at, spread, r, irisHex, slit = false, lookZ }) {
+function eyes(THREE, F, node, { at, spread, r, irisHex, slit = false, lookZ, sparkle = false }) {
   for (const s of [-1, 1]) {
     const x = s * spread;
     put(
@@ -79,6 +79,15 @@ function eyes(THREE, F, node, { at, spread, r, irisHex, slit = false, lookZ }) {
       { style: STYLE.eye, material: "eye", color: "#FBF3E4" },
       [at[0] + x - r * 0.2, at[1] + r * 0.35, lookZ + r * 0.5],
     );
+    if (sparkle)
+      put(
+        F,
+        node,
+        `glint_small_${s}`,
+        ellipsoid(THREE, [r * 0.1, r * 0.1, r * 0.08], { w: 5, h: 4 }),
+        { style: STYLE.eye, material: "eye", color: "#FBF3E4" },
+        [at[0] + x + r * 0.28, at[1] - r * 0.3, lookZ + r * 0.5],
+      );
   }
 }
 
@@ -90,7 +99,7 @@ export async function buildLumen(THREE, T) {
     ["ear_l", "head", [-0.075, 0.145, -0.01]],
     ["ear_r", "head", [0.075, 0.145, -0.01]],
     ["face_expression", "head", [0, 0.085, 0.082]],
-    ["tail", "body", [0, 0.07, -0.1]],
+    ["tail", "body", [0, 0.07, -0.13]],
   ]);
   const F = new Figure(THREE, T, rig, { weave: false });
   const { sdf } = T;
@@ -101,8 +110,11 @@ export async function buildLumen(THREE, T) {
 
   const bodyField = sdf.smin(
     0.12,
-    sdf.ellipsoid([0, 0.2, -0.02], [0.115, 0.18, 0.13]),
-    sdf.ellipsoid([0, 0.1, -0.07], [0.15, 0.1, 0.16]),
+    sdf.ellipsoid([0, 0.2, -0.045], [0.118, 0.18, 0.15]),
+    sdf.ellipsoid([0, 0.1, -0.105], [0.155, 0.105, 0.185]),
+    // haunches: a sitting cat's thighs bulge at the sides of the rump
+    sdf.ellipsoid([-0.1, 0.1, -0.07], [0.07, 0.1, 0.12]),
+    sdf.ellipsoid([0.1, 0.1, -0.07], [0.07, 0.1, 0.12]),
     sdf.ellipsoid([0, 0.22, 0.07], [0.085, 0.14, 0.07]),
     taperCapsule([-0.055, 0.3, 0.08], [-0.055, 0.02, 0.11], 0.036, 0.03),
     taperCapsule([0.055, 0.3, 0.08], [0.055, 0.02, 0.11], 0.036, 0.03),
@@ -156,8 +168,8 @@ export async function buildLumen(THREE, T) {
     F,
     "head",
     "nose",
-    ellipsoid(THREE, [0.016, 0.011, 0.012], { w: 8, h: 5 }),
-    { style: STYLE.fur, material: "fur", color: pink },
+    ellipsoid(THREE, [0.021, 0.015, 0.015], { w: 8, h: 5 }),
+    { style: STYLE.fur, material: "fur", color: "#EE93A0" },
     [0, 0.062, 0.133],
   );
   for (const s of [-1, 1])
@@ -195,7 +207,7 @@ export async function buildLumen(THREE, T) {
           [0, 0.105],
         ],
         { segments: 10, divisions: 2, rz: 0.55 },
-      ),
+      ).scale(1.22, 1.22, 1.22),
       {
         part: "base",
         style: STYLE.fur,
@@ -215,7 +227,9 @@ export async function buildLumen(THREE, T) {
           [0, 0.085],
         ],
         { segments: 8, divisions: 1, rz: 0.4 },
-      ).translate(0, 0, 0.012),
+      )
+        .scale(1.22, 1.22, 1.22)
+        .translate(0, 0, 0.014),
       { part: "base", style: STYLE.fur, material: "fur", color: pink },
     );
   }
@@ -223,36 +237,39 @@ export async function buildLumen(THREE, T) {
   // eyes under face_expression
   eyes(THREE, F, "face_expression", {
     at: [0, 0, 0],
-    spread: 0.045,
-    r: 0.03,
+    spread: 0.05,
+    r: 0.039,
     irisHex: "#E9C26A",
     slit: true,
-    lookZ: 0.024,
+    lookZ: 0.022,
+    sparkle: true,
   });
 
-  // tail: wrapped round the haunch to the front, tip curling up (a sitting cat keeps it close)
+  // tail: sweeps out of the rump along the left flank and curls round to the front
   const curve = [
     [0, 0, 0],
-    [0.05, -0.03, -0.07],
-    [0.12, -0.045, -0.03],
-    [0.155, -0.04, 0.06],
-    [0.135, -0.005, 0.14],
-    [0.11, 0.06, 0.16],
+    [-0.08, -0.02, -0.07],
+    [-0.16, -0.03, -0.02],
+    [-0.185, -0.035, 0.07],
+    [-0.15, -0.03, 0.15],
+    [-0.1, -0.02, 0.2],
+    [-0.07, 0.03, 0.215],
   ];
   F.add(
     "tail",
     "tail_fur",
-    tube(T, THREE, curve, (t) => 0.034 - 0.012 * t, { tubular: 14, radial: 7 }),
+    tube(T, THREE, curve, (t) => 0.042 - 0.013 * t, { tubular: 18, radial: 7 }),
     {
       part: "base",
       style: STYLE.fur,
       material: "fur",
+      // a darker tabby tail with rings and a cream tip, so it reads against the flank
       color: (p) =>
-        p.z > 0.12
+        p.z > 0.19
           ? new THREE.Color(cream)
-          : Math.abs(Math.sin(p.x * 55 + p.z * 55)) > 0.8
-            ? new THREE.Color(stripe)
-            : new THREE.Color(fur),
+          : Math.sin((p.z + p.x * 0.6) * 62) > 0.1
+            ? new THREE.Color("#6F655B")
+            : new THREE.Color("#A89B8D"),
     },
   );
 
@@ -282,6 +299,15 @@ export async function buildLumen(THREE, T) {
       .translate(0, 0.222, 0.182),
     { part: "base", style: STYLE.cloth, material: "gold", color: "#F2C26B" },
   );
+
+  // hind feet: cream, stretched forward from the haunches
+  for (const side of [-1, 1])
+    F.add(
+      "body",
+      `hind_paw_${side}`,
+      ellipsoid(THREE, [0.034, 0.026, 0.07], { w: 8, h: 5 }).translate(side * 0.128, 0.026, 0.0),
+      { part: "base", style: STYLE.fur, material: "fur", color: cream },
+    );
 
   // front paws, cream, side by side under the chest
   for (const side of [-1, 1])

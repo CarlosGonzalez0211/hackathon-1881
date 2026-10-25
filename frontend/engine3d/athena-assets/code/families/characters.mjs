@@ -85,7 +85,7 @@ async function addBody(F, cfg, { feet = false } = {}) {
       origin: eyeOrigin,
       keep: true,
     });
-  for (const light of F.detail < 0.7 ? [] : face.lights) {
+  for (const light of F.detail < 0.4 ? [] : face.lights) {
     F.add("face_expression", `glint_${light.side}`, light.big, {
       part: "base",
       style: STYLE.eye,
@@ -132,7 +132,7 @@ async function addBody(F, cfg, { feet = false } = {}) {
         `arm_${side}`,
         `arm_skin_${side}`,
         revolve(T, upperArmProfile(plan), {
-          segments: F.detail < 0.7 ? 8 : 10,
+          segments: F.seg(10),
           divisions: 1,
           rz: 0.96,
         }),
@@ -143,7 +143,7 @@ async function addBody(F, cfg, { feet = false } = {}) {
         `elbow_${side}`,
         `forearm_skin_${side}`,
         revolve(T, forearmProfile(plan), {
-          segments: F.detail < 0.7 ? 8 : 10,
+          segments: F.seg(10),
           divisions: 1,
           rz: 0.96,
         }),
@@ -160,7 +160,7 @@ async function addBody(F, cfg, { feet = false } = {}) {
         `leg_${side}`,
         `thigh_skin_${side}`,
         revolve(T, thighProfile(plan), {
-          segments: F.detail < 0.7 ? 8 : 10,
+          segments: F.seg(10),
           divisions: 1,
           rz: 0.96,
         }),
@@ -171,7 +171,7 @@ async function addBody(F, cfg, { feet = false } = {}) {
         `knee_${side}`,
         `calf_skin_${side}`,
         revolve(T, calfProfile(plan), {
-          segments: F.detail < 0.7 ? 8 : 10,
+          segments: F.seg(10),
           divisions: 1,
           rz: 0.96,
         }),
@@ -206,7 +206,10 @@ function bareSkin(cfg) {
 
 /** Everything a person wears and carries, from one description. */
 async function dress(F, cfg) {
-  if (cfg.hair) await addHair(F, cfg.hair[0], cfg.hair[1]);
+  const covered = (cfg.head ?? []).some(([name]) =>
+    ["hardhat", "beanie", "toque", "cap", "sunhat"].includes(name),
+  );
+  if (cfg.hair) await addHair(F, cfg.hair[0], cfg.hair[1], { covered });
   if (cfg.top) addTop(F, cfg.top);
   if (cfg.bottom) addBottom(F, cfg.bottom);
   if (cfg.shoes) await addShoes(F, cfg.shoes);
@@ -333,7 +336,7 @@ const CAST = {
     hair: ["bob", "#3A2E28"],
     top: { style: "cardigan", color: "#C9785F", color2: "#F4E9D8" },
     bottom: { style: "skirt", color: "#E7CDA6", trim: GOLD },
-    shoes: { style: "boots", color: "#4A3B36", sole: "#3A3230" },
+    shoes: { style: "boots", color: "#6E4F3C", sole: "#3A3230" },
     mantle: { kind: "capelet", color: "#C9785F" },
     gear: [["satchel", "#9C7356"]],
     held: [["book", "#2F7D7A", "l"]],
@@ -418,7 +421,7 @@ const CAST = {
     top: { style: "tee", color: "#C9785F", color2: "#F4E9D8" },
     bottom: { style: "overalls", color: "#5E7FA8", trim: GOLD },
     shoes: { style: "boots", color: "#6E4F3C", sole: "#3A3230" },
-    mantle: { kind: "capelet", color: "#2F7D7A" },
+    mantle: { kind: "shoulder", color: "#2F7D7A" },
     head: [["hardhat", "#F2C36B"]],
     held: [["hammer"]],
   }),
@@ -429,10 +432,10 @@ const CAST = {
     eye: "#2F2420",
     hairColor: "#2B2220",
     hair: ["crop", "#2B2220"],
-    top: { style: "vest", color: "#F3B35B", color2: "#3E4A5E" },
+    top: { style: "vest", color: "#3E4A5E", color2: "#F3B35B" },
     bottom: { style: "cargo", color: "#6E6A62" },
-    shoes: { style: "boots", color: "#4A3B36", sole: "#3A3230" },
-    mantle: { kind: "capelet", color: "#F3B35B" },
+    shoes: { style: "boots", color: "#6E4F3C", sole: "#3A3230" },
+    mantle: { kind: "shoulder", color: "#F3B35B" },
     head: [["hardhat", "#F2C36B"]],
     gear: [["plank"]],
   }),
@@ -442,10 +445,10 @@ const CAST = {
     eye: "#3F3029",
     hairColor: "#2B2220",
     hair: ["braids", "#2B2220"],
-    top: { style: "jacket", color: "#2F7D7A", color2: "#F4E9D8" },
+    top: { style: "jacket", color: "#E7CDA6", color2: "#2F7D7A" },
     bottom: { style: "trousers", color: "#3E4A5E" },
     shoes: { style: "hiking", color: "#6E4F3C", sole: "#3A3230", lace: "#E99A8E" },
-    mantle: { kind: "capelet", color: "#2F7D7A" },
+    mantle: { kind: "shoulder", color: "#2F7D7A" },
     head: [
       ["hardhat", "#FFFFFF"],
       ["glasses", "#3A3230"],
@@ -627,7 +630,7 @@ async function buildTrio(THREE, T) {
   for (const kid of TRIO) {
     const plan = bodyPlan({ height: kid.height, heads: 3.5 });
     const rig = buildPeopleRig(THREE, plan, { rootName: `kid_${kid.key}` });
-    const F = new Figure(THREE, T, rig, { weave: false, collapse: true, detail: 0.45 });
+    const F = new Figure(THREE, T, rig, { weave: false, collapse: true, detail: 0.38 });
     await addBody(F, kid, { feet: !!kid.feet });
     await dress(F, kid);
     applyPeopleRest(THREE, rig.nodes);

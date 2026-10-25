@@ -229,7 +229,9 @@ export function bodyPlan({ height, heads = 4.5, width = 1 }) {
   const neck = 0.12 * hh;
   const legLen = hh * (1.35 + (heads - 3.5) * 0.6);
   const torsoLen = height - legLen - neck - hh;
-  const w = width;
+  // soft mass: the torso, shoulders and hips are wider than the first pass (adults 1.2, children
+  // chubbier at 1.28), the limbs thicker (forms.mjs)
+  const w = width * (heads > 4 ? 1.2 : 1.28);
   return {
     height,
     heads,
@@ -241,7 +243,7 @@ export function bodyPlan({ height, heads = 4.5, width = 1 }) {
     calf: legLen * 0.5,
     torsoLen,
     hipY: legLen,
-    legX: 0.15 * hh * w,
+    legX: 0.17 * hh * w,
     shoulderX: 0.335 * hh * w,
     shoulderY: torsoLen - 0.2 * hh,
     upperArm: (heads > 4 ? 0.56 : 0.5) * hh,

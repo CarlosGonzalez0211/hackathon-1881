@@ -57,6 +57,15 @@ export class Figure {
     this.only = null;
   }
 
+  /** Radial segments of a limb or garment lathe: the lean figures (study trio) use fewer. */
+  seg(n) {
+    return this.detail < 0.5
+      ? Math.max(7, Math.round(n * 0.7))
+      : this.detail < 0.7
+        ? Math.round(n * 0.8)
+        : n;
+  }
+
   /** First free name: `name`, `name_1`, `name_2` (node names are unique per model). */
   unique(base) {
     let name = base;
@@ -376,16 +385,22 @@ export async function cached(key, make) {
 export function headField(T, { kid = false, jaw = 1, cheek = 1 } = {}) {
   const { sdf } = T;
   const c = 0.12;
-  const skull = sdf.ellipsoid([0, c + 0.57, -0.01], [0.44, 0.44, 0.45]);
-  const lower = sdf.ellipsoid([0, c + 0.27, 0.04], [0.385 * jaw, 0.27, 0.35]);
-  const chin = sdf.sphere([0, c + 0.07, 0.19], 0.1 * jaw);
+  // A rounded skull, a full lower face and a small soft chin: a sphere with a chin, not an egg.
+  // The jaw is never narrower than 85 % of the skull.
+  const skullR = 0.455;
+  const jawR = Math.max(0.9 * skullR, 0.425 * jaw);
+  const skull = sdf.ellipsoid([0, c + 0.57, -0.02], [skullR, 0.445, 0.47]);
+  // a rounded box for the lower face: the face front stays upright instead of sloping away
+  const lower = sdf.roundBox([0, c + 0.33, 0.035], [jawR * 0.97, 0.27, 0.4], 0.24);
+  const chin = sdf.sphere([0, c + 0.12, 0.3], 0.1 * Math.min(1.1, jaw));
   const cheeks = [-1, 1].map((s) =>
-    sdf.sphere([s * 0.265, c + (kid ? 0.28 : 0.3), 0.3], (kid ? 0.14 : 0.115) * cheek),
+    sdf.sphere([s * 0.275, c + (kid ? 0.28 : 0.3), 0.3], (kid ? 0.14 : 0.12) * cheek),
   );
   const nose = sdf.sphere([0, c + 0.35, 0.43], kid ? 0.036 : 0.042);
-  const ears = [-1, 1].map((s) => sdf.ellipsoid([s * 0.435, c + 0.42, -0.03], [0.05, 0.095, 0.07]));
-  const neck = taperCapsule([0, -0.04, -0.01], [0, c + 0.1, 0], 0.15, 0.14);
-  return sdf.smin(0.2, sdf.smin(0.12, skull, lower), chin, ...cheeks, nose, neck, ...ears);
+  // small ears, set low
+  const ears = [-1, 1].map((s) => sdf.ellipsoid([s * 0.45, c + 0.33, -0.03], [0.042, 0.07, 0.056]));
+  const neck = taperCapsule([0, -0.04, -0.03], [0, c + 0.06, -0.04], 0.155, 0.125);
+  return sdf.smin(0.2, sdf.smin(0.16, skull, lower), chin, ...cheeks, nose, neck, ...ears);
 }
 
 /** z of the head surface at (x, y), found along +z by bisection. */
@@ -572,11 +587,11 @@ export function torsoField(T, plan) {
   const { sdf } = T;
   const L = plan.torsoLen / plan.hh;
   const w = plan.w;
-  const pelvis = sdf.ellipsoid([0, 0.1, 0], [0.275 * w, 0.27, 0.22]);
-  const waist = sdf.ellipsoid([0, 0.38 * L, 0], [0.235 * w, 0.3 * L, 0.19]);
-  const chest = sdf.ellipsoid([0, 0.72 * L, 0], [0.3 * w, 0.28 * L, 0.21]);
-  const shoulders = [-1, 1].map((s) => sdf.sphere([s * 0.29 * w, L - 0.22, 0], 0.12));
-  const neck = taperCapsule([0, L - 0.1, 0], [0, L + 0.04, 0], 0.12, 0.12);
+  const pelvis = sdf.ellipsoid([0, 0.1, 0], [0.31 * w, 0.28, 0.22 * w]);
+  const waist = sdf.ellipsoid([0, 0.38 * L, 0], [0.26 * w, 0.3 * L, 0.2 * w]);
+  const chest = sdf.ellipsoid([0, 0.72 * L, 0], [0.33 * w, 0.28 * L, 0.22 * w]);
+  const shoulders = [-1, 1].map((s) => sdf.sphere([s * 0.3 * w, L - 0.22, 0], 0.14));
+  const neck = taperCapsule([0, L - 0.1, 0], [0, L + 0.04, 0], 0.14, 0.14);
   return sdf.smin(0.18, pelvis, waist, chest, ...shoulders, neck);
 }
 
@@ -587,103 +602,138 @@ export function torsoField(T, plan) {
 export function torsoProfile(plan, d = 0, { hem = 0.0, top = 1 } = {}) {
   const L = plan.torsoLen / plan.hh;
   const w = plan.w;
+  // soft mass: hips and chest broad, waist drawn in (chest : hip about 1.06), shoulders rounded
   const pts = [
     [0.0, hem - 0.02],
-    [0.255 * w, hem + 0.0],
-    [0.27 * w, 0.12],
-    [0.245 * w, 0.4 * L],
-    [0.275 * w, 0.68 * L],
-    [0.305 * w, L - 0.3],
-    [0.285 * w, L - 0.13],
-    [0.18 * w, L - 0.02],
-    [0.125, L + 0.03 * top],
+    [0.285 * w, hem + 0.0],
+    [0.305 * w, 0.12],
+    [0.262 * w, 0.4 * L],
+    [0.3 * w, 0.68 * L],
+    [0.325 * w, L - 0.3],
+    [0.3 * w, L - 0.13],
+    [0.2 * w, L - 0.02],
+    [0.135, L + 0.03 * top],
   ];
   return pts.map(([r, y], i) => (i === 0 ? [r, y] : [r + d, y]));
 }
 
 // ---------------------------------------------------------------------------- limbs
+/** Limb volume: children are chubbier. */
+const bulk = (plan) => (plan.heads < 4 ? 1.1 : 1);
+const scaled = (plan, profile) => {
+  const k = bulk(plan);
+  return profile.map(([r, y]) => [r * k, y]);
+};
+
 export const upperArmProfile = (plan) => {
   const ua = plan.upperArm / plan.hh;
-  return [
-    [0, -ua - 0.015],
-    [0.056, -ua - 0.002],
-    [0.07, -ua * 0.86],
-    [0.086, -ua * 0.45],
-    [0.092, -0.03],
-    [0.08, 0.05],
-    [0, 0.085],
-  ];
+  // deltoid cap, taper to a soft elbow bulge
+  return scaled(plan, [
+    [0, -ua - 0.02],
+    [0.082, -ua - 0.005],
+    [0.098, -ua * 0.9],
+    [0.122, -ua * 0.5],
+    [0.134, -0.045],
+    [0.118, 0.07],
+    [0.07, 0.13],
+    [0, 0.145],
+  ]);
 };
 export const forearmProfile = (plan) => {
   const fa = plan.forearm / plan.hh;
-  return [
+  // elbow bulge, forearm swell, slim wrist
+  return scaled(plan, [
     [0, -fa],
-    [0.052, -fa + 0.006],
-    [0.062, -fa * 0.86],
-    [0.084, -fa * 0.38],
-    [0.08, -0.02],
-    [0.06, 0.035],
-    [0, 0.055],
-  ];
+    [0.062, -fa + 0.008],
+    [0.076, -fa * 0.86],
+    [0.104, -fa * 0.42],
+    [0.108, -0.03],
+    [0.094, 0.04],
+    [0, 0.078],
+  ]);
 };
 export const thighProfile = (plan) => {
   const th = plan.thigh / plan.hh;
-  return [
-    [0, -th - 0.01],
-    [0.098, -th],
-    [0.116, -th * 0.84],
-    [0.145, -th * 0.4],
-    [0.153, -0.02],
-    [0.12, 0.07],
-    [0, 0.1],
-  ];
+  // broad at the hip, tapering to a soft knee
+  return scaled(plan, [
+    [0, -th - 0.012],
+    [0.105, -th],
+    [0.135, -th * 0.82],
+    [0.205, -th * 0.4],
+    [0.235, -0.02],
+    [0.185, 0.075],
+    [0, 0.115],
+  ]);
 };
 export const calfProfile = (plan) => {
   const cf = plan.calf / plan.hh;
-  return [
+  // knee cap, calf swell high up, slim ankle
+  return scaled(plan, [
     [0, -cf],
-    [0.062, -cf + 0.012],
-    [0.07, -cf * 0.82],
-    [0.1, -cf * 0.45],
-    [0.105, -0.012],
-    [0.088, 0.03],
-    [0, 0.055],
-  ];
+    [0.07, -cf + 0.012],
+    [0.082, -cf * 0.85],
+    [0.098, -cf * 0.68],
+    [0.122, -cf * 0.38],
+    [0.112, -0.03],
+    [0.104, 0.035],
+    [0, 0.065],
+  ]);
 };
 
-/** Mitten with a thumb, origin at the wrist, pointing down. `side` -1 = left (-x). */
+/**
+ * Hand at the wrist, pointing down: a palm, a block of fingers curled slightly in and forward,
+ * and a separate thumb. `side` -1 = left (-x). 1.25 times the first pass.
+ */
 export function mitten(T, THREE, side, { scale = 1, lean = false } = {}) {
   const palm = revolve(
     T,
     [
-      [0, -0.3],
-      [0.05, -0.285],
-      [0.096, -0.225],
-      [0.106, -0.12],
-      [0.088, -0.03],
-      [0.062, 0.0],
-      [0, 0.012],
+      [0, -0.2],
+      [0.07, -0.19],
+      [0.102, -0.12],
+      [0.108, -0.04],
+      [0.088, -0.0],
+      [0.062, 0.012],
+      [0, 0.02],
     ],
     { rz: 0.62, segments: lean ? 6 : 8, divisions: 1 },
   );
+  const fingers = revolve(
+    T,
+    [
+      [0, -0.2],
+      [0.058, -0.185],
+      [0.088, -0.12],
+      [0.095, -0.04],
+      [0.08, 0.0],
+      [0, 0.01],
+    ],
+    { rz: 0.58, segments: lean ? 6 : 8, divisions: 1 },
+  );
+  place(THREE, fingers, { at: [0, -0.17, 0.005], rot: [-0.5, 0, -side * 0.22] });
   const thumb = revolve(
     T,
     [
-      [0, -0.19],
-      [0.026, -0.172],
-      [0.04, -0.1],
-      [0.044, -0.02],
+      [0, -0.22],
+      [0.03, -0.205],
+      [0.046, -0.12],
+      [0.05, -0.03],
       [0, 0.01],
     ],
     { segments: lean ? 4 : 6, divisions: 1 },
   );
-  place(THREE, thumb, { at: [-side * 0.085, -0.045, 0.045], rot: [-0.35, 0, -side * 0.5] });
-  const g = T.merge([palm, thumb]);
-  g.scale(scale, scale, scale);
+  place(THREE, thumb, { at: [-side * 0.1, -0.06, 0.055], rot: [-0.45, 0, -side * 0.45] });
+  // the lean hands (study trio) are a palm and a thumb
+  const g = T.merge(lean ? [palm, thumb] : [palm, fingers, thumb]);
+  const k = 1.25 * scale;
+  g.scale(k, k, k);
   return g;
 }
 
 // ---------------------------------------------------------------------------- boots
+/** Feet and boots are 20 % larger than the first pass. */
+export const FOOT = 1.2;
+
 /** Foot forms (origin: centre of the sole under the ankle, +z toes). Cached per kind. */
 export async function footGeometry(T, THREE, kind, { triangles = 150 } = {}) {
   const { sdf } = T;
@@ -693,14 +743,16 @@ export async function footGeometry(T, THREE, kind, { triangles = 150 } = {}) {
       const paddle = sdf.roundBox([0, 0.03, 0.48], [0.13, 0.03, 0.4], 0.028);
       const ankle = taperCapsule([0, 0.07, -0.02], [0, 0.2, -0.02], 0.1, 0.088);
       const foot = sdf.ellipsoid([0, 0.07, 0.12], [0.1, 0.07, 0.22]);
-      return T.polygonise(sdf.smin(0.05, paddle, ankle, foot), {
+      const g = await T.polygonise(sdf.smin(0.05, paddle, ankle, foot), {
         size: 40,
         maxTriangles: triangles,
       });
+      return g.scale(FOOT, FOOT, FOOT);
     }
-    const sole = sdf.roundBox([0, 0.05, 0.12], [0.1, 0.05, 0.28], 0.04);
-    const toe = sdf.ellipsoid([0, 0.1, 0.3], [0.105, 0.085, 0.13]);
-    const heel = sdf.ellipsoid([0, 0.1, -0.08], [0.095, 0.1, 0.1]);
+    // a thick sole slab (the sole colour paints y < SOLE), a rounded toe cap and a heel
+    const sole = sdf.roundBox([0, 0.045, 0.12], [0.108, 0.045, 0.29], 0.04);
+    const toe = sdf.ellipsoid([0, 0.11, 0.3], [0.11, 0.09, 0.14]);
+    const heel = sdf.ellipsoid([0, 0.11, -0.08], [0.1, 0.105, 0.105]);
     const shaftHeight =
       {
         boots: 0.36,
@@ -711,11 +763,17 @@ export async function footGeometry(T, THREE, kind, { triangles = 150 } = {}) {
         clogs: 0.12,
         sandals: 0.08,
       }[kind] ?? 0.2;
-    const shaftR = kind === "rainboots" ? 0.092 : 0.088;
-    const shaft = taperCapsule([0, 0.1, -0.02], [0, shaftHeight, -0.02], 0.1, shaftR);
-    const parts = [sole, toe, heel, shaft];
-    const field = sdf.smin(0.07, ...parts);
-    return T.polygonise(field, { size: 40, maxTriangles: triangles });
+    const tall = ["boots", "rainboots", "hiking"].includes(kind);
+    // tall shoes carry a full shaft that stands proud of the trouser leg (it is tucked in)
+    const shaft = taperCapsule(
+      [0, 0.1, -0.02],
+      [0, shaftHeight, -0.02],
+      tall ? 0.118 : 0.092,
+      tall ? 0.114 : 0.088,
+    );
+    const field = sdf.smin(0.07, sole, toe, heel, shaft);
+    const g = await T.polygonise(field, { size: 40, maxTriangles: triangles });
+    return g.scale(FOOT, FOOT, FOOT);
   });
 }
 

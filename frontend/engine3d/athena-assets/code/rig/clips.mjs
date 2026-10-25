@@ -64,10 +64,11 @@ export function peopleClips(THREE, plan, name = (base) => base) {
     arm_r: q(0, 0, 0.1),
     elbow_l: q(-0.14, 0, 0),
     elbow_r: q(-0.14, 0, 0),
-    leg_l: q(0, 0, 0),
-    leg_r: q(0, 0, 0),
-    knee_l: q(0.04, 0, 0),
-    knee_r: q(0.04, 0, 0),
+    // a relaxed stance: thighs a touch forward, knees softly bent
+    leg_l: q(-0.045, 0, 0),
+    leg_r: q(-0.045, 0, 0),
+    knee_l: q(0.09, 0, 0),
+    knee_r: q(0.09, 0, 0),
     mouth: { scale: [1, 1, 1] },
     ...over,
   });
@@ -286,8 +287,10 @@ export function applyPeopleRest(THREE, nodes) {
     arm_r: q(0, 0, 0.1),
     elbow_l: q(-0.14, 0, 0),
     elbow_r: q(-0.14, 0, 0),
-    knee_l: q(0.04, 0, 0),
-    knee_r: q(0.04, 0, 0),
+    leg_l: q(-0.045, 0, 0),
+    leg_r: q(-0.045, 0, 0),
+    knee_l: q(0.09, 0, 0),
+    knee_r: q(0.09, 0, 0),
   };
   for (const [base, value] of Object.entries(rest))
     if (nodes[base]) nodes[base].quaternion.fromArray(value);
