@@ -4,6 +4,8 @@ import {
   aiEventSchema,
   classOrbitSchema,
   classSummarySchema,
+  demoDiagnosticResult,
+  diagnosticResultSchema,
   DEMO_STUDENT_ID,
   houseStateSchema,
   mockClassOrbit,
@@ -51,6 +53,11 @@ test("AI events require known kinds and an ISO timestamp", () => {
     }).success,
     true,
   );
+});
+
+test("adaptive-learning diagnostic fixture validates against the shared contract", () => {
+  assert.deepEqual(diagnosticResultSchema.parse(demoDiagnosticResult), demoDiagnosticResult);
+  assert.equal(demoDiagnosticResult.concepts[0]?.status, "struggling");
 });
 
 test("the mock class orbit has one valid planet per student at any class size", () => {

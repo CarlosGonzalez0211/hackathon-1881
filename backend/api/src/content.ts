@@ -1,8 +1,12 @@
 import {
+  ContentCurriculumContext,
+  MockEmbeddingProvider,
+  demoCurriculumCatalog,
   LayeredGuardrailClassifier,
   HeuristicGuardrailClassifier,
   type ContentRoutesOptions,
 } from "@athena/content";
+import type { FastifyInstance } from "fastify";
 import { env } from "./env.js";
 import { anthropic, gemini, supabaseAdmin } from "./lib.js";
 import { AnthropicGuardrailClassifier, anthropicAnswerGenerator } from "./content-anthropic.js";
@@ -68,4 +72,33 @@ export function contentOptionsFor(
     } satisfies ContentRoutesOptions);
   }
   return options;
+}
+
+/**
+ * Real-data Learning retrieval uses the exact repositories and embedding provider registered by
+ * Content. Mock mode intentionally keeps Learning's deterministic curriculum fixture.
+ */
+export function contentCurriculumContextFor(
+  app: FastifyInstance,
+  options: ContentRoutesOptions,
+  dataMode = env.ATHENA_DATA_MODE,
+) {
+  if (dataMode !== "real") return undefined;
+  if (!options.materials || !options.chunks || !options.objectives) {
+    throw new Error("Content-backed curriculum context requires shared real-data repositories");
+  }
+  const embeddings = options.embeddings ?? new MockEmbeddingProvider();
+  const catalog = options.catalog ?? demoCurriculumCatalog;
+  options.embeddings = embeddings;
+  options.catalog = catalog;
+  return new ContentCurriculumContext({
+    classes: app.platform.classes,
+    enrollments: app.platform.enrollments,
+    catalog,
+    materials: options.materials,
+    chunks: options.chunks,
+    embeddings,
+    objectives: options.objectives,
+    minSimilarity: options.retrieval?.minSimilarity,
+  });
 }

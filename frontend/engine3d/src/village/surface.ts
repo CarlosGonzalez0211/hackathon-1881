@@ -12,8 +12,11 @@ import { createAtmosphere } from "./atmosphere";
 import { createLuminousGrade, type LuminousGrade } from "./grade";
 import { createWaypoint } from "./waypoint";
 import { detectTier, sunDirection, LUMINOUS } from "./light";
+import { readShot, SHOTS, type Shot } from "./shots.mjs";
 import {
   add,
+  direction,
+  type Vec,
   mul,
   tangent,
   arcDistance,
@@ -28,7 +31,6 @@ import {
   WATER_LEVEL,
   waterDepth,
   dot,
-  type Vec,
 } from "./layout";
 
 /** Rotate `v` about the unit `axis` (Rodrigues). */
@@ -67,6 +69,26 @@ export async function createSurfaceEngine(
     reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let overview = options.overview ?? false,
     focusSlot: number | undefined;
+  // Render-review hook (`?shot=<id>`, see shots.mjs): poses the student and the camera and
+  // freezes the clock so a frame is reproducible. Inert unless the parameter is present.
+  let shot: Shot | undefined = readShot(window.location.search);
+  const shotsEnabled = !!shot;
+  const shotWaiters: { resolve: () => void; reject: (error: Error) => void }[] = [];
+  let shotFrames = 0,
+    shotStats = { fps: 0, drawCalls: 0, triangles: 0 },
+    resetPoses = false;
+  const shotHouses = (base: PlanetState, active: Shot | undefined = shot): PlanetState => {
+    const overrides = active?.houses;
+    if (!overrides) return base;
+    return {
+      ...base,
+      houses: base.houses.map((house) => ({
+        ...house,
+        status: overrides[house.slot] ?? house.status,
+      })),
+    };
+  };
+  if (shot?.overview) overview = true;
   // A hop over the planet to a house door (topic list): replaces walking while it lasts.
   let travel:
     | {
@@ -88,6 +110,11 @@ export async function createSurfaceEngine(
     if (disposed) return;
     disposed = true;
     options.signal?.removeEventListener("abort", cleanup);
+    if (shotsEnabled) {
+      for (const waiter of shotWaiters.splice(0)) waiter.reject(new Error("engine disposed"));
+      delete (window as unknown as { __athenaShot?: unknown }).__athenaShot;
+      delete renderer?.domElement.dataset.athenaShot;
+    }
     lifecycle.dispose();
     audio.dispose();
     avatarPlayer?.dispose();
@@ -151,6 +178,7 @@ export async function createSurfaceEngine(
       grade?.setSize(width, height);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
+      if (shot) shotFrames = 0;
     };
     grade = createLuminousGrade(s, renderer, scene, camera, tier);
     if (grade.composed) {
@@ -162,7 +190,7 @@ export async function createSurfaceEngine(
     const observer = new ResizeObserver(resize);
     observer.observe(host);
     assets.onDispose(() => observer.disconnect());
-    village = await buildVillage(assets, state);
+    village = await buildVillage(assets, shotHouses(state), tier === "low");
     if (disposed) {
       disposeScene(village.root);
       village.dispose();
@@ -171,6 +199,43 @@ export async function createSurfaceEngine(
     scene.add(village.root);
     village.setReducedMotion(reduced);
     const walker = new SphericalWalker(village.obstacles, village.walkingRadius);
+    // Settle a shot position the way NPCs are settled: golden-angle search outward until free.
+    const settle = (home: Vec): Vec => {
+      if (canOccupy(home, village!.obstacles, 0.4)) return home;
+      for (let i = 1; i < 120; i++) {
+        const angle = i * 2.399963;
+        const heading = tangent([Math.cos(angle), Math.sin(angle), Math.sin(angle * 0.7)], home);
+        const candidate = advance(home, heading, 0.4 * Math.sqrt(i) * 1.6).up;
+        if (canOccupy(candidate, village!.obstacles, 0.4)) return candidate;
+      }
+      return home;
+    };
+    const poseShot = (next: Shot) => {
+      const at = next.up;
+      let place: Vec,
+        face: Vec | undefined = next.heading ? direction(...next.heading) : undefined;
+      if ("door" in at) {
+        const plot = plots[at.door]!;
+        const door = advance(plot.up, plot.forward, 5);
+        place = advance(door.up, door.heading, at.back).up;
+        face ??= plot.up;
+      } else if ("npc" in at) {
+        const actor = village!.actors.find((item) => item.id === at.npc);
+        if (!actor) throw new Error(`Shot ${next.id}: no NPC named ${at.npc}`);
+        place = advance(actor.up, tangent(actor.forward, actor.up), 2.2).up;
+        face ??= actor.up;
+      } else place = direction(at[0], at[1]);
+      place = settle(place);
+      walker.up = place;
+      walker.altitude = 0;
+      walker.verticalSpeed = 0;
+      walker.forward = tangent(face ?? doorDirection(0), place);
+      walker.facing = walker.forward;
+      overview = !!next.overview;
+      resetPoses = true;
+      shotFrames = 0;
+    };
+    if (shot) poseShot(shot);
     const avatar = await loadAthenaModel(assets, "slot:avatar/base", { toon: false, merge: false });
     const parts = await Promise.all(
       avatarOutfitSources().map((key) =>
@@ -267,6 +332,7 @@ export async function createSurfaceEngine(
     hint.className = "village-interaction-hint";
     hint.setAttribute("aria-live", "polite");
     host.appendChild(hint);
+    if (shot) controls.hidden = hint.hidden = true;
     const waypoint = createWaypoint(assets, scene, host);
     assets.onDispose(() => waypoint.dispose());
     const point = new s.Vector3(),
@@ -300,6 +366,11 @@ export async function createSurfaceEngine(
     let cameraReady = false;
     const render = (now: number) => {
       if (disposed) return;
+      if (shot && shotFrames >= 3) {
+        // A posed shot is frozen: once composed, stop drawing so the capture has the CPU/GPU.
+        lifecycle.requestAnimationFrame(render);
+        return;
+      }
       const dt = Math.min((now - previous) / 1000, 0.05);
       previous = now;
       // Built offscreen ahead of time (a 1px host): one frame compiles it, then it idles.
@@ -307,6 +378,9 @@ export async function createSurfaceEngine(
         lifecycle.requestAnimationFrame(render);
         return;
       }
+      // In a shot the clock is frozen and nothing animates: same pose, same frame, every run.
+      const clock = shot ? (shot.time ?? 0) : now / 1000;
+      const sdt = shot ? 0 : dt;
       if (!paused) {
         const x =
           Number(keys.has("KeyD") || keys.has("ArrowRight")) -
@@ -316,33 +390,37 @@ export async function createSurfaceEngine(
           Number(keys.has("KeyW") || keys.has("ArrowUp")) -
           Number(keys.has("KeyS") || keys.has("ArrowDown")) +
           stick.y;
-        if (travel) {
-          const t = Math.min(1, (now - travel.started) / 1000 / travel.seconds);
-          const up = t < 1 ? rotate(travel.from, travel.axis, travel.angle * easeInOut(t)) : null;
-          const house = tangent(plots[travel.slot]!.up, up ?? doorDirection(travel.slot));
-          if (up) {
-            // Face the flight, then turn towards the house over the last third of the hop.
-            const along = tangent(cross(travel.axis, up), up);
-            const turn = easeInOut(Math.max(0, (t - 0.66) / 0.34));
-            walker.up = up;
-            walker.facing = tangent(add(mul(along, 1 - turn), mul(house, turn)), up);
-            walker.forward = tangent(
-              add(walker.forward, mul(walker.facing, 1 - Math.exp(-dt * 5))),
-              up,
-            );
-            walker.altitude = travel.lift * Math.sin(Math.PI * t);
+        if (!shot) {
+          if (travel) {
+            const t = Math.min(1, (now - travel.started) / 1000 / travel.seconds);
+            const up = t < 1 ? rotate(travel.from, travel.axis, travel.angle * easeInOut(t)) : null;
+            const house = tangent(plots[travel.slot]!.up, up ?? doorDirection(travel.slot));
+            if (up) {
+              // Face the flight, then turn towards the house over the last third of the hop.
+              const along = tangent(cross(travel.axis, up), up);
+              const turn = easeInOut(Math.max(0, (t - 0.66) / 0.34));
+              walker.up = up;
+              walker.facing = tangent(add(mul(along, 1 - turn), mul(house, turn)), up);
+              walker.forward = tangent(
+                add(walker.forward, mul(walker.facing, 1 - Math.exp(-dt * 5))),
+                up,
+              );
+              walker.altitude = travel.lift * Math.sin(Math.PI * t);
+            } else {
+              walker.up = doorDirection(travel.slot);
+              walker.forward = walker.facing = house;
+              walker.altitude = 0;
+              const { done } = travel;
+              travel = undefined;
+              audio.play("audio/character/footsteps.wav");
+              done(true);
+            }
+            walker.verticalSpeed = 0;
+            walker.moving = walker.sprinting = false;
           } else {
-            walker.up = doorDirection(travel.slot);
-            walker.forward = walker.facing = house;
-            walker.altitude = 0;
-            const { done } = travel;
-            travel = undefined;
-            audio.play("audio/character/footsteps.wav");
-            done(true);
+            walker.step(dt, x, y, keys.has("ShiftLeft") || keys.has("ShiftRight"));
           }
-          walker.verticalSpeed = 0;
-          walker.moving = walker.sprinting = false;
-        } else walker.step(dt, x, y, keys.has("ShiftLeft") || keys.has("ShiftRight"));
+        }
         avatarRoot.position.set(...walker.position);
         orient(s, avatarRoot, walker.up, walker.facing);
         const clip =
@@ -355,8 +433,9 @@ export async function createSurfaceEngine(
                 ? "sprint"
                 : "walk"
               : "idle";
-        avatarPlayer!.play(clip);
-        avatarPlayer!.update(dt);
+        avatarPlayer!.play(clip, shot ? 0 : undefined);
+        if (resetPoses) avatarPlayer!.mixer.setTime(0);
+        avatarPlayer!.update(sdt);
 
         if (
           walker.moving &&
@@ -385,7 +464,7 @@ export async function createSurfaceEngine(
               if (canOccupy(candidate, village!.obstacles, 0.25)) actor.up = candidate;
             }
           } else if (actor.patrol && !reduced && !nearby) {
-            const travel = actor.travel + dt * 0.8 * actor.travelSign;
+            const travel = actor.travel + sdt * 0.8 * actor.travelSign;
             const candidate = advance(actor.home, actor.forward, travel).up;
             if (
               Math.abs(travel) <= 3 &&
@@ -400,7 +479,7 @@ export async function createSurfaceEngine(
           }
           const step = arcDistance(before, actor.up);
           const moved = step > 0.0001;
-          actor.cloth?.tick(dt, now / 1000, dt > 0 ? step / dt : 0, 0, reduced);
+          actor.cloth?.tick(sdt, clock, sdt > 0 ? step / sdt : 0, 0, reduced);
           const close = arcDistance(walker.up, actor.up) < 2.9;
           actor.root.position.set(...surfacePoint(actor.up));
           orient(
@@ -415,10 +494,13 @@ export async function createSurfaceEngine(
               : moved && actor.player.has("walk")
                 ? "walk"
                 : "idle",
+            shot ? 0 : undefined,
           );
-          actor.player.update(dt);
+          if (resetPoses) actor.player.mixer.setTime(0);
+          actor.player.update(sdt);
         }
-        village!.tick(dt, now / 1000, (slot) =>
+        resetPoses = false;
+        village!.tick(sdt, clock, (slot) =>
           options.onEvent?.({ type: "house_transition_played", slot }),
         );
       }
@@ -444,7 +526,27 @@ export async function createSurfaceEngine(
               ),
             )),
       );
-      if (!overview) {
+      if (shot && !overview) {
+        // Shot camera: offsets along (right, up, ahead) from the student, no collision pull-in.
+        const right = cross(walker.forward, walker.up);
+        const place = (offset: Shot["eye"]) =>
+          add(
+            walker.position,
+            add(
+              add(mul(right, offset[0]), mul(walker.up, offset[1])),
+              mul(walker.forward, offset[2]),
+            ),
+          );
+        targetCamera.set(...place(shot.eye));
+        targetLook.set(...place(shot.look));
+        // Only the ground keeps the camera out: never under the terrain or the water.
+        const radial = norm([targetCamera.x, targetCamera.y, targetCamera.z]);
+        const floor =
+          Math.max(village!.walkingRadius(radial), waterDepth(radial) > 0.1 ? WATER_LEVEL : 0) +
+          0.45;
+        if (targetCamera.length() < floor) targetCamera.set(...mul(radial, floor));
+      }
+      if (!overview && !shot) {
         // Pull forward before a wall can enter the camera, then stay above the sampled terrain.
         cameraAnchor.set(...add(walker.position, mul(walker.up, 1.6)));
         cameraVector.copy(targetCamera).sub(cameraAnchor);
@@ -462,9 +564,9 @@ export async function createSurfaceEngine(
           Math.max(village!.walkingRadius(up), waterDepth(up) > 0.1 ? WATER_LEVEL : 0) + 0.45;
         if (targetCamera.length() < minimumRadius) targetCamera.set(...mul(up, minimumRadius));
       }
-      const easing = cameraReady ? 1 - Math.exp(-dt * (reduced ? 18 : 6)) : 1;
+      const easing = cameraReady && !shot ? 1 - Math.exp(-dt * (reduced ? 18 : 6)) : 1;
       camera.position.lerp(targetCamera, easing);
-      if (!overview) {
+      if (!overview && !shot) {
         // Recheck the interpolated position so smoothing cannot take a shortcut through a wall.
         cameraVector.copy(camera.position).sub(cameraAnchor);
         cameraRay.set(cameraAnchor, cameraVector.clone().normalize());
@@ -483,11 +585,21 @@ export async function createSurfaceEngine(
           camera.position.set(...mul(up, minimumRadius));
       }
       // Look eases more slowly than position: a soft, weighty follow.
-      smoothedLook.lerp(targetLook, cameraReady ? 1 - Math.exp(-dt * (reduced ? 18 : 4.2)) : 1);
+      smoothedLook.lerp(
+        targetLook,
+        cameraReady && !shot ? 1 - Math.exp(-dt * (reduced ? 18 : 4.2)) : 1,
+      );
       // Field of view opens on a sprint and narrows for the aerial portrait.
-      const targetFov = overview ? 45 : walker.sprinting && !reduced ? 61 : 55;
+      const targetFov = shot
+        ? (shot.fov ?? (overview ? 45 : 55))
+        : overview
+          ? 45
+          : walker.sprinting && !reduced
+            ? 61
+            : 55;
       if (Math.abs(camera.fov - targetFov) > 0.01) {
-        camera.fov += (targetFov - camera.fov) * (1 - Math.exp(-dt * 3));
+        if (shot) camera.fov = targetFov;
+        else camera.fov += (targetFov - camera.fov) * (1 - Math.exp(-dt * 3));
         camera.updateProjectionMatrix();
       }
       camera.up.set(...walker.up);
@@ -505,7 +617,7 @@ export async function createSurfaceEngine(
       fill.target.updateMatrixWorld();
       scene.fog.near = overview ? 140 : grade!.composed ? 120 : 30;
       scene.fog.far = overview ? 260 : grade!.composed ? 260 : 105;
-      atmosphere.tick(camera, walker.up, walker.forward, now / 1000, reduced, overview);
+      atmosphere.tick(camera, walker.up, walker.forward, clock, reduced, overview);
       for (let i = rewards.length - 1; i >= 0; i--) {
         const reward = rewards[i]!;
         if (!paused) reward.elapsed += dt;
@@ -522,10 +634,29 @@ export async function createSurfaceEngine(
       grade!.tick(camera, sunward, overview);
       grade!.render(dt);
       frames++;
+      if (shot) {
+        shotFrames++;
+        if (shotFrames === 2) {
+          // The composer's passes reset renderer.info each time: count one plain main pass
+          // (the shadow map is kept as rendered), the figure the scene budget talks about.
+          const info = renderer!.info;
+          info.autoReset = false;
+          info.reset();
+          renderer!.shadowMap.autoUpdate = false;
+          renderer!.render(scene, camera);
+          renderer!.shadowMap.autoUpdate = true;
+          shotStats = { fps, drawCalls: info.render.calls, triangles: info.render.triangles };
+          info.autoReset = true;
+          info.reset();
+        } else if (shotFrames >= 3 && !renderer!.domElement.dataset.athenaShot) {
+          renderer!.domElement.dataset.athenaShot = shot.id;
+          for (const waiter of shotWaiters.splice(0)) waiter.resolve();
+        }
+      }
       if (now - statsAt > 1000) {
         fps = (frames * 1000) / (now - statsAt);
         // Sustained low frame rate: shed god rays and deep bloom, then resolution.
-        if (fps < 42 && !document.hidden) {
+        if (fps < 42 && !document.hidden && !shot) {
           slowSince ||= now;
           if (now - slowSince > 3500) {
             slowSince = 0;
@@ -568,7 +699,7 @@ export async function createSurfaceEngine(
             slot: house.slot,
             x: ((point.x + 1) * host.clientWidth) / 2,
             y: ((1 - point.y) * host.clientHeight) / 2,
-            visible,
+            visible: visible && !shot,
             distance,
             inReach: distance < 2.6 && !paused,
           };
@@ -588,10 +719,14 @@ export async function createSurfaceEngine(
               distance: arcDistance(walker.up, doorDirection(nextHouse.slot)),
             }
           : undefined,
-        reduced ? 0 : now / 1000,
+        reduced ? 0 : clock,
         paused,
         overview,
       );
+      if (shot) {
+        host.querySelector<HTMLElement>(".village-waypoint")?.setAttribute("hidden", "");
+        controls.hidden = hint.hidden = true;
+      }
       if (now - uiAt > 120) {
         uiAt = now;
         const target = currentInteraction();
@@ -605,7 +740,7 @@ export async function createSurfaceEngine(
         const npcName = village!.actors.find((actor) => actor.id === nearNpc)?.name;
         const house = state.houses.find((item) => item.slot === nearest);
         const text =
-          paused || overview
+          paused || overview || shot
             ? ""
             : house
               ? `E · ${spanish ? "Entrar a" : "Enter"} ${house.title}`
@@ -618,11 +753,35 @@ export async function createSurfaceEngine(
       lifecycle.requestAnimationFrame(render);
     };
     lifecycle.requestAnimationFrame(render);
+    if (shotsEnabled) {
+      const go = async (target: string | Shot) => {
+        const next = typeof target === "string" ? SHOTS.find((item) => item.id === target) : target;
+        if (!next) throw new Error(`Unknown shot: ${String(target)}`);
+        // Swap house models instantly (reduced motion) so no cross-fade is caught mid-way.
+        village!.setReducedMotion(true);
+        try {
+          await village!.update(shotHouses(state, next));
+        } finally {
+          village!.setReducedMotion(reduced);
+        }
+        // The frames counted for the previous pose must not complete this one.
+        delete renderer.domElement.dataset.athenaShot;
+        shot = next;
+        cameraReady = false;
+        poseShot(next);
+        return new Promise<void>((resolve, reject) => shotWaiters.push({ resolve, reject }));
+      };
+      (window as unknown as { __athenaShot?: unknown }).__athenaShot = {
+        list: () => SHOTS.map((item) => item.id),
+        go,
+        stats: () => ({ shot: shot?.id, ...shotStats }),
+      };
+    }
     options.onReady?.();
     const update = (next: PlanetState) => {
       state = next;
       void village!
-        .update(next)
+        .update(shotHouses(next))
         .catch((error) => console.error("[Athena] house update failed", error));
     };
     const celebrate = (key: string) => {
@@ -654,7 +813,7 @@ export async function createSurfaceEngine(
       setMuted: audio.setMuted,
       setVolumes: audio.setVolumes,
       setOverview(value) {
-        overview = value;
+        if (!shot) overview = value;
       },
       travelToHouse(slot) {
         travel?.done(false);

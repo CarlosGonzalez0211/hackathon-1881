@@ -42,6 +42,7 @@ export function materialKey(material: LegacyContext) {
     material.side,
     material.vertexColors,
     material.map?.uuid ?? "",
+    material.alphaMap?.uuid ?? "",
   ].join("|");
 }
 
@@ -111,7 +112,7 @@ function normalizedGeometry(
   } else {
     if (material.vertexColors && source.attributes.color)
       geometry.setAttribute("color", toFloatAttribute(scope, source.attributes.color, 3));
-    if (material.map && source.attributes.uv)
+    if ((material.map || material.alphaMap) && source.attributes.uv)
       geometry.setAttribute("uv", toFloatAttribute(scope, source.attributes.uv, 2));
   }
   if (source.attributes._athena_style)
@@ -124,6 +125,14 @@ function normalizedGeometry(
       "_athena_weave",
       toFloatAttribute(scope, source.attributes._athena_weave, 2),
     );
+  // Alpha-card data: a per-vertex pivot (point) and a sphere-aligned shading normal (direction).
+  // `_athena_wind` is plain per-vertex data (phase, stiffness), so it needs no transform.
+  const center = source.attributes._athena_center,
+    cardNormal = source.attributes.aCardNormal,
+    wind = source.attributes._athena_wind;
+  if (center) geometry.setAttribute("_athena_center", toFloatAttribute(scope, center, 3));
+  if (cardNormal) geometry.setAttribute("aCardNormal", toFloatAttribute(scope, cardNormal, 3));
+  if (wind) geometry.setAttribute("_athena_wind", toFloatAttribute(scope, wind, wind.itemSize));
   if (bone !== undefined) {
     const indices = new Uint16Array(count * 4);
     const weights = new Float32Array(count * 4);
@@ -145,6 +154,13 @@ function normalizedGeometry(
   );
   if (!geometry.attributes.normal) geometry.computeVertexNormals();
   geometry.applyMatrix4(matrix);
+  // applyMatrix4 only moves position/normal: bring the card attributes into the same space.
+  const placed = geometry.attributes;
+  if (placed._athena_center) placed._athena_center.applyMatrix4(matrix);
+  if (placed.aCardNormal) {
+    placed.aCardNormal.applyNormalMatrix(new scope.Matrix3().getNormalMatrix(matrix));
+    placed.aCardNormal.needsUpdate = true;
+  }
   return geometry;
 }
 

@@ -1,6 +1,5 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 import { NodeIO, getBounds } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
 import {
@@ -34,6 +33,7 @@ import {
   type Vec,
 } from "../src/village/layout";
 import { SphericalWalker } from "../src/village/walker";
+import { kitModelPath } from "./helpers/kit-path";
 
 test("a complete spherical circuit returns to the same point and heading", () => {
   for (const start of [direction(0, 0), direction(1, 1.5), direction(-2, -1.5)]) {
@@ -166,12 +166,7 @@ test("every actual house model leaves its entrance and the main loop walkable at
   for (const status of ["locked", "available", "in-progress", "done"]) {
     const obstacles = [];
     for (const plot of plots) {
-      const path = fileURLToPath(
-        new URL(
-          `../athena-assets/models/buildings/athena-house-${status}-v${plot.slot}.glb`,
-          import.meta.url,
-        ),
-      );
+      const path = kitModelPath(`buildings/athena-house-${status}-v${plot.slot}.glb`);
       const doc = await io.read(path);
       const bounds = getBounds(doc.getRoot().listScenes()[0]!);
       obstacles.push(buildingObstacle(bounds, plot.up, plot.forward, HOUSE_SCALE));
@@ -222,9 +217,7 @@ test("bridge decks and both approaches clear every building and foundation", asy
     ...plots.map((p) => ({ ...p, id: `house-done-v${p.slot}`, scale: HOUSE_SCALE })),
     ...landmarks.map((p) => ({ ...p, id: `building-${p.id}` })),
   ]) {
-    const path = fileURLToPath(
-      new URL(`../athena-assets/models/buildings/athena-${plot.id}.glb`, import.meta.url),
-    );
+    const path = kitModelPath(`buildings/athena-${plot.id}.glb`);
     const doc = await io.read(path);
     const bounds = getBounds(doc.getRoot().listScenes()[0]!);
     // Include the connected terrace and its approach steps, not just the wall collider.

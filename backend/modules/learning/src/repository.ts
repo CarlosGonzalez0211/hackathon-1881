@@ -1,0 +1,285 @@
+import {
+  demoStrategyPosteriors,
+  type CheckpointEvidence,
+  type CheckpointResult,
+  type ConceptKnowledgeState,
+  type DiagnosticResult,
+  type RetentionSchedule,
+  type RetentionEvidence,
+  type RetentionCheckResult,
+  type LearningSession,
+  type MisconceptionMemory,
+  type TutorMessage,
+  type StrategyObservation,
+  type StrategyPosterior,
+  type StudentTopicMastery,
+  type StudentLearningPreferences,
+} from "@athena/shared";
+import { initializeStrategyPosteriors } from "./domain/strategy-selection.js";
+
+export interface LearningRepository {
+  saveDiagnostic(value: DiagnosticResult): Promise<void>;
+  listDiagnostics(studentId: string): Promise<DiagnosticResult[]>;
+  saveEvidence(value: CheckpointEvidence): Promise<void>;
+  listEvidence(studentId: string, topicId: string): Promise<CheckpointEvidence[]>;
+  getCheckpointResultBySubmissionId(
+    studentId: string,
+    submissionId: string,
+  ): Promise<CheckpointResult | null>;
+  saveCheckpointResult(submissionId: string, value: CheckpointResult): Promise<void>;
+  getMastery(studentId: string, topicId: string): Promise<StudentTopicMastery | null>;
+  listMastery(studentId: string): Promise<StudentTopicMastery[]>;
+  saveMastery(value: StudentTopicMastery): Promise<void>;
+  getKnowledge(studentId: string, conceptId: string): Promise<ConceptKnowledgeState | null>;
+  saveKnowledge(value: ConceptKnowledgeState): Promise<void>;
+  listKnowledge(studentId: string): Promise<ConceptKnowledgeState[]>;
+  setActiveMisconceptions(
+    studentId: string,
+    topicId: string,
+    ids: readonly string[],
+  ): Promise<void>;
+  listActiveMisconceptions(studentId: string, topicId?: string): Promise<string[]>;
+  recordMisconceptionIdentified(value: MisconceptionMemory): Promise<void>;
+  recordMisconceptionResolved(
+    studentId: string,
+    topicId: string,
+    misconceptionId: string,
+    resolvedAt: string,
+    evidenceId: string,
+  ): Promise<void>;
+  listMisconceptionMemory(studentId: string, topicId?: string): Promise<MisconceptionMemory[]>;
+  getStrategyPosteriors(studentId: string, contextKey: string): Promise<StrategyPosterior[]>;
+  saveStrategyPosterior(studentId: string, value: StrategyPosterior): Promise<void>;
+  saveStrategyObservation(value: StrategyObservation): Promise<void>;
+  listStrategyObservations(studentId: string, topicId?: string): Promise<StrategyObservation[]>;
+  saveRetention(value: RetentionSchedule): Promise<void>;
+  listRetention(studentId: string): Promise<RetentionSchedule[]>;
+  getLearningPreferences(studentId: string): Promise<StudentLearningPreferences | null>;
+  saveLearningPreferences(value: StudentLearningPreferences): Promise<void>;
+  getTeacherPriority(courseId: string, topicId: string): Promise<number>;
+  saveTeacherPriority(courseId: string, topicId: string, priority: number): Promise<void>;
+  saveRetentionEvidence(value: RetentionEvidence): Promise<void>;
+  listRetentionEvidence(studentId: string, conceptId?: string): Promise<RetentionEvidence[]>;
+  getRetentionResultBySubmissionId(
+    studentId: string,
+    submissionId: string,
+  ): Promise<RetentionCheckResult | null>;
+  saveRetentionResult(submissionId: string, value: RetentionCheckResult): Promise<void>;
+  saveSession(value: LearningSession): Promise<void>;
+  getSession(sessionId: string): Promise<LearningSession | null>;
+  saveTutorMessage(value: TutorMessage): Promise<void>;
+  listTutorMessages(sessionId: string): Promise<TutorMessage[]>;
+}
+
+export class InMemoryLearningRepository implements LearningRepository {
+  private readonly diagnostics: DiagnosticResult[] = [];
+  private readonly evidence: CheckpointEvidence[] = [];
+  private readonly checkpointResults = new Map<string, CheckpointResult>();
+  private readonly mastery = new Map<string, StudentTopicMastery>();
+  private readonly knowledge = new Map<string, ConceptKnowledgeState>();
+  private readonly misconceptions = new Map<string, Set<string>>();
+  private readonly misconceptionMemory = new Map<string, MisconceptionMemory>();
+  private readonly posteriors = new Map<string, StrategyPosterior>();
+  private readonly observations: StrategyObservation[] = [];
+  private readonly retention = new Map<string, RetentionSchedule>();
+  private readonly learningPreferences = new Map<string, StudentLearningPreferences>();
+  private readonly teacherPriorities = new Map<string, number>();
+  private readonly retentionEvidence: RetentionEvidence[] = [];
+  private readonly retentionResults = new Map<string, RetentionCheckResult>();
+  private readonly sessions = new Map<string, LearningSession>();
+  private readonly tutorMessages: TutorMessage[] = [];
+
+  async saveDiagnostic(value: DiagnosticResult) {
+    this.diagnostics.push(value);
+  }
+
+  async listDiagnostics(studentId: string) {
+    return this.diagnostics.filter((value) => value.studentId === studentId);
+  }
+
+  async saveEvidence(value: CheckpointEvidence) {
+    this.evidence.push(value);
+  }
+
+  async listEvidence(studentId: string, topicId: string) {
+    return this.evidence.filter(
+      (value) => value.studentId === studentId && value.topicId === topicId,
+    );
+  }
+
+  async getCheckpointResultBySubmissionId(studentId: string, submissionId: string) {
+    return this.checkpointResults.get(key(studentId, submissionId)) ?? null;
+  }
+
+  async saveCheckpointResult(submissionId: string, value: CheckpointResult) {
+    this.checkpointResults.set(key(value.evidence.studentId, submissionId), value);
+  }
+
+  async getMastery(studentId: string, topicId: string) {
+    return this.mastery.get(key(studentId, topicId)) ?? null;
+  }
+
+  async saveMastery(value: StudentTopicMastery) {
+    this.mastery.set(key(value.studentId, value.topicId), value);
+  }
+
+  async listMastery(studentId: string) {
+    return [...this.mastery.values()].filter((value) => value.studentId === studentId);
+  }
+
+  async getKnowledge(studentId: string, conceptId: string) {
+    return this.knowledge.get(key(studentId, conceptId)) ?? null;
+  }
+
+  async saveKnowledge(value: ConceptKnowledgeState) {
+    this.knowledge.set(key(value.studentId, value.conceptId), value);
+  }
+
+  async listKnowledge(studentId: string) {
+    return [...this.knowledge.values()].filter((value) => value.studentId === studentId);
+  }
+
+  async setActiveMisconceptions(studentId: string, topicId: string, ids: readonly string[]) {
+    this.misconceptions.set(key(studentId, topicId), new Set(ids));
+  }
+
+  async listActiveMisconceptions(studentId: string, topicId?: string) {
+    if (topicId) return [...(this.misconceptions.get(key(studentId, topicId)) ?? [])];
+    return [
+      ...new Set(
+        [...this.misconceptions.entries()]
+          .filter(([entryKey]) => entryKey.startsWith(`${studentId}:`))
+          .flatMap(([, ids]) => [...ids]),
+      ),
+    ];
+  }
+
+  async recordMisconceptionIdentified(value: MisconceptionMemory) {
+    const memoryKey = misconceptionKey(value.studentId, value.topicId, value.misconceptionId);
+    const existing = this.misconceptionMemory.get(memoryKey);
+    this.misconceptionMemory.set(memoryKey, {
+      ...value,
+      identifiedAt: existing?.identifiedAt ?? value.identifiedAt,
+      evidenceIds: [...new Set([...(existing?.evidenceIds ?? []), ...value.evidenceIds])],
+      status: "active",
+      resolvedAt: undefined,
+    });
+  }
+
+  async recordMisconceptionResolved(
+    studentId: string,
+    topicId: string,
+    misconceptionId: string,
+    resolvedAt: string,
+    evidenceId: string,
+  ) {
+    const memoryKey = misconceptionKey(studentId, topicId, misconceptionId);
+    const existing = this.misconceptionMemory.get(memoryKey);
+    this.misconceptionMemory.set(memoryKey, {
+      studentId,
+      topicId,
+      misconceptionId,
+      status: "resolved",
+      identifiedAt: existing?.identifiedAt ?? resolvedAt,
+      resolvedAt,
+      evidenceIds: [...new Set([...(existing?.evidenceIds ?? []), evidenceId])],
+    });
+  }
+
+  async listMisconceptionMemory(studentId: string, topicId?: string) {
+    return [...this.misconceptionMemory.values()].filter(
+      (value) => value.studentId === studentId && (!topicId || value.topicId === topicId),
+    );
+  }
+
+  async getStrategyPosteriors(studentId: string, contextKey: string) {
+    const seeded = demoStrategyPosteriors.filter((value) => value.contextKey === contextKey);
+    return initializeStrategyPosteriors(contextKey, seeded).map(
+      (value) => this.posteriors.get(posteriorKey(studentId, value)) ?? value,
+    );
+  }
+
+  async saveStrategyPosterior(studentId: string, value: StrategyPosterior) {
+    this.posteriors.set(posteriorKey(studentId, value), value);
+  }
+
+  async saveStrategyObservation(value: StrategyObservation) {
+    this.observations.push(value);
+  }
+
+  async listStrategyObservations(studentId: string, topicId?: string) {
+    return this.observations.filter(
+      (value) => value.studentId === studentId && (!topicId || value.topicId === topicId),
+    );
+  }
+
+  async saveRetention(value: RetentionSchedule) {
+    this.retention.set(key(value.studentId, value.conceptId), value);
+  }
+
+  async listRetention(studentId: string) {
+    return [...this.retention.values()].filter((value) => value.studentId === studentId);
+  }
+
+  async getLearningPreferences(studentId: string) {
+    return this.learningPreferences.get(studentId) ?? null;
+  }
+
+  async saveLearningPreferences(value: StudentLearningPreferences) {
+    this.learningPreferences.set(value.studentId, value);
+  }
+
+  async getTeacherPriority(courseId: string, topicId: string) {
+    return this.teacherPriorities.get(key(courseId, topicId)) ?? 0;
+  }
+
+  async saveTeacherPriority(courseId: string, topicId: string, priority: number) {
+    this.teacherPriorities.set(key(courseId, topicId), priority);
+  }
+
+  async saveRetentionEvidence(value: RetentionEvidence) {
+    this.retentionEvidence.push(value);
+  }
+
+  async listRetentionEvidence(studentId: string, conceptId?: string) {
+    return this.retentionEvidence.filter(
+      (value) => value.studentId === studentId && (!conceptId || value.conceptId === conceptId),
+    );
+  }
+
+  async getRetentionResultBySubmissionId(studentId: string, submissionId: string) {
+    return this.retentionResults.get(key(studentId, submissionId)) ?? null;
+  }
+
+  async saveRetentionResult(submissionId: string, value: RetentionCheckResult) {
+    this.retentionResults.set(key(value.evidence.studentId, submissionId), value);
+  }
+
+  async saveSession(value: LearningSession) {
+    this.sessions.set(value.id, value);
+  }
+
+  async getSession(sessionId: string) {
+    return this.sessions.get(sessionId) ?? null;
+  }
+
+  async saveTutorMessage(value: TutorMessage) {
+    this.tutorMessages.push(value);
+  }
+
+  async listTutorMessages(sessionId: string) {
+    return this.tutorMessages.filter((message) => message.sessionId === sessionId);
+  }
+}
+
+function key(left: string, right: string) {
+  return `${left}:${right}`;
+}
+
+function posteriorKey(studentId: string, value: StrategyPosterior) {
+  return `${studentId}:${value.contextKey}:${value.strategy}`;
+}
+
+function misconceptionKey(studentId: string, topicId: string, misconceptionId: string) {
+  return `${studentId}:${topicId}:${misconceptionId}`;
+}

@@ -43,6 +43,25 @@ export interface SoftLighting {
   readonly uAthenaRimStrength: { value: number };
 }
 
+/** Fresh painterly light uniforms (golden-hour defaults); the surface engine retunes them. */
+export function createSoftLighting(scope: LegacyContext): SoftLighting {
+  return {
+    uAthenaSun: { value: new scope.Vector3(0, 0.3, 0.95) },
+    uAthenaSky: { value: new scope.Color("#9fc9e6") },
+    uAthenaGround: { value: new scope.Color("#c99c6a") },
+    uAthenaRim: { value: new scope.Color(1.0, 0.82, 0.6) },
+    uAthenaShadow: { value: new scope.Color("#aab2e2") },
+    uAthenaHemi: { value: 0.26 },
+    uAthenaRimStrength: { value: 0.85 },
+  };
+}
+
+/** Materials named like glazed tile or lacquer, or flagged `userData.athenaGlaze`, get the sheen. */
+export const GLAZE_NAME = /tile|glaze|lacquer/i;
+export function isGlazeSource(material: { name?: string; userData?: Record<string, unknown> }) {
+  return GLAZE_NAME.test(material.name ?? "") || material.userData?.athenaGlaze === true;
+}
+
 /** Half-Lambert ramp: a luminous shadow floor, a soft terminator and a gentle highlight. */
 export function softRamp(size = 64) {
   const data = new Uint8Array(size);
@@ -62,7 +81,12 @@ vec4 athenaWorld = vec4(transformed, 1.0);
 #endif
 vAthenaWorld = (modelMatrix * athenaWorld).xyz;`;
 
-const SOFT_FRAGMENT = /* glsl */ `
+/**
+ * The painterly light, spliced before `opaque_fragment`. `ATHENA_GLAZE` (set per material by
+ * {@link isGlazeSource}) adds a Blinn-Phong sheen for glazed tiles and lacquer; without the
+ * define that block is compiled out, so every other material renders exactly as before.
+ */
+export const SOFT_FRAGMENT = /* glsl */ `
 {
   vec3 athenaN = normalize(inverseTransformDirection(normal, viewMatrix));
   vec3 athenaUp = normalize(vAthenaWorld);
@@ -78,6 +102,13 @@ const SOFT_FRAGMENT = /* glsl */ `
   float athenaSide = 1.0 - smoothstep(0.72, 0.97, athenaH);
   outgoingLight += uAthenaRim * athenaFresnel * athenaSide * (0.15 + 1.4 * athenaBack * athenaBack)
     * uAthenaRimStrength;
+  #ifdef ATHENA_GLAZE
+    // Glazed tile and lacquer: a tight sun glint that follows the camera, only on lit faces.
+    vec3 athenaHalf = normalize(uAthenaSun + athenaView);
+    float athenaGlint = pow(saturate(dot(athenaN, athenaHalf)), 48.0)
+      * saturate(dot(athenaN, uAthenaSun) * 4.0);
+    outgoingLight += uAthenaRim * athenaGlint * 0.45;
+  #endif
   // A degenerate normal must never reach the HDR buffer: bloom would spread its NaN.
   if (any(isnan(outgoingLight)) || any(isinf(outgoingLight))) outgoingLight = diffuseColor.rgb * 0.5;
 }`;
@@ -270,17 +301,7 @@ export function createAthenaToon(
   const cache = new Map<Material, Material>();
   const owned = new Set<Material>();
   const lighting: SoftLighting | undefined =
-    options.soft && scope.Vector3
-      ? {
-          uAthenaSun: { value: new scope.Vector3(0, 0.3, 0.95) },
-          uAthenaSky: { value: new scope.Color("#9fc9e6") },
-          uAthenaGround: { value: new scope.Color("#c99c6a") },
-          uAthenaRim: { value: new scope.Color(1.0, 0.82, 0.6) },
-          uAthenaShadow: { value: new scope.Color("#aab2e2") },
-          uAthenaHemi: { value: 0.26 },
-          uAthenaRimStrength: { value: 0.85 },
-        }
-      : undefined;
+    options.soft && scope.Vector3 ? createSoftLighting(scope) : undefined;
 
   /** Chain the painterly light onto a converted material (after any pipeline patch). */
   function soften(material: Material) {
@@ -289,20 +310,23 @@ export function createAthenaToon(
     material.onBeforeCompile = (shader: LegacyContext, renderer: LegacyContext) => {
       previous(shader, renderer);
       Object.assign(shader.uniforms, lighting);
+      const glaze = material.userData?.athenaGlaze === true ? "#define ATHENA_GLAZE\n" : "";
       shader.vertexShader = shader.vertexShader
         .replace("#include <common>", "#include <common>\nvarying vec3 vAthenaWorld;")
         .replace("#include <project_vertex>", `#include <project_vertex>\n${SOFT_VERTEX}`);
       shader.fragmentShader = shader.fragmentShader
         .replace(
           "#include <common>",
-          `#include <common>
+          `${glaze}#include <common>
 varying vec3 vAthenaWorld;
 uniform vec3 uAthenaSun, uAthenaSky, uAthenaGround, uAthenaRim, uAthenaShadow;
 uniform float uAthenaHemi, uAthenaRimStrength;`,
         )
         .replace("#include <opaque_fragment>", `${SOFT_FRAGMENT}\n#include <opaque_fragment>`);
     };
-    material.customProgramCacheKey = () => "athena-soft-v1";
+    // The define changes the program, so glazed materials never share one with plain ones.
+    material.customProgramCacheKey = () =>
+      material.userData?.athenaGlaze === true ? "athena-soft-v1-glaze" : "athena-soft-v1";
   }
 
   function toonMaterial(source: Material): Material {
@@ -328,6 +352,14 @@ uniform float uAthenaHemi, uAthenaRimStrength;`,
       toon.emissiveIntensity = source.emissiveIntensity;
       toon.emissiveMap = source.emissiveMap ?? null;
     }
+    toon.alphaMap = source.alphaMap ?? null;
+    toon.normalMap = source.normalMap ?? null;
+    if (source.normalScale) toon.normalScale.copy(source.normalScale);
+    toon.aoMap = source.aoMap ?? null;
+    toon.aoMapIntensity = source.aoMapIntensity ?? 1;
+    // Shallow copy: flags such as athenaGlaze travel with the look, edits stay per material.
+    toon.userData = { ...source.userData };
+    if (isGlazeSource(source)) toon.userData.athenaGlaze = true;
     joinLegacyPipeline(scope, toon);
     soften(toon);
     cache.set(source, toon);

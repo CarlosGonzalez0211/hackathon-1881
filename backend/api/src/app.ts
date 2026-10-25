@@ -19,6 +19,8 @@ export async function createApp(
     logger?: boolean;
     platform?: Partial<PlatformServices>;
     dataMode?: "mock" | "real";
+    /** Overrides ATHENA_ALLOW_MOCK (tests). */
+    allowMock?: boolean;
   } = {},
 ) {
   const mode = options.dataMode ?? env.ATHENA_DATA_MODE;
@@ -36,9 +38,21 @@ export async function createApp(
       "ATHENA_DATA_MODE=real requires real auth and authorization services; the allow-all stubs are mock-only",
     );
   }
+  const allowMock = options.allowMock ?? env.ATHENA_ALLOW_MOCK;
+  // Mock mode lets every caller in as the demo admin: fine for fixtures, never for real data.
+  // Production must say so explicitly instead of landing there by forgetting ATHENA_DATA_MODE.
+  if (
+    mode === "mock" &&
+    process.env.NODE_ENV === "production" &&
+    !allowMock &&
+    services.auth instanceof AllowAllAuthService
+  ) {
+    throw new Error(
+      "Refusing to start in production with ATHENA_DATA_MODE=mock: every caller would be the demo admin. Set ATHENA_DATA_MODE=real, or ATHENA_ALLOW_MOCK=true for a demo deployment with no real data",
+    );
+  }
   const app = Fastify({ logger: options.logger ?? true });
   if (mode === "mock" && process.env.NODE_ENV === "production") {
-    // Mock mode lets every caller in as the demo admin; fine for fixtures, never for real data.
     app.log.warn("ATHENA_DATA_MODE=mock in production: every caller is the demo admin");
   }
   installPlatform(app, services);
