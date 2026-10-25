@@ -1,12 +1,17 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import type { HealthResponse } from "@athena/shared";
+import { createPlatformServices, installPlatform, type PlatformServices } from "@athena/platform";
 import { env } from "./env.js";
+import { modulePlugins } from "./plugins.js";
 import { aiRoutes } from "./routes/ai.js";
 
 /** Isolated app for injection tests, standalone Node and Vercel. */
-export async function createApp(options: { logger?: boolean } = {}) {
+export async function createApp(
+  options: { logger?: boolean; platform?: Partial<PlatformServices> } = {},
+) {
   const app = Fastify({ logger: options.logger ?? true });
+  installPlatform(app, createPlatformServices(options.platform));
   // Register before child plugins so every route inherits the same validation handling.
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
     app.log.error(err);
@@ -21,6 +26,7 @@ export async function createApp(options: { logger?: boolean } = {}) {
         time: new Date().toISOString(),
       }));
       await api.register(aiRoutes);
+      for (const { plugin } of modulePlugins) await api.register(plugin);
     },
     { prefix: "/api" },
   );
