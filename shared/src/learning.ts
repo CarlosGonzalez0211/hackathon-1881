@@ -144,6 +144,65 @@ export const strategyDecisionReasonSchema = z.enum([
 ]);
 export type StrategyDecisionReason = z.infer<typeof strategyDecisionReasonSchema>;
 
+export const strategyLessonPurposeSchema = z.enum([
+  "foundation",
+  "misconception_repair",
+  "transfer",
+  "explanation",
+  "retention",
+]);
+export type StrategyLessonPurpose = z.infer<typeof strategyLessonPurposeSchema>;
+
+export const strategyDifficultyBandSchema = z.enum(["introductory", "developing", "advanced"]);
+export type StrategyDifficultyBand = z.infer<typeof strategyDifficultyBandSchema>;
+
+export const strategyContextSchema = z.object({
+  version: z.literal(1),
+  conceptId: z.string().regex(/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/),
+  purpose: strategyLessonPurposeSchema,
+  difficultyBand: strategyDifficultyBandSchema,
+  misconceptionId: z
+    .string()
+    .regex(/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/)
+    .nullable(),
+});
+export type StrategyContext = z.infer<typeof strategyContextSchema>;
+
+export const strategyContextPolicy = {
+  version: 1,
+  introductoryMaximumExclusive: 0.4,
+  developingMaximumExclusive: 0.7,
+} as const;
+
+export function classifyStrategyDifficulty(difficulty: number): StrategyDifficultyBand {
+  const parsed = z.number().min(0).max(1).parse(difficulty);
+  if (parsed < strategyContextPolicy.introductoryMaximumExclusive) return "introductory";
+  if (parsed < strategyContextPolicy.developingMaximumExclusive) return "developing";
+  return "advanced";
+}
+
+export function createStrategyContextKey(input: {
+  conceptId: string;
+  purpose: StrategyLessonPurpose;
+  difficulty: number;
+  misconceptionId?: string;
+}) {
+  const context = strategyContextSchema.parse({
+    version: strategyContextPolicy.version,
+    conceptId: input.conceptId,
+    purpose: input.purpose,
+    difficultyBand: classifyStrategyDifficulty(input.difficulty),
+    misconceptionId: input.misconceptionId ?? null,
+  });
+  return [
+    `v${context.version}`,
+    `concept=${context.conceptId}`,
+    `purpose=${context.purpose}`,
+    `difficulty=${context.difficultyBand}`,
+    `misconception=${context.misconceptionId ?? "none"}`,
+  ].join("|");
+}
+
 export const conceptStatusSchema = z.enum(["mastered", "partial", "struggling", "unassessed"]);
 export type ConceptStatus = z.infer<typeof conceptStatusSchema>;
 

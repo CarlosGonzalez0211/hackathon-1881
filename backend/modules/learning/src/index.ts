@@ -6,7 +6,7 @@ export {
   type AssessmentRubricFeature,
   type ScoredAnswer,
 } from "./assessment.js";
-export { calculateMastery, type MasteryCalculationInput } from "./domain/mastery.js";
+export { calculateMastery, masteryPolicy, type MasteryCalculationInput } from "./domain/mastery.js";
 export {
   defaultKnowledgeTracingParameters,
   defaultKnowledgeTracingModel,

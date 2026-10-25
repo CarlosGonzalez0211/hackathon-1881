@@ -1,4 +1,9 @@
-import type { DiagnosticResult, DiagnosticSubmission, StrategyPosterior } from "../learning.js";
+import {
+  createStrategyContextKey,
+  type DiagnosticResult,
+  type DiagnosticSubmission,
+  type StrategyPosterior,
+} from "../learning.js";
 import type {
   CurriculumConcept,
   CurriculumContextRequest,
@@ -6,15 +11,68 @@ import type {
 } from "../learning-curriculum.js";
 import { athenaDemoIds } from "./demo-identities.js";
 
+const rectangleAreaConceptId = "math.geometry.rectangle_area";
+const triangleBaseHeightConceptId = "math.geometry.triangle_base_height";
+const triangleAreaConceptId = "math.geometry.triangle_area";
+const triangleMissingHalfMisconceptionId = "math.geometry.triangle_area.missing_half";
+
+export const demoStrategyContextKeys = {
+  triangleMisconceptionIntroductory: createStrategyContextKey({
+    conceptId: triangleAreaConceptId,
+    purpose: "misconception_repair",
+    difficulty: 0.35,
+    misconceptionId: triangleMissingHalfMisconceptionId,
+  }),
+  triangleMisconceptionDeveloping: createStrategyContextKey({
+    conceptId: triangleAreaConceptId,
+    purpose: "misconception_repair",
+    difficulty: 0.6,
+    misconceptionId: triangleMissingHalfMisconceptionId,
+  }),
+  baseHeightFoundationIntroductory: createStrategyContextKey({
+    conceptId: triangleBaseHeightConceptId,
+    purpose: "foundation",
+    difficulty: 0.25,
+  }),
+  baseHeightFoundationDeveloping: createStrategyContextKey({
+    conceptId: triangleBaseHeightConceptId,
+    purpose: "foundation",
+    difficulty: 0.55,
+  }),
+  rectangleFoundationIntroductory: createStrategyContextKey({
+    conceptId: rectangleAreaConceptId,
+    purpose: "foundation",
+    difficulty: 0.3,
+  }),
+  triangleTransferAdvanced: createStrategyContextKey({
+    conceptId: triangleAreaConceptId,
+    purpose: "transfer",
+    difficulty: 0.7,
+    misconceptionId: triangleMissingHalfMisconceptionId,
+  }),
+  triangleExplanationDeveloping: createStrategyContextKey({
+    conceptId: triangleAreaConceptId,
+    purpose: "explanation",
+    difficulty: 0.65,
+    misconceptionId: triangleMissingHalfMisconceptionId,
+  }),
+  triangleRetentionDeveloping: createStrategyContextKey({
+    conceptId: triangleAreaConceptId,
+    purpose: "retention",
+    difficulty: 0.65,
+    misconceptionId: triangleMissingHalfMisconceptionId,
+  }),
+} as const;
+
 /** Provisional ids live in one catalog until Daniela and Vianey freeze the shared concept ids. */
 export const demoLearningIds = {
   concepts: {
-    rectangleArea: "math.geometry.rectangle_area",
-    triangleBaseHeight: "math.geometry.triangle_base_height",
-    triangleArea: "math.geometry.triangle_area",
+    rectangleArea: rectangleAreaConceptId,
+    triangleBaseHeight: triangleBaseHeightConceptId,
+    triangleArea: triangleAreaConceptId,
   },
   misconceptions: {
-    triangleMissingHalf: "math.geometry.triangle_area.missing_half",
+    triangleMissingHalf: triangleMissingHalfMisconceptionId,
   },
   questions: {
     diagnosticTriangleArea: "00000000-0000-4000-8000-00000000d001",
@@ -140,21 +198,21 @@ export const demoDiagnosticResult: DiagnosticResult = {
 export const demoStrategyPosteriors: StrategyPosterior[] = [
   {
     strategy: "worked_example",
-    contextKey: "geometry:missing_half:foundation",
+    contextKey: demoStrategyContextKeys.triangleMisconceptionDeveloping,
     alpha: 2,
     beta: 1,
     observations: 1,
   },
   {
     strategy: "visual_decomposition",
-    contextKey: "geometry:missing_half:foundation",
+    contextKey: demoStrategyContextKeys.triangleMisconceptionDeveloping,
     alpha: 3,
     beta: 1,
     observations: 2,
   },
   {
     strategy: "guided_questioning",
-    contextKey: "geometry:missing_half:foundation",
+    contextKey: demoStrategyContextKeys.triangleMisconceptionDeveloping,
     alpha: 1,
     beta: 1,
     observations: 0,

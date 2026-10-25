@@ -297,6 +297,7 @@ export class LearningService {
       previous: previousMastery?.mastery ?? 0,
       attempts: allEvidence,
       requiredConceptIds,
+      activeMisconceptionIds: activeAfter,
     });
     const mastery: StudentTopicMastery = {
       studentId: submission.studentId,

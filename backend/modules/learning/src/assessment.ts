@@ -1,4 +1,9 @@
-import { athenaDemoIds, demoLearningIds, type AssessmentPurpose } from "@athena/shared";
+import {
+  athenaDemoIds,
+  demoLearningIds,
+  demoStrategyContextKeys,
+  type AssessmentPurpose,
+} from "@athena/shared";
 
 export interface AssessmentQuestion {
   id: string;
@@ -61,7 +66,7 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
           "24": demoLearningIds.misconceptions.triangleMissingHalf,
         },
         targetMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
-        strategyContextKey: "geometry:missing_half:foundation",
+        strategyContextKey: demoStrategyContextKeys.triangleMisconceptionIntroductory,
       },
     ],
     [
@@ -83,7 +88,7 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
           "60": demoLearningIds.misconceptions.triangleMissingHalf,
         },
         targetMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
-        strategyContextKey: "geometry:missing_half:foundation",
+        strategyContextKey: demoStrategyContextKeys.triangleMisconceptionDeveloping,
       },
     ],
     [
@@ -105,7 +110,7 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
           "48": demoLearningIds.misconceptions.triangleMissingHalf,
         },
         targetMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
-        strategyContextKey: "geometry:missing_half:foundation",
+        strategyContextKey: demoStrategyContextKeys.triangleMisconceptionDeveloping,
       },
     ],
     [
@@ -125,7 +130,7 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
         answerKey: "Perpendicular",
         misconceptionAnswers: {},
         targetMisconceptionIds: [],
-        strategyContextKey: "geometry:base_height:foundation",
+        strategyContextKey: demoStrategyContextKeys.baseHeightFoundationIntroductory,
       },
     ],
     [
@@ -144,7 +149,7 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
         answerKey: 6,
         misconceptionAnswers: {},
         targetMisconceptionIds: [],
-        strategyContextKey: "geometry:base_height:foundation",
+        strategyContextKey: demoStrategyContextKeys.baseHeightFoundationDeveloping,
       },
     ],
     [
@@ -163,7 +168,7 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
         answerKey: 48,
         misconceptionAnswers: {},
         targetMisconceptionIds: [],
-        strategyContextKey: "geometry:rectangle_area:foundation",
+        strategyContextKey: demoStrategyContextKeys.rectangleFoundationIntroductory,
       },
     ],
     [
@@ -185,7 +190,7 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
           "42": demoLearningIds.misconceptions.triangleMissingHalf,
         },
         targetMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
-        strategyContextKey: "geometry:missing_half:transfer",
+        strategyContextKey: demoStrategyContextKeys.triangleTransferAdvanced,
       },
     ],
     [
@@ -219,7 +224,7 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
         passingScore: 1,
         misconceptionAnswers: {},
         targetMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
-        strategyContextKey: "geometry:missing_half:explanation",
+        strategyContextKey: demoStrategyContextKeys.triangleExplanationDeveloping,
       },
     ],
     [
@@ -240,7 +245,7 @@ export class InMemoryAssessmentRepository implements AssessmentRepository {
           "60": demoLearningIds.misconceptions.triangleMissingHalf,
         },
         targetMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
-        strategyContextKey: "geometry:missing_half:retention",
+        strategyContextKey: demoStrategyContextKeys.triangleRetentionDeveloping,
       },
     ],
   ]);

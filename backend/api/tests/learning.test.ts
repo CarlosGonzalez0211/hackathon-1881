@@ -4,10 +4,13 @@ import {
   automaticallySelectableTeachingStrategies,
   athenaDemoIds,
   assessmentQuizSchema,
+  classifyStrategyDifficulty,
   checkpointResultSchema,
+  createStrategyContextKey,
   demoDiagnosticSubmission,
   demoCurriculumContextResponse,
   demoLearningIds,
+  demoStrategyContextKeys,
   diagnosticResultSchema,
   hintResultSchema,
   learningSessionStartResultSchema,
@@ -39,6 +42,7 @@ import {
   type LearningRestClient,
   selectTeachingStrategy,
   initializeStrategyPosteriors,
+  masteryPolicy,
   updateKnowledgeProbability,
   updateStrategyPosterior,
 } from "@athena/learning";
@@ -81,11 +85,79 @@ test("mastery ignores hinted attempts and never decreases", () => {
 
   const accepted = calculateMastery({
     previous: 0.4,
-    attempts: [{ ...base, id: "evidence-2", hintCount: 0, evidenceEligible: true }],
+    attempts: [
+      { ...base, id: "evidence-2", hintCount: 0, evidenceEligible: true },
+      { ...base, id: "evidence-3", hintCount: 0, evidenceEligible: true },
+    ],
     requiredConceptIds: [demoLearningIds.concepts.triangleArea],
+    activeMisconceptionIds: [],
   });
   assert.equal(accepted.next, 1);
   assert.deepEqual(accepted.demonstratedConceptIds, [demoLearningIds.concepts.triangleArea]);
+});
+
+test("mastery policy guards the 0.8 threshold with coverage, evidence and misconception rules", () => {
+  const evidence: CheckpointEvidence = {
+    id: "mastery-policy-1",
+    studentId: athenaDemoIds.students.lucia,
+    topicId: athenaDemoIds.topics.geometry,
+    conceptId: demoLearningIds.concepts.triangleArea,
+    questionId: demoLearningIds.questions.checkpointTriangleArea,
+    correct: true,
+    score: 1,
+    difficulty: 0.6,
+    strategy: "worked_example",
+    hintCount: 0,
+    evidenceEligible: true,
+    misconceptionResolved: true,
+    submittedAt: "2026-10-25T12:00:00.000Z",
+  };
+  const oneAttempt = calculateMastery({
+    previous: 0,
+    attempts: [evidence],
+    requiredConceptIds: [demoLearningIds.concepts.triangleArea],
+    activeMisconceptionIds: [],
+  });
+  assert.equal(masteryPolicy.defaultThreshold, 0.8);
+  assert.equal(oneAttempt.next, 0.79);
+
+  const twoAttempts = [evidence, { ...evidence, id: "mastery-policy-2" }];
+  const missingCoverage = calculateMastery({
+    previous: 0,
+    attempts: twoAttempts,
+    requiredConceptIds: [
+      demoLearningIds.concepts.triangleArea,
+      demoLearningIds.concepts.triangleBaseHeight,
+    ],
+    activeMisconceptionIds: [],
+  });
+  assert.equal(missingCoverage.next, 0.79);
+
+  const activeMisconception = calculateMastery({
+    previous: 0,
+    attempts: twoAttempts,
+    requiredConceptIds: [demoLearningIds.concepts.triangleArea],
+    activeMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
+  });
+  assert.equal(activeMisconception.next, 0.79);
+
+  const mastered = calculateMastery({
+    previous: 0,
+    attempts: twoAttempts,
+    requiredConceptIds: [demoLearningIds.concepts.triangleArea],
+    activeMisconceptionIds: [],
+  });
+  assert.equal(mastered.next, 1);
+  assert.throws(
+    () =>
+      calculateMastery({
+        previous: 0,
+        attempts: [],
+        requiredConceptIds: [],
+        masteryThreshold: 2,
+      }),
+    /masteryThreshold/,
+  );
 });
 
 test("strategy learning updates its posterior and failed attempts force a different strategy", () => {
@@ -99,7 +171,7 @@ test("strategy learning updates its posterior and failed attempts force a differ
   const posterior = updateStrategyPosterior(
     {
       strategy: "worked_example",
-      contextKey: "geometry:missing_half:foundation",
+      contextKey: demoStrategyContextKeys.triangleMisconceptionDeveloping,
       alpha: 1,
       beta: 1,
       observations: 0,
@@ -139,7 +211,13 @@ test("adaptive selection enables the four text-renderable teaching strategies", 
     assert.ok(automaticallySelectableTeachingStrategies.includes(strategy));
     assert.equal(
       selectTeachingStrategy({
-        posteriors: initializeStrategyPosteriors("geometry:missing_half:new-context"),
+        posteriors: initializeStrategyPosteriors(
+          createStrategyContextKey({
+            conceptId: demoLearningIds.concepts.triangleArea,
+            purpose: "foundation",
+            difficulty: 0.5,
+          }),
+        ),
         allowedStrategies: [strategy],
         random: seededRandom(42),
       }),
@@ -148,6 +226,22 @@ test("adaptive selection enables the four text-renderable teaching strategies", 
     assert.ok(getTeachingStrategyInstruction(strategy).length > 20);
   }
   assert.equal(new Set<string>(automaticallySelectableTeachingStrategies).has("podcast"), false);
+});
+
+test("strategy contexts use concept, purpose, difficulty band and optional misconception", () => {
+  assert.equal(classifyStrategyDifficulty(0.39), "introductory");
+  assert.equal(classifyStrategyDifficulty(0.4), "developing");
+  assert.equal(classifyStrategyDifficulty(0.69), "developing");
+  assert.equal(classifyStrategyDifficulty(0.7), "advanced");
+  assert.equal(
+    createStrategyContextKey({
+      conceptId: demoLearningIds.concepts.triangleArea,
+      purpose: "misconception_repair",
+      difficulty: 0.6,
+      misconceptionId: demoLearningIds.misconceptions.triangleMissingHalf,
+    }),
+    demoStrategyContextKeys.triangleMisconceptionDeveloping,
+  );
 });
 
 test("recommendations respect prerequisites and retention uses spaced intervals", () => {
@@ -823,7 +917,7 @@ test("Supabase adapters satisfy assessment and core learning repository contract
     rubric_features: [],
     passing_score: null,
     misconception_answers: { "60": demoLearningIds.misconceptions.triangleMissingHalf },
-    strategy_context_key: "geometry:missing_half:foundation",
+    strategy_context_key: demoStrategyContextKeys.triangleMisconceptionDeveloping,
     active: true,
   });
   await rest.insert("learning_questions", {
@@ -850,7 +944,7 @@ test("Supabase adapters satisfy assessment and core learning repository contract
     ],
     passing_score: 1,
     misconception_answers: {},
-    strategy_context_key: "geometry:missing_half:explanation",
+    strategy_context_key: demoStrategyContextKeys.triangleExplanationDeveloping,
     active: true,
   });
   const assessments = new SupabaseAssessmentRepository(rest);
@@ -873,7 +967,11 @@ test("Supabase adapters satisfy assessment and core learning repository contract
     (
       await repository.getStrategyPosteriors(
         athenaDemoIds.students.lucia,
-        "geometry:missing_half:new-context",
+        createStrategyContextKey({
+          conceptId: demoLearningIds.concepts.triangleArea,
+          purpose: "foundation",
+          difficulty: 0.5,
+        }),
       )
     ).map((posterior) => posterior.strategy),
     [...automaticallySelectableTeachingStrategies],
@@ -929,7 +1027,7 @@ test("Supabase adapters satisfy assessment and core learning repository contract
     topicId: mastery.topicId,
     conceptId: demoLearningIds.concepts.triangleArea,
     strategy: "visual_decomposition" as const,
-    contextKey: "geometry:missing_half:foundation",
+    contextKey: demoStrategyContextKeys.triangleMisconceptionDeveloping,
     beforeScore: 0,
     afterScore: 1,
     misconceptionResolved: true,

@@ -42,6 +42,37 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
   deterministic repeated-failure signals
 - persistent misconception memory with identification, resolution and supporting evidence IDs
 
+## Frozen v1 learning policies
+
+### Deterministic mastery
+
+- Default mastery threshold: `0.80`.
+- Only `evidenceEligible` checkpoint evidence counts; hinted attempts are excluded.
+- Performance is difficulty-weighted with `weight = 0.5 + (difficulty * 0.5)`.
+- Score: `70% performance + 20% required-concept coverage + 10% misconception resolution`.
+- A concept is demonstrated by a correct eligible response scoring at least `0.80`.
+- First threshold crossing requires full required-concept coverage, at least two eligible attempts and
+  no active misconception. Until then, the score is capped at `0.79`.
+- Mastery never decreases. Retention, tutor usage, engagement and AI usage cannot independently
+  raise it.
+- Confidence is `60% coverage + 40% evidence sufficiency`, with three attempts representing full
+  evidence sufficiency.
+
+### Strategy contexts
+
+The v1 contextual-bandit key uses four dimensions:
+
+- stable concept ID;
+- lesson purpose: `foundation`, `misconception_repair`, `transfer`, `explanation` or `retention`;
+- difficulty band: `introductory` (`< 0.40`), `developing` (`0.40–0.69`) or `advanced`
+  (`>= 0.70`);
+- stable misconception ID when one is being repaired, otherwise `none`.
+
+Keys are versioned, for example
+`v1|concept=math.geometry.triangle_area|purpose=misconception_repair|difficulty=developing|misconception=math.geometry.triangle_area.missing_half`.
+Question IDs, language, demographics and self-reported learning-style labels are deliberately not
+context dimensions.
+
 ## Integration boundaries
 
 `CurriculumContextPort` is the seam for Vianey's authorized, cited retrieval implementation.
