@@ -47,6 +47,18 @@ importers:
       '@athena/ai':
         specifier: workspace:*
         version: link:../../ai
+      '@athena/analytics':
+        specifier: workspace:*
+        version: link:../modules/analytics
+      '@athena/curriculum':
+        specifier: workspace:*
+        version: link:../modules/curriculum
+      '@athena/learning':
+        specifier: workspace:*
+        version: link:../modules/learning
+      '@athena/platform':
+        specifier: workspace:*
+        version: link:../modules/platform
       '@athena/shared':
         specifier: workspace:*
         version: link:../../shared
@@ -75,6 +87,70 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.23.15
+
+  backend/modules/analytics:
+    dependencies:
+      '@athena/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@athena/shared':
+        specifier: workspace:*
+        version: link:../../../shared
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.2.0
+        version: 5.12.7
+
+  backend/modules/curriculum:
+    dependencies:
+      '@athena/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@athena/shared':
+        specifier: workspace:*
+        version: link:../../../shared
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.2.0
+        version: 5.12.7
+
+  backend/modules/learning:
+    dependencies:
+      '@athena/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@athena/shared':
+        specifier: workspace:*
+        version: link:../../../shared
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      fastify:
+        specifier: ^5.2.0
+        version: 5.12.7
+
+  backend/modules/platform:
+    dependencies:
+      '@athena/shared':
+        specifier: workspace:*
+        version: link:../../../shared
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.5
+      fastify:
+        specifier: ^5.2.0
+        version: 5.12.7
 
   backend/modules/world:
     dependencies:

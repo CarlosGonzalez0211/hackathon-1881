@@ -1,8 +1,14 @@
 import { z } from "zod";
 
 /** Proposed shared contracts for frontend and backend. */
+export * from "./common.js";
+export * from "./events.js";
+export * from "./platform.js";
+export * from "./curriculum.js";
+export * from "./analytics.js";
 export * from "./learning.js";
 export * from "./mocks.js";
+export * from "./mocks/index.js";
 export * from "./world.js";
 
 export const healthResponseSchema = z.object({

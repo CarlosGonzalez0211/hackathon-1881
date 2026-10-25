@@ -17,6 +17,10 @@
     "resend": "^4.0.1",
     "zod": "^3.24.1",
     "@athena/ai": "workspace:*",
+    "@athena/analytics": "workspace:*",
+    "@athena/curriculum": "workspace:*",
+    "@athena/learning": "workspace:*",
+    "@athena/platform": "workspace:*",
     "@athena/world": "workspace:*"
   },
   "devDependencies": {
