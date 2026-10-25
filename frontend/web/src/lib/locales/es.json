@@ -225,5 +225,10 @@
   "Visit": "Visitar",
   "Cancel": "Cancelar",
   "Class directory": "Directorio de la clase",
-  "YOUR LITTLE WORLD": "TU PEQUEÑO MUNDO"
+  "YOUR LITTLE WORLD": "TU PEQUEÑO MUNDO",
+  "Email": "Correo electrónico",
+  "Password": "Contraseña",
+  "Signing in…": "Iniciando sesión…",
+  "Sign in with email": "Iniciar sesión con correo",
+  "or": "o"
 }
