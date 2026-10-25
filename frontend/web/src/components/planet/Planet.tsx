@@ -2,6 +2,8 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { HouseState, PlanetState } from "@athena/shared";
 import type { EngineStats, ProjectedHouse, ProjectedPlanet, SurfaceHandle } from "@athena/engine3d";
+import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
+import type { Volumes } from "@/features/world/components/SoundControls";
 export interface PlanetProps {
   state: PlanetState;
   mode: "surface" | "orbit";
@@ -9,16 +11,11 @@ export interface PlanetProps {
   onPlanetClick?: (planet: PlanetState) => void;
   paused?: boolean;
   muted?: boolean;
+  /** Music and effects volumes (0-1), applied live. */
+  volumes?: Volumes;
   onStats?: (stats: EngineStats) => void;
 }
 const OrbitContext = createContext<{ positions: ProjectedPlanet[] } | null>(null);
-const symbols = { locked: "◇", available: "⌂", in_progress: "◐", done: "✓" };
-const names = {
-  locked: "Bloqueado",
-  available: "Disponible",
-  in_progress: "En progreso",
-  done: "Completado",
-};
 export function Planet(props: PlanetProps) {
   return props.mode === "orbit" ? <OrbitPlanet {...props} /> : <SurfacePlanet {...props} />;
 }
@@ -47,6 +44,7 @@ function SurfacePlanet({
   onHouseClick,
   paused = false,
   muted = true,
+  volumes,
   onStats,
 }: PlanetProps) {
   const host = useRef<HTMLDivElement>(null);
@@ -66,6 +64,7 @@ function SurfacePlanet({
         const instance = await createSurfaceEngine(host.current, {
           state,
           signal: abort.signal,
+          athenaAssets: process.env.NEXT_PUBLIC_ATHENA_ASSETS !== "false",
           onHouseClick: (house) => callbacks.current.onHouseClick?.(house),
           onStats: (stats) => callbacks.current.onStats?.(stats),
           onProjection: (points) => {
@@ -94,6 +93,9 @@ function SurfacePlanet({
   useEffect(() => handle.current?.update(state), [state]);
   useEffect(() => handle.current?.setPaused(paused), [paused]);
   useEffect(() => handle.current?.setMuted(muted), [muted, phase]);
+  useEffect(() => {
+    if (volumes) handle.current?.setVolumes(volumes);
+  }, [volumes, phase]);
   return (
     <div className="scene" data-engine-status={phase} data-renderer="extracted-three">
       <div ref={host} className="engine-host" aria-label="Mundo 3D de Athena" />
@@ -116,16 +118,31 @@ function SurfacePlanet({
           .map((marker) => {
             const house = state.houses.find((item) => item.slot === marker.slot);
             if (!house) return null;
+            // Far away the marker is only a wayfinding label (clicks pass through to the world
+            // so the avatar can walk there). It becomes a button once the student is close
+            // enough to press E: the same reach rule the engine uses for the key.
+            if (!marker.inReach)
+              return (
+                <span
+                  key={house.topicId}
+                  className={`house-marker far ${house.status}`}
+                  style={{ left: marker.x, top: marker.y }}
+                >
+                  <StateIcon status={house.status} />
+                  <span>{house.title}</span>
+                </span>
+              );
             return (
               <button
                 key={house.topicId}
-                className={`house-marker ${house.status}`}
+                className={`house-marker near ${house.status}`}
                 style={{ left: marker.x, top: marker.y }}
                 onClick={() => onHouseClick?.(house)}
-                aria-label={`${house.title}: ${names[house.status]}`}
+                aria-label={`Entrar a ${house.title}: ${stateLabel(house.status)}`}
               >
-                <span aria-hidden="true">{symbols[house.status]}</span>
+                <StateIcon status={house.status} />
                 <span>{house.title}</span>
+                <kbd aria-hidden="true">E</kbd>
               </button>
             );
           })}
@@ -160,6 +177,7 @@ export function OrbitCanvas({
         if (abort.signal.aborted) return;
         const instance = await createOrbitEngine(host.current, states, {
           signal: abort.signal,
+          athenaAssets: process.env.NEXT_PUBLIC_ATHENA_ASSETS !== "false",
           onPlanetClick: (planet) => callbacks.current.onPlanetClick?.(planet),
           onStats: (stats) => callbacks.current.onStats?.(stats),
           onProjection: (next) => {
