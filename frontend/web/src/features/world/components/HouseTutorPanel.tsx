@@ -1,7 +1,5 @@
 "use client";
-import { t } from "@/lib/i18n";
-
-import styles from "./HousePage.module.css";
+import { TutorSession } from "@/features/learning";
 
 /**
  * Aprender tab. Slot owned by Learning (P2): `POST /api/learning/session` with these props,
@@ -15,16 +13,6 @@ export function HouseTutorPanel(props: {
   onProgress?: () => void;
 }) {
   return (
-    <div className={styles.compact} data-topic={props.topicId} data-entry={props.entryId}>
-      <h2 className={styles.subheading}>{t("Coming soon: your Athena tutor")}</h2>
-      <p>
-        {t(
-          "Learn with explanations grounded in your teacher’s material, hints, and checkpoints. Progress grows as you show what you’ve learned.",
-        )}
-      </p>
-      <button className={styles.primary} disabled>
-        {t("Start learning session")}
-      </button>
-    </div>
+    <TutorSession studentId={props.studentId} topicId={props.topicId} entryId={props.entryId} />
   );
 }

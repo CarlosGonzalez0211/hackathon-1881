@@ -1,5 +1,5 @@
-import { useMocks } from "@/lib/mode";
-import { supabaseBrowser } from "@/lib/supabase";
+import { useMocks } from "./mode";
+import { supabaseBrowser } from "./supabase";
 
 // Origin of the API. Locally http://localhost:4000; empty on Vercel (same origin, /api/* is routed).
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL ?? "";

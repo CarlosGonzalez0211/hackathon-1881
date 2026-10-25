@@ -7,6 +7,7 @@ import { platformRoutes } from "@athena/platform";
 import { worldRoutes } from "@athena/world";
 import { analyticsOptionsFor } from "./analytics.js";
 import { contentCurriculumContextFor, contentOptionsFor } from "./content.js";
+import { learningOptionsFor } from "./learning.js";
 import { worldOptionsFor } from "./world.js";
 
 /**
@@ -30,7 +31,7 @@ export const modulePlugins: { name: string; plugin: (app: FastifyInstance) => Pr
     name: "learning",
     plugin: (app) => {
       const curriculumContext = contentCurriculumContextFor(app, contentOptions(app));
-      return learningRoutes(app, curriculumContext ? { curriculumContext } : {});
+      return learningRoutes(app, learningOptionsFor(curriculumContext));
     },
   },
   { name: "analytics", plugin: (app) => analyticsRoutes(app, analyticsOptionsFor()) },
