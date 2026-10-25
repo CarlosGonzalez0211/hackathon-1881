@@ -10,6 +10,7 @@ import {
   type StrategyObservation,
   type StrategyPosterior,
   type StudentTopicMastery,
+  type StudentLearningPreferences,
 } from "@athena/shared";
 
 export interface LearningRepository {
@@ -39,6 +40,10 @@ export interface LearningRepository {
   saveStrategyObservation(value: StrategyObservation): Promise<void>;
   saveRetention(value: RetentionSchedule): Promise<void>;
   listRetention(studentId: string): Promise<RetentionSchedule[]>;
+  getLearningPreferences(studentId: string): Promise<StudentLearningPreferences | null>;
+  saveLearningPreferences(value: StudentLearningPreferences): Promise<void>;
+  getTeacherPriority(courseId: string, topicId: string): Promise<number>;
+  saveTeacherPriority(courseId: string, topicId: string, priority: number): Promise<void>;
   saveRetentionEvidence(value: RetentionEvidence): Promise<void>;
   listRetentionEvidence(studentId: string, conceptId?: string): Promise<RetentionEvidence[]>;
   getRetentionResultBySubmissionId(
@@ -58,6 +63,8 @@ export class InMemoryLearningRepository implements LearningRepository {
   private readonly posteriors = new Map<string, StrategyPosterior>();
   private readonly observations: StrategyObservation[] = [];
   private readonly retention = new Map<string, RetentionSchedule>();
+  private readonly learningPreferences = new Map<string, StudentLearningPreferences>();
+  private readonly teacherPriorities = new Map<string, number>();
   private readonly retentionEvidence: RetentionEvidence[] = [];
   private readonly retentionResults = new Map<string, RetentionCheckResult>();
 
@@ -147,6 +154,22 @@ export class InMemoryLearningRepository implements LearningRepository {
 
   async listRetention(studentId: string) {
     return [...this.retention.values()].filter((value) => value.studentId === studentId);
+  }
+
+  async getLearningPreferences(studentId: string) {
+    return this.learningPreferences.get(studentId) ?? null;
+  }
+
+  async saveLearningPreferences(value: StudentLearningPreferences) {
+    this.learningPreferences.set(value.studentId, value);
+  }
+
+  async getTeacherPriority(courseId: string, topicId: string) {
+    return this.teacherPriorities.get(key(courseId, topicId)) ?? 0;
+  }
+
+  async saveTeacherPriority(courseId: string, topicId: string, priority: number) {
+    this.teacherPriorities.set(key(courseId, topicId), priority);
   }
 
   async saveRetentionEvidence(value: RetentionEvidence) {

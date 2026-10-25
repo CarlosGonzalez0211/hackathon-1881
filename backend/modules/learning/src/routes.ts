@@ -5,15 +5,28 @@ import {
   checkpointSubmissionSchema,
   diagnosticSubmissionSchema,
   retentionCheckSubmissionSchema,
+  studentLearningPreferencesUpdateSchema,
+  teacherPriorityOverrideSchema,
   type AssessmentQuiz,
   type CheckpointResult,
   type DiagnosticResult,
   type RetentionCheckResult,
   type StudentLearningState,
+  type StudentLearningPreferences,
+  type TeacherPriorityOverride,
+  type TopicRecommendation,
 } from "@athena/shared";
 import { InMemoryAssessmentRepository, type AssessmentRepository } from "./assessment.js";
 import { InMemoryLearningRepository, type LearningRepository } from "./repository.js";
 import { LearningService } from "./service.js";
+import {
+  InMemoryRecommendationCatalog,
+  type RecommendationCatalogPort,
+} from "./recommendation-catalog.js";
+import {
+  MockMisconceptionClassifier,
+  type MisconceptionClassifier,
+} from "./misconception-classifier.js";
 
 const studentParamsSchema = z.object({ studentId: z.string().min(1).max(200) });
 const quizParamsSchema = z.object({ topicId: z.string().min(1).max(200) });
@@ -23,10 +36,17 @@ const quizQuerySchema = z.object({
   purpose: assessmentPurposeSchema.default("checkpoint"),
   limit: z.coerce.number().int().min(1).max(10).default(1),
 });
+const recommendationQuerySchema = z.object({ courseId: z.string().min(1).max(200) });
+const courseTopicParamsSchema = z.object({
+  courseId: z.string().min(1).max(200),
+  topicId: z.string().min(1).max(200),
+});
 
 export interface LearningRoutesOptions {
   repository?: LearningRepository;
   assessments?: AssessmentRepository;
+  recommendationCatalog?: RecommendationCatalogPort;
+  misconceptionClassifier?: MisconceptionClassifier;
   random?: () => number;
 }
 
@@ -39,6 +59,8 @@ export async function learningRoutes(app: FastifyInstance, options: LearningRout
     app.platform.events,
     app.platform.clock,
     app.platform.ids,
+    options.recommendationCatalog ?? new InMemoryRecommendationCatalog(),
+    options.misconceptionClassifier ?? new MockMisconceptionClassifier(),
     options.random,
   );
 
@@ -58,5 +80,35 @@ export async function learningRoutes(app: FastifyInstance, options: LearningRout
   );
   app.get<{ Reply: StudentLearningState }>("/learning/student/:studentId/state", async (request) =>
     service.getStudentState(request.auth, studentParamsSchema.parse(request.params).studentId),
+  );
+  app.put<{ Reply: StudentLearningPreferences }>(
+    "/learning/student/:studentId/preferences",
+    async (request) =>
+      service.updateLearningPreferences(
+        request.auth,
+        studentParamsSchema.parse(request.params).studentId,
+        studentLearningPreferencesUpdateSchema.parse(request.body),
+      ),
+  );
+  app.get<{ Reply: TopicRecommendation }>(
+    "/learning/student/:studentId/recommendation",
+    async (request) => {
+      const studentId = studentParamsSchema.parse(request.params).studentId;
+      const query = recommendationQuerySchema.parse(request.query);
+      return service.getRecommendation(request.auth, studentId, query.courseId);
+    },
+  );
+  app.put<{ Reply: TeacherPriorityOverride }>(
+    "/learning/course/:courseId/topics/:topicId/priority",
+    async (request) => {
+      const params = courseTopicParamsSchema.parse(request.params);
+      const input = teacherPriorityOverrideSchema.parse(request.body);
+      return service.setTeacherPriority(
+        request.auth,
+        params.courseId,
+        params.topicId,
+        input.priority,
+      );
+    },
   );
 }

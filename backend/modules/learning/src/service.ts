@@ -3,7 +3,9 @@ import {
   checkpointResultSchema,
   diagnosticResultSchema,
   retentionCheckResultSchema,
+  studentLearningPreferencesSchema,
   studentLearningStateSchema,
+  topicRecommendationSchema,
   type AssessmentPurpose,
   type AssessmentQuiz,
   type AuthContext,
@@ -14,12 +16,17 @@ import {
   type ConceptResult,
   type DiagnosticResult,
   type DiagnosticSubmission,
+  type MisconceptionCandidate,
   type RetentionCheckResult,
   type RetentionCheckSubmission,
   type RetentionEvidence,
   type StrategyObservation,
+  type StudentLearningPreferences,
+  type StudentLearningPreferencesUpdate,
   type StudentLearningState,
   type StudentTopicMastery,
+  type TeachingStrategy,
+  type TopicRecommendation,
 } from "@athena/shared";
 import {
   PlatformError,
@@ -36,11 +43,17 @@ import {
   selectTeachingStrategy,
   updateStrategyPosterior,
 } from "./domain/strategy-selection.js";
-import { updateKnowledgeProbability } from "./domain/knowledge-tracing.js";
+import {
+  getKnowledgeTracingModel,
+  updateKnowledgeProbability,
+} from "./domain/knowledge-tracing.js";
 import { calculateMastery } from "./domain/mastery.js";
 import { scheduleRetention } from "./domain/retention.js";
 import { selectAssessmentQuestions } from "./domain/question-selection.js";
+import { rankRecommendations } from "./domain/recommendations.js";
+import type { RecommendationCatalogPort } from "./recommendation-catalog.js";
 import type { LearningRepository } from "./repository.js";
+import type { MisconceptionClassifier } from "./misconception-classifier.js";
 
 export class LearningService {
   constructor(
@@ -50,6 +63,8 @@ export class LearningService {
     private readonly events: DomainEventStore,
     private readonly clock: Clock,
     private readonly ids: IdGenerator,
+    private readonly recommendationCatalog: RecommendationCatalogPort,
+    private readonly misconceptionClassifier: MisconceptionClassifier,
     private readonly random: () => number = Math.random,
   ) {}
 
@@ -73,14 +88,27 @@ export class LearningService {
     );
 
     const completedAt = this.clock.now().toISOString();
-    const concepts = this.toConceptResults(scored);
+    const enrichedScored = await Promise.all(
+      scored.map(async (item) => ({
+        ...item,
+        misconceptionCandidates:
+          !item.result.correct && !item.result.misconceptionId
+            ? await this.misconceptionClassifier.classify({
+                questionId: item.result.question.id,
+                conceptId: item.result.question.conceptId,
+                answer: item.answer.answer,
+              })
+            : [],
+      })),
+    );
+    const concepts = this.toConceptResults(enrichedScored);
     const misconceptionIds = [...new Set(concepts.flatMap((value) => value.misconceptionIds))];
     await this.repository.setActiveMisconceptions(
       submission.studentId,
       submission.topicId,
       misconceptionIds,
     );
-    for (const item of scored) {
+    for (const item of enrichedScored) {
       await this.updateKnowledge(
         submission.studentId,
         item.result.question.conceptId,
@@ -290,12 +318,55 @@ export class LearningService {
       };
       await this.repository.saveStrategyObservation(observation);
     }
-    const recommendedStrategy = selectTeachingStrategy({
-      posteriors: updatedPosteriors,
-      previousStrategy: submission.strategy,
-      previousAttemptFailed: !graded.correct,
-      allowedStrategies: ["worked_example", "visual_decomposition", "guided_questioning"],
-      random: this.random,
+    const preferences = await this.repository.getLearningPreferences(submission.studentId);
+    if (
+      submission.preferredNextStrategy &&
+      preferences?.blockedStrategies.includes(submission.preferredNextStrategy)
+    ) {
+      throw new PlatformError("The requested strategy is blocked by learning preferences", 400);
+    }
+    const defaultStrategies: TeachingStrategy[] = [
+      "worked_example",
+      "visual_decomposition",
+      "guided_questioning",
+    ];
+    const allowedStrategies = defaultStrategies.filter(
+      (strategy) => !preferences?.blockedStrategies.includes(strategy),
+    );
+    if (allowedStrategies.length === 0) {
+      throw new PlatformError("Learning preferences block every available strategy", 400);
+    }
+    const recentConceptEvidence = allEvidence
+      .filter((attempt) => attempt.conceptId === submission.conceptId)
+      .slice(-3);
+    const educatorInterventionRecommended =
+      recentConceptEvidence.length >= 3 &&
+      recentConceptEvidence.every((attempt) => !attempt.correct);
+    const preferredColdStart = preferences?.preferredStrategies.find((strategy) =>
+      allowedStrategies.includes(strategy),
+    );
+    const recommendedStrategy =
+      submission.preferredNextStrategy ??
+      (updatedPosteriors.every((posterior) => posterior.observations === 0) && preferredColdStart
+        ? preferredColdStart
+        : selectTeachingStrategy({
+            posteriors: updatedPosteriors,
+            previousStrategy: submission.strategy,
+            previousAttemptFailed: !graded.correct,
+            allowedStrategies,
+            random: this.random,
+          }));
+    const strategyReason = submission.preferredNextStrategy
+      ? "student_override"
+      : educatorInterventionRecommended
+        ? "repeated_failure_intervention"
+        : graded.correct
+          ? "highest_expected_learning_gain"
+          : "checkpoint_failed";
+    const strategyExplanation = explainStrategyDecision({
+      selected: recommendedStrategy,
+      previous: submission.strategy,
+      reason: strategyReason,
     });
 
     const previousRetention = (await this.repository.listRetention(submission.studentId)).find(
@@ -361,7 +432,9 @@ export class LearningService {
           topicId: submission.topicId,
           previousStrategy: submission.strategy,
           selectedStrategy: recommendedStrategy,
-          reason: graded.correct ? "highest_expected_learning_gain" : "checkpoint_failed",
+          reason: strategyReason,
+          explanation: strategyExplanation,
+          educatorInterventionRecommended,
         },
       });
     }
@@ -372,6 +445,9 @@ export class LearningService {
       activeMisconceptionIds: activeAfter,
       recommendedStrategy,
       strategyChanged: recommendedStrategy !== submission.strategy,
+      strategyReason,
+      strategyExplanation,
+      educatorInterventionRecommended,
       retention,
     });
     if (submission.submissionId) {
@@ -542,6 +618,110 @@ export class LearningService {
     });
   }
 
+  async updateLearningPreferences(
+    context: AuthContext,
+    studentId: string,
+    update: StudentLearningPreferencesUpdate,
+  ): Promise<StudentLearningPreferences> {
+    if (!this.authorization.canAccessStudent(context, studentId)) {
+      throw forbidden("You cannot update this student's learning preferences");
+    }
+    const previous = await this.repository.getLearningPreferences(studentId);
+    const preferences = studentLearningPreferencesSchema.parse({
+      studentId,
+      preferredStrategies: update.preferredStrategies ?? previous?.preferredStrategies ?? [],
+      blockedStrategies: update.blockedStrategies ?? previous?.blockedStrategies ?? [],
+      requiresCaptions: update.requiresCaptions ?? previous?.requiresCaptions ?? false,
+      reducedMotion: update.reducedMotion ?? previous?.reducedMotion ?? false,
+      updatedAt: this.clock.now().toISOString(),
+    });
+    await this.repository.saveLearningPreferences(preferences);
+    return preferences;
+  }
+
+  async getRecommendation(
+    context: AuthContext,
+    studentId: string,
+    courseId: string,
+  ): Promise<TopicRecommendation> {
+    this.assertAccess(context, studentId, courseId);
+    const topics = await this.recommendationCatalog.listTopics(courseId);
+    if (topics.length === 0) throw notFound("Recommendation catalog", courseId);
+    const [mastery, knowledge, activeMisconceptions, retention] = await Promise.all([
+      this.repository.listMastery(studentId),
+      this.repository.listKnowledge(studentId),
+      this.repository.listActiveMisconceptions(studentId),
+      this.repository.listRetention(studentId),
+    ]);
+    const masteryByTopic = Object.fromEntries(
+      mastery.map((state) => [state.topicId, state.mastery]),
+    );
+    const candidates = await Promise.all(
+      topics.map(async (topic) => {
+        const conceptKnowledge = knowledge.filter((state) =>
+          topic.conceptIds.includes(state.conceptId),
+        );
+        const averageKnowledge =
+          conceptKnowledge.length === 0
+            ? (masteryByTopic[topic.topicId] ?? 0)
+            : average(conceptKnowledge.map((state) => state.probabilityKnown));
+        const hasMisconception = activeMisconceptions.some((misconceptionId) =>
+          topic.conceptIds.some((conceptId) => misconceptionId.startsWith(`${conceptId}.`)),
+        );
+        const retentionUrgency = retention.some(
+          (schedule) =>
+            topic.conceptIds.includes(schedule.conceptId) &&
+            schedule.dueAt <= this.clock.now().toISOString(),
+        )
+          ? 1
+          : 0;
+        return {
+          topicId: topic.topicId,
+          prerequisiteTopicIds: topic.prerequisiteTopicIds,
+          knowledgeGap: 1 - averageKnowledge,
+          misconceptionSeverity: hasMisconception ? 1 : 0,
+          retentionUrgency,
+          teacherPriority: await this.repository.getTeacherPriority(courseId, topic.topicId),
+        };
+      }),
+    );
+    const top = rankRecommendations({ candidates, masteryByTopic })[0];
+    if (!top) throw notFound("Eligible recommendation", studentId);
+    const reason =
+      (top.teacherPriority ?? 0) > 0
+        ? "Your teacher prioritized this topic."
+        : top.misconceptionSeverity > 0
+          ? "This topic addresses an active misconception."
+          : top.retentionUrgency > 0
+            ? "This topic is due for retention practice."
+            : "This is the largest eligible knowledge gap after prerequisite filtering.";
+    return topicRecommendationSchema.parse({
+      studentId,
+      courseId,
+      topicId: top.topicId,
+      score: top.score,
+      reason,
+      prerequisiteTopicIds: top.prerequisiteTopicIds,
+      generatedAt: this.clock.now().toISOString(),
+    });
+  }
+
+  async setTeacherPriority(
+    context: AuthContext,
+    courseId: string,
+    topicId: string,
+    priority: number,
+  ) {
+    if (context.role !== "professor" && context.role !== "admin") {
+      throw forbidden("Only professors can prioritize topics");
+    }
+    if (!this.authorization.canAccessCourse(context, courseId)) {
+      throw forbidden("You cannot access this course");
+    }
+    await this.repository.saveTeacherPriority(courseId, topicId, priority);
+    return { priority };
+  }
+
   private assertAccess(context: AuthContext, studentId: string, courseId: string) {
     if (!this.authorization.canAccessStudent(context, studentId)) {
       throw forbidden("You cannot update this student");
@@ -552,7 +732,11 @@ export class LearningService {
   }
 
   private toConceptResults(
-    scored: { answer: { confidence?: number }; result: ScoredAnswer }[],
+    scored: {
+      answer: { confidence?: number };
+      result: ScoredAnswer;
+      misconceptionCandidates: MisconceptionCandidate[];
+    }[],
   ): ConceptResult[] {
     const grouped = new Map<string, typeof scored>();
     for (const item of scored) {
@@ -578,6 +762,7 @@ export class LearningService {
             ),
           ),
         ],
+        misconceptionCandidates: values.flatMap((value) => value.misconceptionCandidates),
       };
     });
   }
@@ -589,10 +774,15 @@ export class LearningService {
     updatedAt: string,
   ) {
     const previous = await this.repository.getKnowledge(studentId, conceptId);
+    const model = getKnowledgeTracingModel(conceptId);
     const knowledge: ConceptKnowledgeState = {
       studentId,
       conceptId,
-      probabilityKnown: updateKnowledgeProbability(previous?.probabilityKnown ?? 0.2, correct),
+      probabilityKnown: updateKnowledgeProbability(
+        previous?.probabilityKnown ?? model.prior,
+        correct,
+        model,
+      ),
       evidenceCount: (previous?.evidenceCount ?? 0) + 1,
       updatedAt,
     };
@@ -604,4 +794,25 @@ function average(values: number[]) {
   return values.length === 0
     ? 0
     : values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function explainStrategyDecision(input: {
+  selected: TeachingStrategy;
+  previous: TeachingStrategy;
+  reason:
+    | "student_override"
+    | "checkpoint_failed"
+    | "highest_expected_learning_gain"
+    | "repeated_failure_intervention";
+}) {
+  if (input.reason === "student_override") {
+    return `You chose ${input.selected.replaceAll("_", " ")}; Athena will use it for the next explanation.`;
+  }
+  if (input.reason === "repeated_failure_intervention") {
+    return `The last attempts still show difficulty, so Athena is switching from ${input.previous.replaceAll("_", " ")} to ${input.selected.replaceAll("_", " ")} and recommending educator support.`;
+  }
+  if (input.reason === "checkpoint_failed") {
+    return `The previous approach did not produce a correct checkpoint, so Athena is trying ${input.selected.replaceAll("_", " ")} next.`;
+  }
+  return `${input.selected.replaceAll("_", " ")} currently has the strongest evidence for helping with this concept.`;
 }

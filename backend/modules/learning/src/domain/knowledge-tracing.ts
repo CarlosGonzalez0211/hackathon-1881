@@ -4,11 +4,33 @@ export interface KnowledgeTracingParameters {
   slip: number;
 }
 
+export interface KnowledgeTracingModel extends KnowledgeTracingParameters {
+  prior: number;
+}
+
 export const defaultKnowledgeTracingParameters: KnowledgeTracingParameters = {
   learn: 0.15,
   guess: 0.2,
   slip: 0.1,
 };
+
+export const defaultKnowledgeTracingModel: KnowledgeTracingModel = {
+  prior: 0.2,
+  ...defaultKnowledgeTracingParameters,
+};
+
+const conceptModels: Readonly<Record<string, KnowledgeTracingModel>> = {
+  "math.geometry.triangle_area": {
+    prior: 0.2,
+    learn: 0.15,
+    guess: 0.2,
+    slip: 0.1,
+  },
+};
+
+export function getKnowledgeTracingModel(conceptId: string): KnowledgeTracingModel {
+  return conceptModels[conceptId] ?? defaultKnowledgeTracingModel;
+}
 
 /** Bayesian Knowledge Tracing estimate. This is advisory and never grants mastery. */
 export function updateKnowledgeProbability(

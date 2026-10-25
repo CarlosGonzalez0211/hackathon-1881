@@ -10,15 +10,21 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 - `GET /api/learning/quiz/:topicId`
 - `POST /api/learning/retention-check`
 - `GET /api/learning/student/:studentId/state`
+- `PUT /api/learning/student/:studentId/preferences`
+- `GET /api/learning/student/:studentId/recommendation`
+- `PUT /api/learning/course/:courseId/topics/:topicId/priority`
 - Bayesian Knowledge Tracing as an advisory estimate
 - guarded contextual Thompson sampling primitives
+- student strategy overrides, accessibility blocks, explanations and repeated-failure intervention
 - deterministic mastery calculation that excludes hinted attempts
 - prerequisite-filtered recommendation ranking
+- explainable recommendations with professor priority overrides
 - spaced-retention scheduling
 - deterministic adaptive question selection using required-concept coverage, active misconceptions,
   knowledge-adjusted difficulty, transfer practice and recent-question avoidance
 - in-memory repositories and a deterministic assessment catalog
 - domain events for diagnostics, misconceptions, checkpoints, mastery and strategy changes
+- structured review-required misconception candidates when deterministic patterns do not match
 
 ## Integration boundaries
 

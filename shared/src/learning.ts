@@ -92,6 +92,47 @@ export const teachingStrategySchema = z.enum([
 ]);
 export type TeachingStrategy = z.infer<typeof teachingStrategySchema>;
 
+export const studentLearningPreferencesSchema = z
+  .object({
+    studentId: idSchema,
+    preferredStrategies: z.array(teachingStrategySchema).max(5).default([]),
+    blockedStrategies: z.array(teachingStrategySchema).max(10).default([]),
+    requiresCaptions: z.boolean().default(false),
+    reducedMotion: z.boolean().default(false),
+    updatedAt: isoDateSchema,
+  })
+  .superRefine((preferences, ctx) => {
+    const blocked = new Set(preferences.blockedStrategies);
+    preferences.preferredStrategies.forEach((strategy, index) => {
+      if (blocked.has(strategy)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["preferredStrategies", index],
+          message: "A preferred strategy cannot also be blocked",
+        });
+      }
+    });
+  });
+export type StudentLearningPreferences = z.infer<typeof studentLearningPreferencesSchema>;
+
+export const studentLearningPreferencesUpdateSchema = z.object({
+  preferredStrategies: z.array(teachingStrategySchema).max(5).optional(),
+  blockedStrategies: z.array(teachingStrategySchema).max(10).optional(),
+  requiresCaptions: z.boolean().optional(),
+  reducedMotion: z.boolean().optional(),
+});
+export type StudentLearningPreferencesUpdate = z.infer<
+  typeof studentLearningPreferencesUpdateSchema
+>;
+
+export const strategyDecisionReasonSchema = z.enum([
+  "student_override",
+  "checkpoint_failed",
+  "highest_expected_learning_gain",
+  "repeated_failure_intervention",
+]);
+export type StrategyDecisionReason = z.infer<typeof strategyDecisionReasonSchema>;
+
 export const conceptStatusSchema = z.enum(["mastered", "partial", "struggling", "unassessed"]);
 export type ConceptStatus = z.infer<typeof conceptStatusSchema>;
 
@@ -155,12 +196,37 @@ export const assessmentQuizSchema = z
   });
 export type AssessmentQuiz = z.infer<typeof assessmentQuizSchema>;
 
+export const topicRecommendationSchema = z.object({
+  studentId: idSchema,
+  courseId: idSchema,
+  topicId: idSchema,
+  score: z.number().min(0).max(1),
+  reason: z.string().min(1),
+  prerequisiteTopicIds: z.array(idSchema),
+  generatedAt: isoDateSchema,
+});
+export type TopicRecommendation = z.infer<typeof topicRecommendationSchema>;
+
+export const teacherPriorityOverrideSchema = z.object({
+  priority: z.number().min(0).max(1),
+});
+export type TeacherPriorityOverride = z.infer<typeof teacherPriorityOverrideSchema>;
+
 export const diagnosticAnswerSchema = z.object({
   questionId: idSchema,
   answer: z.unknown(),
   confidence: z.number().min(0).max(1).optional(),
 });
 export type DiagnosticAnswer = z.infer<typeof diagnosticAnswerSchema>;
+
+export const misconceptionCandidateSchema = z.object({
+  misconceptionId: idSchema,
+  confidence: z.number().min(0).max(1),
+  rationale: z.string().min(1),
+  source: z.literal("model_candidate"),
+  reviewRequired: z.literal(true),
+});
+export type MisconceptionCandidate = z.infer<typeof misconceptionCandidateSchema>;
 
 export const diagnosticSubmissionSchema = z.object({
   studentId: idSchema,
@@ -177,6 +243,7 @@ export const conceptResultSchema = z.object({
   confidence: z.number().min(0).max(1),
   status: conceptStatusSchema,
   misconceptionIds: z.array(idSchema),
+  misconceptionCandidates: z.array(misconceptionCandidateSchema),
 });
 export type ConceptResult = z.infer<typeof conceptResultSchema>;
 
@@ -207,6 +274,7 @@ export const checkpointSubmissionSchema = z.object({
   questionId: idSchema,
   answer: z.unknown(),
   strategy: teachingStrategySchema,
+  preferredNextStrategy: teachingStrategySchema.optional(),
   hintCount: z.number().int().nonnegative().default(0),
 });
 export type CheckpointSubmission = z.infer<typeof checkpointSubmissionSchema>;
@@ -322,6 +390,9 @@ export const checkpointResultSchema = z.object({
   activeMisconceptionIds: z.array(idSchema),
   recommendedStrategy: teachingStrategySchema,
   strategyChanged: z.boolean(),
+  strategyReason: strategyDecisionReasonSchema,
+  strategyExplanation: z.string().min(1),
+  educatorInterventionRecommended: z.boolean(),
   retention: retentionScheduleSchema.optional(),
 });
 export type CheckpointResult = z.infer<typeof checkpointResultSchema>;

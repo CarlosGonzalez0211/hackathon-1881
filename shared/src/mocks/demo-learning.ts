@@ -121,6 +121,7 @@ export const demoDiagnosticResult: DiagnosticResult = {
       confidence: 0.9,
       status: "struggling",
       misconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
+      misconceptionCandidates: [],
     },
   ],
   strengths: ["Reconoce base y altura"],

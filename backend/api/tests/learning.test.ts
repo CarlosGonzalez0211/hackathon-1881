@@ -14,6 +14,7 @@ import {
 import {
   calculateMastery,
   calculateStrategyReward,
+  getKnowledgeTracingModel,
   InMemoryAssessmentRepository,
   rankRecommendations,
   scheduleRetention,
@@ -26,6 +27,8 @@ import { fixedClock, sequentialIdGenerator } from "@athena/platform";
 import { createApp } from "../src/app.js";
 
 test("knowledge tracing is advisory and reacts to evidence", () => {
+  const model = getKnowledgeTracingModel(demoLearningIds.concepts.triangleArea);
+  assert.deepEqual(model, { prior: 0.2, learn: 0.15, guess: 0.2, slip: 0.1 });
   const correct = updateKnowledgeProbability(0.2, true);
   const incorrect = updateKnowledgeProbability(0.2, false);
   assert.ok(correct > 0.2);
@@ -245,6 +248,35 @@ test("diagnostics can assess multiple concepts in one submission", async () => {
   }
 });
 
+test("unknown wrong answers produce review-required misconception candidates", async () => {
+  const app = await createApp({ logger: false });
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/learning/diagnostic",
+      payload: {
+        studentId: athenaDemoIds.students.lucia,
+        courseId: athenaDemoIds.course,
+        topicId: athenaDemoIds.topics.geometry,
+        answers: [
+          {
+            questionId: demoLearningIds.questions.diagnosticTriangleBaseHeight,
+            answer: "Diagonal",
+          },
+        ],
+      },
+    });
+    assert.equal(response.statusCode, 200, response.body);
+    const diagnostic = diagnosticResultSchema.parse(response.json());
+    assert.equal(diagnostic.concepts[0]?.misconceptionIds.length, 0);
+    assert.equal(diagnostic.concepts[0]?.misconceptionCandidates.length, 1);
+    assert.equal(diagnostic.concepts[0]?.misconceptionCandidates[0]?.reviewRequired, true);
+    assert.equal((await app.platform.events.list({ type: "MisconceptionIdentified" })).length, 0);
+  } finally {
+    await app.close();
+  }
+});
+
 test("quiz route returns adaptive learner-safe questions without answer keys", async () => {
   const app = await createApp({ logger: false });
   try {
@@ -329,6 +361,123 @@ test("checkpoint and retention submission ids are idempotent", async () => {
       retentionCheckResultSchema.parse(duplicateRetention.json()).evidence.id,
     );
     assert.equal((await app.platform.events.list({ type: "RetentionCheckPassed" })).length, 1);
+  } finally {
+    await app.close();
+  }
+});
+
+test("student strategy overrides stay separate from effectiveness and respect accessibility blocks", async () => {
+  const app = await createApp({ logger: false });
+  try {
+    const preferencesResponse = await app.inject({
+      method: "PUT",
+      url: `/api/learning/student/${athenaDemoIds.students.lucia}/preferences`,
+      payload: {
+        preferredStrategies: ["guided_questioning"],
+        blockedStrategies: ["podcast", "audio_summary"],
+        requiresCaptions: true,
+        reducedMotion: true,
+      },
+    });
+    assert.equal(preferencesResponse.statusCode, 200, preferencesResponse.body);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/learning/attempt",
+      payload: {
+        submissionId: "student-override-checkpoint",
+        studentId: athenaDemoIds.students.lucia,
+        courseId: athenaDemoIds.course,
+        topicId: athenaDemoIds.topics.geometry,
+        conceptId: demoLearningIds.concepts.triangleArea,
+        questionId: demoLearningIds.questions.checkpointTriangleArea,
+        answer: 60,
+        strategy: "worked_example",
+        preferredNextStrategy: "guided_questioning",
+        hintCount: 0,
+      },
+    });
+    assert.equal(response.statusCode, 200, response.body);
+    const result = checkpointResultSchema.parse(response.json());
+    assert.equal(result.recommendedStrategy, "guided_questioning");
+    assert.equal(result.strategyReason, "student_override");
+    assert.match(result.strategyExplanation, /You chose guided questioning/);
+
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/api/learning/attempt",
+      payload: {
+        studentId: athenaDemoIds.students.lucia,
+        courseId: athenaDemoIds.course,
+        topicId: athenaDemoIds.topics.geometry,
+        conceptId: demoLearningIds.concepts.triangleArea,
+        questionId: demoLearningIds.questions.checkpointTriangleArea,
+        answer: 60,
+        strategy: "worked_example",
+        preferredNextStrategy: "podcast",
+        hintCount: 0,
+      },
+    });
+    assert.equal(blocked.statusCode, 400, blocked.body);
+  } finally {
+    await app.close();
+  }
+});
+
+test("three consecutive concept failures recommend educator intervention", async () => {
+  const app = await createApp({ logger: false });
+  try {
+    let lastResult;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/learning/attempt",
+        payload: {
+          submissionId: `repeated-failure-${attempt}`,
+          studentId: athenaDemoIds.students.lucia,
+          courseId: athenaDemoIds.course,
+          topicId: athenaDemoIds.topics.geometry,
+          conceptId: demoLearningIds.concepts.triangleArea,
+          questionId: demoLearningIds.questions.checkpointTriangleArea,
+          answer: 60,
+          strategy: "worked_example",
+          hintCount: 0,
+        },
+      });
+      assert.equal(response.statusCode, 200, response.body);
+      lastResult = checkpointResultSchema.parse(response.json());
+    }
+    assert.equal(lastResult?.educatorInterventionRecommended, true);
+    assert.equal(lastResult?.strategyReason, "repeated_failure_intervention");
+    assert.match(lastResult?.strategyExplanation ?? "", /educator support/);
+  } finally {
+    await app.close();
+  }
+});
+
+test("recommendations support teacher priority overrides and explain the result", async () => {
+  const app = await createApp({ logger: false });
+  try {
+    const initial = await app.inject({
+      method: "GET",
+      url: `/api/learning/student/${athenaDemoIds.students.lucia}/recommendation?courseId=${athenaDemoIds.course}`,
+    });
+    assert.equal(initial.statusCode, 200, initial.body);
+
+    const priority = await app.inject({
+      method: "PUT",
+      url: `/api/learning/course/${athenaDemoIds.course}/topics/${athenaDemoIds.topics.geometry}/priority`,
+      payload: { priority: 1 },
+    });
+    assert.equal(priority.statusCode, 200, priority.body);
+
+    const prioritized = await app.inject({
+      method: "GET",
+      url: `/api/learning/student/${athenaDemoIds.students.lucia}/recommendation?courseId=${athenaDemoIds.course}`,
+    });
+    assert.equal(prioritized.statusCode, 200, prioritized.body);
+    assert.equal(prioritized.json().topicId, athenaDemoIds.topics.geometry);
+    assert.match(prioritized.json().reason, /teacher prioritized/);
   } finally {
     await app.close();
   }
