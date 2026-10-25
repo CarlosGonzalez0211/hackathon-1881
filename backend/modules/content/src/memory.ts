@@ -1,12 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { athenaDemoIds } from "@athena/shared";
 import type {
+  AiCallLedger,
+  ChunkMatchInput,
   ChunkRecord,
   ChunkRepository,
   CurriculumCatalogPort,
+  FlagRecord,
+  FlagRepository,
   MaterialRecord,
   MaterialRepository,
   MaterialStorage,
+  ProfilePreferencesPort,
   VersionedRecord,
   VersionedRepository,
 } from "./ports.js";
@@ -171,6 +176,31 @@ export class InMemoryChunkRepository implements ChunkRepository {
       .filter((row) => row.classId === classId && live.get(row.materialId) === row.generation)
       .map(clone);
   }
+
+  async match({ classId, query, model, topicId, limit, minSimilarity }: ChunkMatchInput) {
+    const materials = new Map(
+      (await this.materials.listByClass(classId))
+        .filter((m) => m.activeGeneration !== undefined)
+        .filter((m) => !topicId || m.topicIds.includes(topicId))
+        .map((m) => [m.id, m]),
+    );
+    return [...this.rows.values()]
+      .filter((row) => row.classId === classId && row.embeddingModel === model && row.embedding)
+      .filter((row) => materials.get(row.materialId)?.activeGeneration === row.generation)
+      .map((row) => ({
+        chunkId: row.id,
+        materialId: row.materialId,
+        materialTitle: materials.get(row.materialId)!.title,
+        pageStart: row.pageStart,
+        pageEnd: row.pageEnd,
+        sectionTitle: row.sectionTitle,
+        content: row.content,
+        similarity: cosine(row.embedding!, query),
+      }))
+      .filter((match) => match.similarity >= minSimilarity)
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, Math.min(Math.max(limit, 1), 20));
+  }
 }
 
 /**
@@ -260,5 +290,93 @@ export class InMemoryVersionedRepository<
   async softDelete(id: string, now: string) {
     const row = this.rows.get(id);
     if (row) row.deletedAt = now;
+  }
+}
+
+function cosine(a: number[], b: number[]) {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    dot += a[i]! * (b[i] ?? 0);
+    normA += a[i]! * a[i]!;
+    normB += (b[i] ?? 0) * (b[i] ?? 0);
+  }
+  return normA && normB ? dot / Math.sqrt(normA * normB) : 0;
+}
+
+/** Mock mode: every profile reads Spanish with no accessibility preferences. */
+export const defaultProfilePreferences: ProfilePreferencesPort = {
+  async get() {
+    return { locale: "es", accessibility: {} };
+  },
+};
+
+interface CallRow {
+  id: string;
+  studentId: string;
+  createdAt: number;
+  outcome: string;
+  flagCategory?: string;
+  model?: string;
+  latencyMs?: number;
+}
+
+/** Mirrors content_ai_calls and content_begin_ai_call. */
+export class InMemoryAiCallLedger implements AiCallLedger {
+  readonly rows = new Map<string, CallRow>();
+
+  async begin(input: { studentId: string; dailyLimit: number; now: Date }) {
+    const since = input.now.getTime() - 24 * 60 * 60 * 1000;
+    const usedToday = [...this.rows.values()].filter(
+      (row) =>
+        row.studentId === input.studentId &&
+        row.createdAt > since &&
+        row.outcome !== "rate_limited",
+    ).length;
+    const allowed = usedToday < input.dailyLimit;
+    const callId = randomUUID();
+    this.rows.set(callId, {
+      id: callId,
+      studentId: input.studentId,
+      createdAt: input.now.getTime(),
+      outcome: allowed ? "pending" : "rate_limited",
+    });
+    return { callId, allowed, usedToday };
+  }
+
+  async finish(
+    callId: string,
+    result: { outcome: string; flagCategory?: string; model?: string; latencyMs: number },
+  ) {
+    const row = this.rows.get(callId);
+    if (row) Object.assign(row, result);
+  }
+}
+
+export class InMemoryFlagRepository implements FlagRepository {
+  readonly rows = new Map<string, FlagRecord>();
+
+  async create(flag: FlagRecord) {
+    this.rows.set(flag.id, clone(flag));
+  }
+
+  async listByClass(classId: string, now: Date) {
+    return [...this.rows.values()]
+      .filter((row) => row.classId === classId && Date.parse(row.expiresAt) > now.getTime())
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map(clone);
+  }
+
+  async get(id: string) {
+    const row = this.rows.get(id);
+    return row ? clone(row) : null;
+  }
+
+  async review(id: string, reviewerId: string, at: string) {
+    const row = this.rows.get(id);
+    if (!row) throw new Error(`Flag not found: ${id}`);
+    Object.assign(row, { reviewedAt: at, reviewedBy: reviewerId });
+    return clone(row);
   }
 }

@@ -1,8 +1,12 @@
 import type {
+  ContentAiCallOutcome,
+  ContentFlag,
+  ContentFlagCategory,
   ContentMaterial,
   ContentMaterialErrorCode,
   ContentMilestone,
   ContentObjective,
+  Locale,
 } from "@athena/shared";
 
 /**
@@ -72,6 +76,31 @@ export interface ChunkRepository {
   /** content_activate_generation: makes a fully embedded generation live, drops older ones. */
   activate(materialId: string, generation: number, now: Date): Promise<MaterialRecord>;
   listActive(classId: string): Promise<ChunkRecord[]>;
+  /**
+   * content_match_chunks: best chunks of the class's live generations by cosine similarity.
+   * classId must come from a route that already authorized the caller.
+   */
+  match(input: ChunkMatchInput): Promise<ChunkMatch[]>;
+}
+
+export interface ChunkMatchInput {
+  classId: string;
+  query: number[];
+  model: string;
+  topicId?: string;
+  limit: number;
+  minSimilarity: number;
+}
+
+export interface ChunkMatch {
+  chunkId: string;
+  materialId: string;
+  materialTitle: string;
+  pageStart?: number;
+  pageEnd?: number;
+  sectionTitle?: string;
+  content: string;
+  similarity: number;
 }
 
 export interface MaterialStorage {
@@ -130,6 +159,42 @@ export interface VersionedRepository<T extends VersionedRecord> {
 
 export type ObjectiveRecord = ContentObjective & { deletedAt?: string };
 export type MilestoneRecord = ContentMilestone & { deletedAt?: string };
+
+/** profiles.locale and accessibility_preferences; request.auth carries neither. */
+export interface ProfilePreferencesPort {
+  get(profileId: string): Promise<{ locale: Locale; accessibility: Record<string, unknown> }>;
+}
+
+/** content_ai_calls: audit row per student call and the atomic daily cap. */
+export interface AiCallLedger {
+  /** Inserts a pending call, or a rate_limited one when the last 24 h reached dailyLimit. */
+  begin(input: {
+    classId: string;
+    studentId: string;
+    topicId?: string;
+    dailyLimit: number;
+    now: Date;
+  }): Promise<{ callId: string; allowed: boolean; usedToday: number }>;
+  finish(
+    callId: string,
+    result: {
+      outcome: Exclude<ContentAiCallOutcome, "rate_limited">;
+      flagCategory?: ContentFlagCategory;
+      model?: string;
+      latencyMs: number;
+    },
+  ): Promise<void>;
+}
+
+export type FlagRecord = ContentFlag & { callId: string; expiresAt: string };
+
+export interface FlagRepository {
+  create(flag: FlagRecord): Promise<void>;
+  /** Unexpired flags of the class, newest first. */
+  listByClass(classId: string, now: Date): Promise<FlagRecord[]>;
+  get(id: string): Promise<FlagRecord | null>;
+  review(id: string, reviewerId: string, at: string): Promise<FlagRecord>;
+}
 
 /** Failures recorded on the material so the professor sees them. */
 export class IngestionError extends Error {
