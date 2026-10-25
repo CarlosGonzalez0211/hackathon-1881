@@ -404,6 +404,7 @@ export async function createSurfaceEngine(
       cameraReady = true;
       const sunward = sunDirection(walker.up, walker.forward);
       sun.position.copy(avatarRoot.position).add(new s.Vector3(...mul(sunward, 40)));
+      assets.toon.lighting?.uAthenaSun.value.set(...sunward);
       sun.target.position.copy(avatarRoot.position);
       sun.target.updateMatrixWorld();
       fill.position

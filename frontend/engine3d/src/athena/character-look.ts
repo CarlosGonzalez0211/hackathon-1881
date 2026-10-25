@@ -1,7 +1,7 @@
 import type { AthenaInstallContext } from "./install";
 import type { LegacyContext } from "../runtime/legacy-context";
 
-/** Character-only painted light, finer ink and broad hair highlights. */
+/** Character-only touches over the painterly light: skin scatter, hair sheen, woven motifs. */
 export function applyCharacterLook(ctx: AthenaInstallContext, root: LegacyContext) {
   if (!ctx.scope.athenaStandardPipeline) return;
   let character = false;
@@ -65,24 +65,20 @@ export function applyCharacterLook(ctx: AthenaInstallContext, root: LegacyContex
               if(abs(v-chevron)<.023||v>.94) base=vec3(.47,.178,.056);
               if((v>.89&&v<.914)||motif<.78) base=vec3(.847,.55,.194);
             }
-            float ndl = dot(normal,lightDir);
-            float band = smoothstep(-.55,.8,ndl);
-            vec3 shade = mix(vec3(.73,.70,.65),vec3(1.10,1.06,.98),band);
-            shade = mix(shade,mix(vec3(.86,.72,.61),vec3(1.10,1.04,.96),band),skin);
-            float luminance = dot(base,vec3(.2126,.7152,.0722));
-            float shadow = clamp(dot(outgoingLight,vec3(.2126,.7152,.0722))/max(.025,luminance)*.65,.72,1.0);
-            outgoingLight = base*shade*shadow + totalEmissiveRadiance;
+            // Woven motifs recolour the already lit painterly result.
+            outgoingLight *= base/max(diffuseColor.rgb,vec3(.02));
             float facing = max(0.0,dot(normal,normalize(vViewPosition)));
+            // Skin scatters warm light into its shade, like backlit cheeks and ears.
+            outgoingLight += base*vec3(.24,.09,.05)*skin*(1.0-facing*.55);
             vec3 halfLight = normalize(lightDir+normalize(vViewPosition));
             float sheen = pow(max(0.0,dot(normal,halfLight)),24.0)*hair;
-            outgoingLight += base*sheen*.08;
-            outgoingLight += vec3(.16,.25,.23)*pow(1.0-facing,3.0)*(.10+hair*.06);
-            outgoingLight = mix(outgoingLight,base,eye*.94);
+            outgoingLight += base*sheen*.12;
+            outgoingLight = mix(outgoingLight,base*1.05,eye*.9);
             #include <opaque_fragment>
           `,
           );
       };
-      material.customProgramCacheKey = () => "athena-character-storybook-v3";
+      material.customProgramCacheKey = () => "athena-character-luminous-v1";
       cache.set(source, material);
       const owned = material;
       ctx.onDispose(() => owned.dispose());

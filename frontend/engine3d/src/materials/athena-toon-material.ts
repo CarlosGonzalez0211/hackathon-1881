@@ -25,7 +25,60 @@ export interface AthenaToonOptions {
     /** Normal offset per metre of view depth. */
     readonly thickness: number;
   };
+  /**
+   * Painterly mode (the luminous village): a smooth linear ramp instead of hard bands,
+   * radial sky/ground fill, cool shadow tint and a sun-backlit rim that blooms.
+   */
+  readonly soft?: boolean;
 }
+
+/** Uniforms shared by every soft material; the surface engine updates them per frame. */
+export interface SoftLighting {
+  readonly uAthenaSun: { value: LegacyContext };
+  readonly uAthenaSky: { value: LegacyContext };
+  readonly uAthenaGround: { value: LegacyContext };
+  readonly uAthenaRim: { value: LegacyContext };
+  readonly uAthenaShadow: { value: LegacyContext };
+  readonly uAthenaHemi: { value: number };
+  readonly uAthenaRimStrength: { value: number };
+}
+
+/** Half-Lambert ramp: a luminous shadow floor, a soft terminator and a gentle highlight. */
+export function softRamp(size = 64) {
+  const data = new Uint8Array(size);
+  for (let i = 0; i < size; i++) {
+    const x = i / (size - 1);
+    const t = Math.min(1, Math.max(0, (x - 0.34) / 0.34));
+    const terminator = t * t * (3 - 2 * t);
+    data[i] = Math.round(255 * (0.34 + 0.58 * terminator + 0.08 * Math.max(0, (x - 0.7) / 0.3)));
+  }
+  return data;
+}
+
+const SOFT_VERTEX = /* glsl */ `
+vec4 athenaWorld = vec4(transformed, 1.0);
+#ifdef USE_INSTANCING
+  athenaWorld = instanceMatrix * athenaWorld;
+#endif
+vAthenaWorld = (modelMatrix * athenaWorld).xyz;`;
+
+const SOFT_FRAGMENT = /* glsl */ `
+{
+  vec3 athenaN = normalize(inverseTransformDirection(normal, viewMatrix));
+  vec3 athenaUp = normalize(vAthenaWorld);
+  float athenaH = dot(athenaN, athenaUp) * 0.5 + 0.5;
+  outgoingLight += diffuseColor.rgb * mix(uAthenaGround, uAthenaSky, athenaH) * uAthenaHemi;
+  float athenaBase = max(0.02, dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)));
+  float athenaLit = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722)) / athenaBase;
+  outgoingLight *= mix(uAthenaShadow, vec3(1.0), smoothstep(0.3, 1.05, athenaLit));
+  vec3 athenaView = normalize(cameraPosition - vAthenaWorld);
+  float athenaFresnel = pow(1.0 - saturate(dot(athenaN, athenaView)), 3.0);
+  float athenaBack = saturate(dot(-athenaView, uAthenaSun) * 0.5 + 0.5);
+  // Silhouettes only: ground and roofs facing the sky never catch the grazing rim.
+  float athenaSide = 1.0 - smoothstep(0.72, 0.97, athenaH);
+  outgoingLight += uAthenaRim * athenaFresnel * athenaSide * (0.15 + 1.4 * athenaBack * athenaBack)
+    * uAthenaRimStrength;
+}`;
 
 export interface MeshShape {
   /** Geometry `type` when the geometry still knows it (procedural builds). */
@@ -170,6 +223,8 @@ void main() {
 
 export interface AthenaToon {
   readonly options: AthenaToonOptions;
+  /** Present in soft mode: per-frame light uniforms shared by every converted material. */
+  readonly lighting?: SoftLighting;
   /** Toon material for `material` (cached per source material). */
   toonMaterial(material: Material): Material;
   /** Convert materials and add ink hulls below `root`. Idempotent. */
@@ -187,13 +242,11 @@ export function createAthenaToon(
   let resources: { gradientMap: LegacyContext; ink: Material } | undefined;
   const gpu = () => {
     if (resources) return resources;
-    const gradientMap = new scope.DataTexture(
-      new Uint8Array(options.gradient),
-      options.gradient.length,
-      1,
-      scope.RedFormat,
-    );
-    gradientMap.minFilter = gradientMap.magFilter = scope.NearestFilter;
+    const ramp = options.soft ? softRamp() : new Uint8Array(options.gradient);
+    const gradientMap = new scope.DataTexture(ramp, ramp.length, 1, scope.RedFormat);
+    gradientMap.minFilter = gradientMap.magFilter = options.soft
+      ? scope.LinearFilter
+      : scope.NearestFilter;
     gradientMap.generateMipmaps = false;
     gradientMap.needsUpdate = true;
     const chunks = legacyPipelineChunks(scope);
@@ -214,6 +267,41 @@ export function createAthenaToon(
   };
   const cache = new Map<Material, Material>();
   const owned = new Set<Material>();
+  const lighting: SoftLighting | undefined =
+    options.soft && scope.Vector3
+      ? {
+          uAthenaSun: { value: new scope.Vector3(0, 0.3, 0.95) },
+          uAthenaSky: { value: new scope.Color("#9fc9e6") },
+          uAthenaGround: { value: new scope.Color("#c99c6a") },
+          uAthenaRim: { value: new scope.Color(1.0, 0.82, 0.6) },
+          uAthenaShadow: { value: new scope.Color("#aab2e2") },
+          uAthenaHemi: { value: 0.26 },
+          uAthenaRimStrength: { value: 0.85 },
+        }
+      : undefined;
+
+  /** Chain the painterly light onto a converted material (after any pipeline patch). */
+  function soften(material: Material) {
+    if (!lighting) return;
+    const previous = material.onBeforeCompile.bind(material);
+    material.onBeforeCompile = (shader: LegacyContext, renderer: LegacyContext) => {
+      previous(shader, renderer);
+      Object.assign(shader.uniforms, lighting);
+      shader.vertexShader = shader.vertexShader
+        .replace("#include <common>", "#include <common>\nvarying vec3 vAthenaWorld;")
+        .replace("#include <project_vertex>", `#include <project_vertex>\n${SOFT_VERTEX}`);
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          `#include <common>
+varying vec3 vAthenaWorld;
+uniform vec3 uAthenaSun, uAthenaSky, uAthenaGround, uAthenaRim, uAthenaShadow;
+uniform float uAthenaHemi, uAthenaRimStrength;`,
+        )
+        .replace("#include <opaque_fragment>", `${SOFT_FRAGMENT}\n#include <opaque_fragment>`);
+    };
+    material.customProgramCacheKey = () => "athena-soft-v1";
+  }
 
   function toonMaterial(source: Material): Material {
     if (!options.enabled || !isConvertibleMaterial(source)) return source;
@@ -229,7 +317,8 @@ export function createAthenaToon(
       opacity: source.opacity,
       side: source.side,
       depthWrite: source.depthWrite,
-      flatShading: source.flatShading,
+      // Painterly mode never shows facets: smooth normals carry the soft ramp.
+      flatShading: options.soft ? false : source.flatShading,
       alphaTest: source.alphaTest,
     });
     if (source.emissive) {
@@ -238,6 +327,7 @@ export function createAthenaToon(
       toon.emissiveMap = source.emissiveMap ?? null;
     }
     joinLegacyPipeline(scope, toon);
+    soften(toon);
     cache.set(source, toon);
     owned.add(toon);
     return toon;
@@ -285,6 +375,7 @@ export function createAthenaToon(
 
   return {
     options,
+    lighting,
     toonMaterial,
     apply(root) {
       if (root.userData.athenaToon) return root;

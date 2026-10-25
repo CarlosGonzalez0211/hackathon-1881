@@ -115,8 +115,10 @@ export async function installAthena(
     scope,
     scope.athenaStandardPipeline
       ? {
+          // Luminous village: painterly light and silhouettes instead of ink hulls.
           ...toonOptions,
-          outline: { ...toonOptions.outline, color: "#444d40", thickness: 0.00065 },
+          soft: true,
+          outline: { ...toonOptions.outline, enabled: false },
         }
       : toonOptions,
   );

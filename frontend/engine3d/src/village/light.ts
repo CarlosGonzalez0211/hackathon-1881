@@ -13,7 +13,7 @@ export function sunDirection(up: Vec, forward: Vec): Vec {
 /** Warm key, cool sky fill and grass bounce. Values are linear and feed HDR bloom. */
 export const LUMINOUS = {
   sun: "#ffd2a1",
-  sunIntensity: 3.1,
+  sunIntensity: 2.8,
   sky: "#9fd1e8",
   ground: "#d8b07a",
   rim: "#ffe4bd",
