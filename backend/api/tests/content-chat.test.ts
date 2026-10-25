@@ -442,3 +442,53 @@ test("citations are renumbered in order of first use", () => {
   );
   assert.ok(result.citations[0]!.excerpt.length <= CONTENT_LIMITS.maxCitationExcerpt);
 });
+
+test("each viewer reads their own locale and accessibility settings", async () => {
+  const preferences: ProfilePreferencesPort = {
+    async get(id) {
+      return id === students.lucia
+        ? { locale: "en", accessibility: { reducedMotion: true, fontScale: 1.5, bogus: 1 } }
+        : { locale: "es", accessibility: {} };
+    },
+  };
+  const { app } = await makeApp({ preferences });
+  try {
+    const own = await app.inject({
+      method: "GET",
+      url: "/api/content/me/preferences",
+      headers: bearer("tok-lucia"),
+    });
+    assert.deepEqual(own.json(), {
+      locale: "en",
+      accessibility: {
+        reducedMotion: true,
+        highContrast: false,
+        fontScale: 1.5,
+        dyslexiaFont: false,
+        simplifiedLanguage: false,
+      },
+    });
+    assert.equal(
+      (await app.inject({ method: "GET", url: "/api/content/me/preferences" })).statusCode,
+      401,
+    );
+  } finally {
+    await app.close();
+  }
+});
+
+test("class members list the course topics; outsiders cannot", async () => {
+  const { app } = await makeApp();
+  try {
+    const url = `/api/content/classes/${CLASS}/topics`;
+    const ok = await app.inject({ method: "GET", url, headers: bearer("tok-lucia") });
+    assert.equal(ok.statusCode, 200);
+    assert.ok(ok.json().some((topic: { id: string }) => topic.id === topics.geometry));
+    assert.equal(
+      (await app.inject({ method: "GET", url, headers: bearer("tok-diego") })).statusCode,
+      403,
+    );
+  } finally {
+    await app.close();
+  }
+});

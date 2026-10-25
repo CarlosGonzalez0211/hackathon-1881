@@ -336,3 +336,49 @@ export const contentFormatSchema = z.enum([
   "flashcards",
 ]);
 export type ContentFormat = z.infer<typeof contentFormatSchema>;
+
+// ---------------------------------------------------------------------------
+// Viewer preferences (profiles.locale and accessibility_preferences)
+// ---------------------------------------------------------------------------
+
+/**
+ * The accessibility settings content honours. profiles.accessibility_preferences is untyped
+ * today (P4 request: type it in platform.ts); unknown or invalid keys fall back to defaults.
+ */
+export const contentAccessibilitySchema = z.object({
+  reducedMotion: z.boolean(),
+  highContrast: z.boolean(),
+  fontScale: z.number().min(0.8).max(2),
+  dyslexiaFont: z.boolean(),
+  simplifiedLanguage: z.boolean(),
+});
+export type ContentAccessibility = z.infer<typeof contentAccessibilitySchema>;
+
+export const defaultContentAccessibility: ContentAccessibility = {
+  reducedMotion: false,
+  highContrast: false,
+  fontScale: 1,
+  dyslexiaFont: false,
+  simplifiedLanguage: false,
+};
+
+/** Reads each known key independently, so one bad value never discards the others. */
+export function readContentAccessibility(raw: unknown): ContentAccessibility {
+  const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const result = { ...defaultContentAccessibility };
+  for (const key of Object.keys(result) as (keyof ContentAccessibility)[]) {
+    const parsed = contentAccessibilitySchema.shape[key].safeParse(source[key]);
+    if (parsed.success) (result as Record<string, unknown>)[key] = parsed.data;
+  }
+  return result;
+}
+
+export const contentPreferencesSchema = z.object({
+  locale: localeSchema,
+  accessibility: contentAccessibilitySchema,
+});
+export type ContentPreferences = z.infer<typeof contentPreferencesSchema>;
+
+/** A course topic as the content screens list it (from the curriculum catalog). */
+export const contentTopicSchema = z.object({ id: uuidSchema, title: z.string().min(1) });
+export type ContentTopic = z.infer<typeof contentTopicSchema>;
