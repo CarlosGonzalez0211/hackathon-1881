@@ -471,3 +471,17 @@ progress {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Shared type direction across the whole application, including learning panels. */
+:root {
+  --athena-font-body: var(--font-comfortaa), sans-serif;
+  --athena-font-display: var(--font-comfortaa), sans-serif;
+  --athena-font-mono: var(--font-comfortaa), sans-serif;
+}
+button,
+input,
+textarea,
+select,
+kbd {
+  font-family: var(--athena-font-body);
+}

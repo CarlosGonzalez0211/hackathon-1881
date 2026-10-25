@@ -7,6 +7,7 @@ import { useWorld } from "../WorldProvider";
 import { HouseContentPanel } from "./HouseContentPanel";
 import { HouseProgressPanel } from "./HouseProgressPanel";
 import { HouseTutorPanel } from "./HouseTutorPanel";
+import { HouseVignette } from "./HouseVignette";
 import styles from "./HousePage.module.css";
 
 type Tab = "material" | "learn" | "progress";
@@ -229,6 +230,7 @@ export function HousePage({
               topicId={topicId}
               studentId={studentId}
               onStart={() => choose("learn")}
+              showStart={false}
               cta={
                 granted.mode === "resume"
                   ? "Continuar"
@@ -255,6 +257,7 @@ export function HousePage({
       <div
         ref={panel}
         className={styles.sheet}
+        data-tab={tab}
         role={variant === "overlay" ? "dialog" : undefined}
         aria-modal={variant === "overlay" ? true : undefined}
         aria-labelledby={titleId}
@@ -267,9 +270,20 @@ export function HousePage({
             </button>
             {house && <StateChip status={house.status} />}
           </div>
-          <h1 id={titleId} ref={heading} tabIndex={-1} className={styles.title}>
-            {house?.title ?? "Casa"}
-          </h1>
+          <div className={styles.titleRow}>
+            <h1 id={titleId} ref={heading} tabIndex={-1} className={styles.title}>
+              {house?.title ?? "Casa"}
+            </h1>
+            {granted && (
+              <button className={styles.primary} onClick={() => choose("learn")}>
+                {granted.mode === "resume"
+                  ? "Continuar"
+                  : granted.mode === "review"
+                    ? "Repasar"
+                    : "Comenzar"}
+              </button>
+            )}
+          </div>
           {progressShown && (
             <div className={styles.meta}>
               {granted?.mastery?.totalConcepts !== undefined && (
@@ -292,7 +306,15 @@ export function HousePage({
             <p className={styles.next}>Siguiente: {granted.mastery.nextAction}</p>
           )}
         </header>
-        {body}
+        <div className={styles.houseBody}>
+          <div className={styles.workbench}>{body}</div>
+          {tab === "material" && (
+            <aside className={styles.illustration}>
+              <HouseVignette />
+              <span>Un nuevo lugar para descubrir</span>
+            </aside>
+          )}
+        </div>
       </div>
     </div>
   );

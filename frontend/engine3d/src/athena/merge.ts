@@ -114,6 +114,16 @@ function normalizedGeometry(
     if (material.map && source.attributes.uv)
       geometry.setAttribute("uv", toFloatAttribute(scope, source.attributes.uv, 2));
   }
+  if (source.attributes._athena_style)
+    geometry.setAttribute(
+      "_athena_style",
+      toFloatAttribute(scope, source.attributes._athena_style, 1),
+    );
+  if (source.attributes._athena_weave)
+    geometry.setAttribute(
+      "_athena_weave",
+      toFloatAttribute(scope, source.attributes._athena_weave, 2),
+    );
   if (bone !== undefined) {
     const indices = new Uint16Array(count * 4);
     const weights = new Float32Array(count * 4);
@@ -174,6 +184,9 @@ export function mergeStaticMeshes(
   root.traverse((object: Object3D) => {
     if (!object.isMesh || object.isSkinnedMesh || object.isInstancedMesh) return;
     if (object.userData.athenaInk || !object.geometry?.attributes?.position) return;
+    // AnimationMixer must retain directly animated meshes (mouth/eyes), including
+    // their transforms and hierarchy. Removing them also invalidates rigid bone binds.
+    if (animated.has(object.name)) return;
     (isPlainMaterial(object.material) ? plain : other).push(object);
   });
   let removed = 0;
