@@ -5,6 +5,8 @@ import {
   aiUsageRecordedPayloadSchema,
   athenaDemoIds,
   CONTENT_LIMITS,
+  defaultContentAccessibility,
+  readContentAccessibility,
   contentAiUsagePayloadSchema,
   contentChatRequestSchema,
   contentChatResponseSchema,
@@ -196,4 +198,13 @@ test("content migrations enable RLS on every table and pin search_path on every 
       new RegExp(`grant execute on function ${fn.replace(".", "\\.")}\\([^;]*to service_role`),
     );
   }
+});
+
+test("accessibility preferences keep valid keys and default the rest", () => {
+  assert.deepEqual(
+    readContentAccessibility({ reducedMotion: true, fontScale: 9, highContrast: "yes", extra: 1 }),
+    { ...defaultContentAccessibility, reducedMotion: true },
+  );
+  assert.deepEqual(readContentAccessibility(null), defaultContentAccessibility);
+  assert.equal(readContentAccessibility({ fontScale: 1.25 }).fontScale, 1.25);
 });
