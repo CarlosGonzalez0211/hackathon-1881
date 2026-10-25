@@ -38,5 +38,8 @@ export {
   type GroundedTextGenerator,
 } from "./tutor-adapters.js";
 export { InMemoryLearningRepository, type LearningRepository } from "./repository.js";
+export { SupabaseAssessmentRepository } from "./supabase-assessment.js";
+export { SupabaseLearningRepository } from "./supabase-learning-repository.js";
+export { SupabaseLearningRestClient, type LearningRestClient } from "./supabase-rest.js";
 export { LearningService } from "./service.js";
 export { learningRoutes, type LearningRoutesOptions } from "./routes.js";

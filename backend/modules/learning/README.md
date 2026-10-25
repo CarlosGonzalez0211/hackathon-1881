@@ -27,6 +27,7 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 - deterministic adaptive question selection using required-concept coverage, active misconceptions,
   knowledge-adjusted difficulty, transfer practice and recent-question avoidance
 - in-memory repositories and a deterministic assessment catalog
+- server-only Supabase/PostgREST assessment and learning repositories
 - domain events for diagnostics, misconceptions, checkpoints, mastery and strategy changes
 - structured review-required misconception candidates when deterministic patterns do not match
 
@@ -50,3 +51,8 @@ generic `/api/ai/prompt` endpoint remains a developer demo and must not be used 
 
 The quiz route returns only learner-safe question fields. Answer keys and misconception-answer maps
 remain inside the backend assessment repository.
+
+`data/supabase/migrations/0200_learning.sql` owns Daniela's database range. It enables RLS and
+revokes direct browser access by default; Carlos must review final production policies before a
+shared project applies the migration. `SupabaseLearningRestClient` requires a backend-only
+service-role key and can be replaced by a test driver through the same interface.

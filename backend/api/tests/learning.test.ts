@@ -24,6 +24,9 @@ import {
   rankRecommendations,
   scheduleRetention,
   selectAssessmentQuestions,
+  SupabaseAssessmentRepository,
+  SupabaseLearningRepository,
+  type LearningRestClient,
   selectTeachingStrategy,
   updateKnowledgeProbability,
   updateStrategyPosterior,
@@ -648,6 +651,71 @@ test("Gemini adapter surfaces provider failures without fabricating a response",
   );
 });
 
+test("Supabase adapters satisfy assessment and core learning repository contracts", async () => {
+  const rest = new MemoryLearningRestClient();
+  await rest.insert("learning_questions", {
+    id: demoLearningIds.questions.checkpointTriangleArea,
+    purpose: "checkpoint",
+    topic_id: athenaDemoIds.topics.geometry,
+    concept_id: demoLearningIds.concepts.triangleArea,
+    prompt: "Triangle area",
+    format: "numeric",
+    choices: null,
+    difficulty: 0.6,
+    required_for_mastery: true,
+    is_transfer: false,
+    answer_key: 30,
+    partial_credit_answers: { "15": 0.5 },
+    misconception_answers: { "60": demoLearningIds.misconceptions.triangleMissingHalf },
+    strategy_context_key: "geometry:missing_half:foundation",
+    active: true,
+  });
+  const assessments = new SupabaseAssessmentRepository(rest);
+  assert.equal(
+    (await assessments.grade(demoLearningIds.questions.checkpointTriangleArea, 15))?.score,
+    0.5,
+  );
+  assert.deepEqual(await assessments.listRequiredConceptIds(athenaDemoIds.topics.geometry), [
+    demoLearningIds.concepts.triangleArea,
+  ]);
+
+  const repository = new SupabaseLearningRepository(rest);
+  const mastery = {
+    studentId: athenaDemoIds.students.lucia,
+    topicId: athenaDemoIds.topics.geometry,
+    mastery: 0.55,
+    demonstratedConceptIds: [demoLearningIds.concepts.triangleArea],
+    evidenceIds: ["00000000-0000-4000-8000-000000009901"],
+    confidence: 0.5,
+    updatedAt: "2026-10-24T12:00:00.000Z",
+  };
+  await repository.saveMastery(mastery);
+  assert.deepEqual(await repository.getMastery(mastery.studentId, mastery.topicId), mastery);
+
+  await repository.setActiveMisconceptions(mastery.studentId, mastery.topicId, [
+    demoLearningIds.misconceptions.triangleMissingHalf,
+  ]);
+  assert.deepEqual(await repository.listActiveMisconceptions(mastery.studentId, mastery.topicId), [
+    demoLearningIds.misconceptions.triangleMissingHalf,
+  ]);
+
+  const session = {
+    id: "00000000-0000-4000-8000-000000009902",
+    studentId: mastery.studentId,
+    courseId: athenaDemoIds.course,
+    topicId: mastery.topicId,
+    conceptId: demoLearningIds.concepts.triangleArea,
+    objective: "Understand triangle area",
+    strategy: "worked_example" as const,
+    curriculumVersion: 1,
+    status: "active" as const,
+    createdAt: "2026-10-24T12:00:00.000Z",
+    updatedAt: "2026-10-24T12:00:00.000Z",
+  };
+  await repository.saveSession(session);
+  assert.deepEqual(await repository.getSession(session.id), session);
+});
+
 test("diagnostic, failed checkpoint and successful checkpoint form the learning foundation", async () => {
   const app = await createApp({
     logger: false,
@@ -770,4 +838,52 @@ function seededRandom(seed: number) {
     state = (state * 1_664_525 + 1_013_904_223) >>> 0;
     return state / 0x1_0000_0000;
   };
+}
+
+class MemoryLearningRestClient implements LearningRestClient {
+  private readonly tables = new Map<string, Record<string, unknown>[]>();
+
+  async select<T>(table: string, filters: Readonly<Record<string, string>> = {}) {
+    return this.rows(table)
+      .filter((row) =>
+        Object.entries(filters).every(([column, value]) => String(row[column]) === value),
+      )
+      .map((row) => structuredClone(row)) as T[];
+  }
+
+  async insert<T>(table: string, values: T | readonly T[]) {
+    const incoming = Array.isArray(values) ? values : [values];
+    this.rows(table).push(...(structuredClone(incoming) as Record<string, unknown>[]));
+  }
+
+  async upsert<T>(table: string, value: T, onConflict: string) {
+    const row = structuredClone(value) as Record<string, unknown>;
+    const columns = onConflict.split(",");
+    const existing = this.rows(table).find((candidate) =>
+      columns.every((column) => candidate[column] === row[column]),
+    );
+    if (existing) Object.assign(existing, row);
+    else this.rows(table).push(row);
+  }
+
+  async update<T>(table: string, filters: Readonly<Record<string, string>>, values: T) {
+    for (const row of this.rows(table)) {
+      if (Object.entries(filters).every(([column, value]) => String(row[column]) === value)) {
+        Object.assign(row, structuredClone(values));
+      }
+    }
+  }
+
+  async delete(table: string, filters: Readonly<Record<string, string>>) {
+    const kept = this.rows(table).filter(
+      (row) => !Object.entries(filters).every(([column, value]) => String(row[column]) === value),
+    );
+    this.tables.set(table, kept);
+  }
+
+  private rows(table: string) {
+    const rows = this.tables.get(table) ?? [];
+    this.tables.set(table, rows);
+    return rows;
+  }
 }
