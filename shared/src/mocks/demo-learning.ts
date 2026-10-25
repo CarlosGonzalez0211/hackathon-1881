@@ -1,9 +1,16 @@
 import type { DiagnosticResult, DiagnosticSubmission, StrategyPosterior } from "../learning.js";
+import type {
+  CurriculumConcept,
+  CurriculumContextRequest,
+  CurriculumContextResponse,
+} from "../learning-curriculum.js";
 import { athenaDemoIds } from "./demo-identities.js";
 
 /** Provisional ids live in one catalog until Daniela and Vianey freeze the shared concept ids. */
 export const demoLearningIds = {
   concepts: {
+    rectangleArea: "math.geometry.rectangle_area",
+    triangleBaseHeight: "math.geometry.triangle_base_height",
     triangleArea: "math.geometry.triangle_area",
   },
   misconceptions: {
@@ -13,7 +20,75 @@ export const demoLearningIds = {
     diagnosticTriangleArea: "00000000-0000-4000-8000-00000000d001",
     checkpointTriangleArea: "00000000-0000-4000-8000-00000000c001",
   },
+  materials: {
+    geometryNotes: "00000000-0000-4000-8000-00000000e001",
+  },
+  chunks: {
+    triangleAreaExplanation: "00000000-0000-4000-8000-00000000e101",
+  },
 } as const;
+
+export const demoCurriculumConcepts: CurriculumConcept[] = [
+  {
+    conceptId: demoLearningIds.concepts.rectangleArea,
+    courseId: athenaDemoIds.course,
+    topicId: athenaDemoIds.topics.geometry,
+    title: "Área de rectángulos",
+    prerequisiteConceptIds: [],
+    requiredForMastery: false,
+    curriculumVersion: 1,
+  },
+  {
+    conceptId: demoLearningIds.concepts.triangleBaseHeight,
+    courseId: athenaDemoIds.course,
+    topicId: athenaDemoIds.topics.geometry,
+    title: "Base y altura de un triángulo",
+    prerequisiteConceptIds: [],
+    requiredForMastery: true,
+    curriculumVersion: 1,
+  },
+  {
+    conceptId: demoLearningIds.concepts.triangleArea,
+    courseId: athenaDemoIds.course,
+    topicId: athenaDemoIds.topics.geometry,
+    title: "Área de triángulos",
+    prerequisiteConceptIds: [
+      demoLearningIds.concepts.rectangleArea,
+      demoLearningIds.concepts.triangleBaseHeight,
+    ],
+    requiredForMastery: true,
+    curriculumVersion: 1,
+  },
+];
+
+export const demoCurriculumContextRequest: CurriculumContextRequest = {
+  courseId: athenaDemoIds.course,
+  topicId: athenaDemoIds.topics.geometry,
+  conceptId: demoLearningIds.concepts.triangleArea,
+  query: "¿Cómo se relacionan las áreas de un rectángulo y un triángulo?",
+  curriculumVersion: 1,
+  locale: "es",
+  limit: 5,
+};
+
+export const demoCurriculumContextResponse: CurriculumContextResponse = {
+  chunks: [
+    {
+      text: "Dos triángulos iguales forman un rectángulo con la misma base y altura. Por eso, el área de un triángulo es base por altura dividido entre dos.",
+      conceptId: demoLearningIds.concepts.triangleArea,
+      citation: {
+        materialId: demoLearningIds.materials.geometryNotes,
+        materialTitle: "Notas de geometría del profesor",
+        section: "Área de triángulos",
+        chunkId: demoLearningIds.chunks.triangleAreaExplanation,
+        excerpt: "Dos triángulos iguales forman un rectángulo con la misma base y altura.",
+      },
+      relevanceScore: 1,
+    },
+  ],
+  curriculumVersion: 1,
+  unsupported: false,
+};
 
 export const demoDiagnosticSubmission: DiagnosticSubmission = {
   studentId: athenaDemoIds.students.lucia,

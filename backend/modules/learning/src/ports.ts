@@ -1,18 +1,13 @@
-import type { Citation, TeachingStrategy } from "@athena/shared";
+import type {
+  Citation,
+  CurriculumContextRequest,
+  CurriculumContextResponse,
+  TeachingStrategy,
+} from "@athena/shared";
 
 /** Curriculum-owned boundary. The production adapter will point at Vianey's retrieval service. */
 export interface CurriculumContextPort {
-  retrieve(input: {
-    courseId: string;
-    topicId: string;
-    conceptId: string;
-    query: string;
-    curriculumVersion: number;
-  }): Promise<{
-    chunks: { text: string; citation: Citation }[];
-    curriculumVersion: number;
-    unsupported: boolean;
-  }>;
+  retrieve(input: CurriculumContextRequest): Promise<CurriculumContextResponse>;
 }
 
 /** Provider boundary; model output is never allowed to update mastery directly. */

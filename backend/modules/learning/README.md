@@ -21,6 +21,11 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 `CurriculumContextPort` is the seam for Vianey's authorized, cited retrieval implementation.
 `TutorProvider` is the seam for grounded Gemini output. Neither provider may write mastery.
 
-The concept ids in `shared/src/mocks/demo-learning.ts` are intentionally centralized and provisional
-until Daniela and Vianey freeze the shared catalog. The generic `/api/ai/prompt` endpoint remains a
-developer demo and must not be used as the tutor.
+The Learning-side consumer contract lives in `shared/src/learning-curriculum.ts`. It validates
+stable concept keys, concept-to-topic mappings, curriculum-version filters, cited context chunks,
+and explicit unsupported responses. P1 remains authoritative for the catalog and retrieval
+implementation; this contract is provisional until Daniela and Vianey approve it together.
+
+The concept ids and three-concept Geometry fixture in `shared/src/mocks/demo-learning.ts` are
+intentionally centralized and provisional until Daniela and Vianey freeze the shared catalog. The
+generic `/api/ai/prompt` endpoint remains a developer demo and must not be used as the tutor.
