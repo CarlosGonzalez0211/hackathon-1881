@@ -8,16 +8,28 @@ import {
   type ClassOrbit,
 } from "@athena/shared";
 import { api } from "./api";
+import { createSupabaseServerClient } from "./supabase-server";
 export const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS !== "false";
+
+/** These loaders run in Server Components, where api() has no browser session: read the cookie one. */
+async function serverAuth(): Promise<RequestInit> {
+  const { data } = await (await createSupabaseServerClient()).auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+}
 export async function getPlanet(studentId = athenaDemoIds.students.lucia) {
   return useMocks
     ? mockPlanet
-    : planetStateSchema.parse(await api(`/planet/${encodeURIComponent(studentId)}`));
+    : planetStateSchema.parse(
+        await api(`/planet/${encodeURIComponent(studentId)}`, await serverAuth()),
+      );
 }
 export async function getClassPlanets(classId = athenaDemoIds.class) {
   return useMocks
     ? mockClassPlanets
-    : planetStateSchema.array().parse(await api(`/class/${encodeURIComponent(classId)}/planets`));
+    : planetStateSchema
+        .array()
+        .parse(await api(`/class/${encodeURIComponent(classId)}/planets`, await serverAuth()));
 }
 /**
  * The class orbit: one planet per enrolled student. Mocks accept a class size so the orbit can

@@ -1,0 +1,311 @@
+.page,
+.layout {
+  --night: #1b2433;
+  --night-deep: #121a27;
+  --hairline: rgb(27 36 51 / 0.12);
+}
+
+.page {
+  min-height: 100dvh;
+  padding: clamp(16px, 4vw, 48px);
+  background:
+    radial-gradient(circle at 12% 0%, rgb(95 179 161 / 0.16), transparent 42%), var(--athena-paper);
+  color: var(--athena-ink);
+  font-family: var(--font-comfortaa), var(--athena-font-body);
+}
+
+.header {
+  max-width: 1180px;
+  margin: 0 auto 28px;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 18px;
+  color: var(--athena-accent);
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+.back:hover {
+  text-decoration: underline;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.lede {
+  max-width: 52ch;
+  margin: 12px 0 0;
+  color: rgb(27 36 51 / 0.7);
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: clamp(20px, 3vw, 44px);
+  max-width: 1180px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+/* The night sky is the one loud surface on the page. */
+.sky {
+  margin: 0;
+  padding: clamp(14px, 2.5vw, 28px);
+  border-radius: 36px;
+  background: radial-gradient(
+    circle at 50% 46%,
+    #22314a 0%,
+    var(--night) 48%,
+    var(--night-deep) 100%
+  );
+  box-shadow: 0 24px 60px -28px rgb(18 26 39 / 0.75);
+  color: #eef3f7;
+}
+
+.orrery {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.track,
+.trackLocked {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.09);
+  stroke-width: 9;
+}
+.trackLocked {
+  stroke-dasharray: 2 7;
+  stroke-width: 3;
+  stroke: rgb(255 255 255 / 0.22);
+}
+
+.arc {
+  fill: none;
+  stroke: var(--hue);
+  stroke-width: 9;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--hue) 70%, transparent));
+  transition: stroke-dashoffset 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--order) * 110ms + 150ms);
+}
+
+.moon {
+  fill: #fff;
+  stroke: var(--hue);
+  stroke-width: 3;
+  transition:
+    cx 1.6s cubic-bezier(0.22, 1, 0.36, 1),
+    cy 1.6s cubic-bezier(0.22, 1, 0.36, 1),
+    r 0.2s ease;
+  transition-delay: calc(var(--order) * 110ms + 150ms), calc(var(--order) * 110ms + 150ms), 0s;
+}
+
+.orbit {
+  transition: opacity 0.25s ease;
+}
+.orbit[data-dimmed] {
+  opacity: 0.25;
+}
+.orbit[data-highlighted] .arc {
+  stroke-width: 12;
+}
+
+.planetValue {
+  fill: #fff;
+  font-size: 26px;
+  font-weight: 700;
+  font-family: var(--font-comfortaa), var(--athena-font-body);
+}
+.planetLabel {
+  fill: rgb(255 255 255 / 0.85);
+  font-size: 10.5px;
+  font-family: var(--font-comfortaa), var(--athena-font-body);
+}
+
+.week {
+  display: grid;
+  gap: 18px;
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid rgb(255 255 255 / 0.1);
+}
+
+.weekStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 24px;
+}
+.weekStats p {
+  margin: 0;
+  color: rgb(238 243 247 / 0.75);
+  font-size: 0.92rem;
+}
+.weekStats strong {
+  color: #fff;
+  font-size: 1.25rem;
+  margin-right: 4px;
+}
+
+.days {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.days li {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+.dayBar {
+  display: block;
+  width: 12px;
+  height: 64px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to top,
+    #f0b84a 0 calc(var(--day) * 100%),
+    rgb(255 255 255 / 0.08) calc(var(--day) * 100%)
+  );
+}
+.dayName {
+  color: rgb(238 243 247 / 0.6);
+  font-size: 0.72rem;
+}
+
+.subjects {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--hairline);
+}
+
+.subject {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.subjectInner {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+  padding: 18px 14px;
+  border-radius: 18px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+a.subjectInner:focus-visible {
+  outline: 3px solid var(--athena-focus);
+  outline-offset: 2px;
+}
+.subject[data-active] .subjectInner {
+  background: color-mix(in srgb, var(--hue) 14%, transparent);
+}
+.subject[data-status="locked"] {
+  opacity: 0.55;
+}
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--hue);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--hue) 22%, transparent);
+}
+
+.subjectMain {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.subjectName {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.subjectMeta,
+.next {
+  color: rgb(27 36 51 / 0.65);
+  font-size: 0.9rem;
+}
+
+.bar {
+  display: block;
+  height: 8px;
+  margin: 4px 0 2px;
+  border-radius: 999px;
+  background: rgb(27 36 51 / 0.08);
+  overflow: hidden;
+}
+.bar > span {
+  display: block;
+  width: calc(var(--value) * 100%);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--hue);
+}
+
+.subjectValue {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--hue) 70%, var(--athena-ink));
+}
+
+/* Inside a house sheet: tighter type for the narrower panel. */
+.layout[data-compact] {
+  max-width: none;
+  gap: 20px;
+  font-family: var(--font-comfortaa), var(--athena-font-body);
+}
+.layout[data-compact] .sky {
+  border-radius: 26px;
+}
+.layout[data-compact] .subjectInner {
+  padding: 12px 10px;
+}
+.layout[data-compact] .subjectName {
+  font-size: 1rem;
+}
+.layout[data-compact] .subjectValue {
+  font-size: 1.4rem;
+}
+.layout[data-compact] .weekStats strong {
+  font-size: 1.05rem;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .subjectValue {
+    font-size: 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arc,
+  .moon,
+  .orbit,
+  .subjectInner {
+    transition: none;
+  }
+}

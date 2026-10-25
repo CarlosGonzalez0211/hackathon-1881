@@ -1,6 +1,6 @@
 import { authContextSchema, athenaDemoIds, type AuthContext } from "@athena/shared";
 import { api } from "@/lib/api";
-import { useMocks } from "@/lib/mode";
+import { bypassAuth } from "@/lib/mode";
 
 export interface AuthClient {
   getCurrentUser(): Promise<AuthContext>;
@@ -28,4 +28,4 @@ export class ApiAuthClient implements AuthClient {
 }
 
 export const getAuthClient = (): AuthClient =>
-  useMocks ? new MockAuthClient() : new ApiAuthClient();
+  bypassAuth ? new MockAuthClient() : new ApiAuthClient();

@@ -2,14 +2,14 @@
 import { t } from "@/lib/i18n";
 
 import { useRouter } from "next/navigation";
-import { useMocks } from "@/lib/mode";
+import { bypassAuth } from "@/lib/mode";
 import { useAuth } from "../hooks/useAuth";
 
 export function SignOutButton({ className }: { className?: string }) {
   const { signOut, status } = useAuth();
   const router = useRouter();
 
-  if (useMocks || status !== "ready") return null;
+  if (bypassAuth || status !== "ready") return null;
 
   return (
     <button

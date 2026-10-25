@@ -1,56 +1,171 @@
 .panel {
   display: grid;
-  gap: var(--athena-space-medium);
-  color: var(--athena-ink);
-}
-.panel select,
-.panel button,
-.panel a {
-  width: fit-content;
-  max-width: 100%;
-}
-.panel select,
-.panel button {
-  padding: var(--athena-space-small) var(--athena-space-medium);
-  border: 1px solid var(--athena-hairline);
-  border-radius: var(--athena-radius-panel);
-  background: var(--athena-paper);
-  color: var(--athena-ink);
-  font: inherit;
-}
-.panel button,
-.panel a {
-  cursor: pointer;
+  gap: 16px;
+  color: #514b40;
+  font-size: 13px;
 }
 .panel :focus-visible {
-  outline: 2px solid var(--athena-accent);
+  outline: 3px solid #cf9f43;
   outline-offset: 3px;
+}
+.panel p,
+.panel h3 {
+  margin: 0;
 }
 .panel ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.panel li,
-.panel article {
-  display: grid;
-  gap: var(--athena-space-small);
-  padding: var(--athena-space-medium);
-  border: 1px solid var(--athena-hairline);
-  border-radius: var(--athena-radius-panel);
-  overflow-wrap: anywhere;
+
+/* Heading row: what this is on the left, the language switch on the right. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
-.panel li + li {
-  margin-top: var(--athena-space-small);
-}
-.panel p,
-.panel h3 {
+.toolbar h2 {
   margin: 0;
+  color: #48483b;
+  font-family: var(--athena-font-display);
+  font-size: var(--athena-text-lg);
+  font-weight: 600;
 }
-.panel small {
-  color: var(--athena-muted);
+.language {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #8a7f68;
+  font-size: 11px;
+}
+.language select {
+  padding: 5px 10px;
+  border: 1.2px solid #b5ab90;
+  border-radius: 999px;
+  background: #fffdf6;
+  color: #514b40;
+  font: inherit;
+  font-size: 12px;
+}
+
+.panel [data-part="summary"] {
+  color: #7d725b;
+  line-height: 1.7;
+}
+
+.panel [data-part="files"] {
+  display: grid;
+  gap: 8px;
+}
+.panel [data-part="file"] {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1.4px solid #c9bd9f;
+  border-radius: 11px 15px 10px 13px;
+  background: #fffbef9c;
+}
+.panel [data-part="fileKind"] {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 46px;
+  border: 1.3px solid #93886e;
+  border-radius: 4px 12px 4px 4px;
+  background: #f4ecd2;
+  color: #6a5f45;
+  font-size: 10px;
+  font-weight: 700;
+}
+.panel [data-part="fileKind"][data-kind="PDF"] {
+  background: #f6dcd3;
+  color: #8a4f3d;
+}
+.panel [data-part="fileText"] {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.panel [data-part="fileText"] strong {
+  font-size: 13px;
+}
+.panel [data-part="fileText"] small {
+  color: #a0957c;
+  font-size: 10px;
+}
+
+.panel [data-part="lesson"] {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1.4px solid #93886e;
+  border-radius: 11px 15px 10px 13px;
+  background: #fffbef;
+  box-shadow:
+    0 2px 0 #71644b1f,
+    inset 0 0 0 2px #fffdf1;
+}
+.panel [data-part="format"] {
+  justify-self: start;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #e8ead4;
+  color: #5d6a4f;
+  font-size: 10px;
+  font-weight: 700;
+}
+.panel [data-part="lesson"] h3 {
+  color: #3f3d33;
+  font-size: 16px;
+}
+.panel [data-part="body"] {
+  color: #514b40;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.panel [data-part="provenance"] {
+  border-top: 1px dashed #d3c8ab;
+  padding-top: 8px;
+  color: #8a7f68;
+  font-size: 11px;
+}
+.panel [data-part="provenance"] summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.panel [data-part="provenance"] p {
+  margin-top: 6px;
+}
+
+.panel a {
+  width: fit-content;
+  color: #355f55;
+}
+
+.retry {
+  display: grid;
+  gap: 8px;
+}
+.panel button {
+  width: fit-content;
+  padding: 8px 14px;
+  border: 1.3px solid #93886e;
+  border-radius: 999px;
+  background: #fffdf6;
+  color: #514b40;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
 }
 .panel .start {
-  background: var(--athena-accent);
-  color: var(--athena-paper);
+  border-color: #2f5f57;
+  background: #3b7975;
+  color: #fffbef;
+  font-weight: 700;
+  box-shadow: 0 3px 0 #2f5f5766;
 }

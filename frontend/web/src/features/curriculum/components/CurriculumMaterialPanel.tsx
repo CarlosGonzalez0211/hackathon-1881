@@ -48,18 +48,23 @@ export function CurriculumMaterialPanel({
   const needsLogin = error instanceof CurriculumContentError && error.code === "unauthenticated";
   return (
     <section className={styles.panel} aria-label="Course materials">
-      <label htmlFor={languageId}>Content language</label>
-      <select
-        id={languageId}
-        value={locale}
-        onChange={(event) => setLocale(event.target.value as typeof locale)}
-      >
-        <option value="auto">Course language</option>
-        <option value="en">English</option>
-        <option value="es">Español</option>
-      </select>
+      <div className={styles.toolbar}>
+        <h2>Lesson materials</h2>
+        <span className={styles.language}>
+          <label htmlFor={languageId}>Content language</label>
+          <select
+            id={languageId}
+            value={locale}
+            onChange={(event) => setLocale(event.target.value as typeof locale)}
+          >
+            <option value="auto">Course language</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
+        </span>
+      </div>
       {error ? (
-        <div role="alert">
+        <div role="alert" className={styles.retry}>
           <p>{error.message}</p>
           {needsLogin && <a href="/login">Sign in</a>}
           <button type="button" onClick={() => setAttempt((n) => n + 1)}>

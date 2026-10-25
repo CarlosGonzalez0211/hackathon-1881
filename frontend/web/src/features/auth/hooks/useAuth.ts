@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AuthContext } from "@athena/shared";
-import { useMocks } from "@/lib/mode";
+import { bypassAuth } from "@/lib/mode";
 import { supabaseBrowser } from "@/lib/supabase";
 import { getAuthClient } from "../api/auth-client";
 
@@ -28,7 +28,7 @@ export function useAuth(): UseAuth {
   useEffect(() => {
     let cancelled = false;
 
-    if (useMocks) {
+    if (bypassAuth) {
       getAuthClient()
         .getCurrentUser()
         .then((user) => !cancelled && setState({ status: "ready", user }))
@@ -77,7 +77,7 @@ export function useAuth(): UseAuth {
   }, [attempt]);
 
   const signOut = useCallback(async () => {
-    if (useMocks) return;
+    if (bypassAuth) return;
     await supabaseBrowser().auth.signOut();
     setState({ status: "signedOut", user: null });
   }, []);

@@ -188,6 +188,11 @@ export function WorldExplorer() {
               <WorldSketchIcon kind="globe" />
             </Link>
           </Tooltip>
+          <Tooltip label={t("My progress")}>
+            <Link href="/progress" className="world-tool" aria-label={t("My progress")}>
+              <WorldSketchIcon kind="progress" />
+            </Link>
+          </Tooltip>
           <Tooltip label={overview ? t("Back to walking") : t("Planet overview")}>
             <button
               className="world-tool"
