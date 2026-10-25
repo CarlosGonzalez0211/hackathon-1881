@@ -12,6 +12,7 @@ import {
 import type { Citation, TutorMessage, WorldLearningSessionStart } from "@athena/shared";
 import { appLocale, t } from "@/lib/i18n";
 import { getLearningClient } from "../api/learning-client";
+import { LearnFormatMenu } from "./LearnFormatMenu";
 import styles from "./TutorSession.module.css";
 
 type Turn =
@@ -141,9 +142,17 @@ export function TutorSession({ studentId, topicId, entryId }: TutorSessionProps)
             {t("Teaching approach:")} {humanize(session.strategy)}
           </p>
         </div>
-        <span className={styles.online}>
-          <span aria-hidden="true" /> {t("Session ready")}
-        </span>
+        <div className={styles.headerActions}>
+          <span className={styles.online}>
+            <span aria-hidden="true" /> {t("Session ready")}
+          </span>
+          <LearnFormatMenu
+            onPick={(prompt) => {
+              setDraft(prompt);
+              window.setTimeout(() => input.current?.focus(), 0);
+            }}
+          />
+        </div>
       </header>
 
       <div

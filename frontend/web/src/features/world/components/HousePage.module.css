@@ -608,8 +608,11 @@
   line-height: 1.7;
 }
 .illustration {
-  padding: 0 10px 24px;
-  align-self: center;
+  padding: 24px 10px 24px;
+  /* Long material lists would otherwise push the vignette far below the fold. */
+  align-self: start;
+  position: sticky;
+  top: 0;
   display: grid;
   justify-items: center;
   color: #9b8e70;

@@ -92,6 +92,12 @@
   gap: 16px;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .online {
   display: inline-flex;
   align-items: center;
