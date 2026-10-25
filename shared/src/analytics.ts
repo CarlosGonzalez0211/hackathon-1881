@@ -49,6 +49,9 @@ export const interventionSchema = z.object({
 });
 export type Intervention = z.infer<typeof interventionSchema>;
 
+export const interventionStatusUpdateSchema = z.object({ status: interventionStatusSchema });
+export type InterventionStatusUpdate = z.infer<typeof interventionStatusUpdateSchema>;
+
 export const studentAnalyticsSchema = z.object({
   studentId: idSchema,
   displayName: z.string(),

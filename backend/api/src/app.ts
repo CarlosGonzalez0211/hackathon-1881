@@ -3,11 +3,13 @@ import cors from "@fastify/cors";
 import type { HealthResponse } from "@athena/shared";
 import {
   AllowAllAuthService,
+  AllowAllAuthorizationService,
   createPlatformServices,
   installPlatform,
   type PlatformServices,
 } from "@athena/platform";
 import { env } from "./env.js";
+import { platformServicesFor } from "./platform.js";
 import { modulePlugins } from "./plugins.js";
 import { aiRoutes } from "./routes/ai.js";
 
@@ -19,14 +21,19 @@ export async function createApp(
     dataMode?: "mock" | "real";
   } = {},
 ) {
-  const services = createPlatformServices(options.platform);
+  const mode = options.dataMode ?? env.ATHENA_DATA_MODE;
+  // Explicit auth + authorization (tests, embedding) bypass the environment-built services.
+  const fromEnv =
+    options.platform?.auth && options.platform.authorization ? {} : platformServicesFor(mode);
+  const services = createPlatformServices({ ...fromEnv, ...options.platform });
   // The allow-all auth stub treats every caller as an admin, so it must never front real data.
   if (
-    (options.dataMode ?? env.ATHENA_DATA_MODE) === "real" &&
-    services.auth instanceof AllowAllAuthService
+    mode === "real" &&
+    (services.auth instanceof AllowAllAuthService ||
+      services.authorization instanceof AllowAllAuthorizationService)
   ) {
     throw new Error(
-      "ATHENA_DATA_MODE=real requires a real AuthService; the allow-all stub is mock-only",
+      "ATHENA_DATA_MODE=real requires real auth and authorization services; the allow-all stubs are mock-only",
     );
   }
   const app = Fastify({ logger: options.logger ?? true });

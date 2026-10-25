@@ -29,3 +29,7 @@ Trabajar en una rama `codex/…` de frontend; no hacer push directo a `main`. Ab
 Conservar el proyecto Vercel existente y su vínculo con GitHub. Adaptar rutas del monorepo, instalación, build, assets y workers en su configuración; configurar variables en Vercel sin exponerlas. Validar primero el preview de la rama. Producción se comprueba después de la integración del equipo; no marcarla como validada solo por compilar localmente.
 
 El checklist reproducible está en `VALIDATION.md`. Registrar URL, commit y fecha de cada despliegue probado; no introducir URLs de ejemplo como si fueran entregas reales.
+
+## Git LFS (kit de assets Athena)
+
+Los binarios originales del kit (`frontend/engine3d/athena-assets/**/*.{glb,png,wav}`) se versionan con Git LFS. Instalar `git-lfs` antes de clonar o hacer `git lfs pull` tras un clon existente; los hooks de `.husky/` invocan `git lfs` en push, checkout, commit y merge. CI hace checkout con `lfs: true`. El proyecto de Vercel necesita "Git LFS" activado en sus ajustes para que el build encuentre los binarios.

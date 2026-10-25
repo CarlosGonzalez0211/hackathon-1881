@@ -3,6 +3,9 @@ export {
   defaultAvatarAccessories,
   emoteDefinitions,
   actionDefinitions,
+  athenaAvatarOutfit,
+  athenaAvatarClips,
+  athenaClipFade,
 } from "./characters";
 export { npcDefinitions } from "./npcs";
 export { worldDefinition, houseInteractionAnchors, sceneDefinitions } from "./world";
