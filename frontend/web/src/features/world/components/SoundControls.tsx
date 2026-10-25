@@ -1,5 +1,6 @@
 "use client";
 import { useId } from "react";
+import "../world.css";
 
 export interface Volumes {
   music: number;

@@ -4,6 +4,7 @@ import locked from "@athena/engine3d/icons/state-locked.svg";
 import available from "@athena/engine3d/icons/state-available.svg";
 import inProgress from "@athena/engine3d/icons/state-in_progress.svg";
 import done from "@athena/engine3d/icons/state-done.svg";
+import "../world.css";
 
 type Status = HouseState["status"];
 const icons: Record<Status, { src: string }> = {
