@@ -52,6 +52,10 @@ begin
 end;
 $$;
 
+-- Only the trigger needs this function. Without the revoke it is callable through the REST API
+-- (/rest/v1/rpc/handle_new_user) by anyone; the trigger itself does not need the privilege.
+revoke all on function public.handle_new_user() from public, anon, authenticated;
+
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
