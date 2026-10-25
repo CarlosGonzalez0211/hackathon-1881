@@ -82,7 +82,7 @@ UI shows four states, mapped from six: `uploaded` → Subido / Uploaded, `extrac
 - **Index:** at hackathon scale (a class has at most a few thousand chunks) retrieval is an **exact scan** over the class's rows via the btree, so filtering by class cannot lose recall. HNSW is added later with `hnsw.iterative_scan = relaxed_order` if a class grows past ~50k chunks.
 - **Mock:** deterministic hashed bag-of-words → 768-dim normalized vector, so similarity is meaningful in tests and mock mode with no key.
 - **Objectives/concepts:** chunks inherit the material's topics. Objective tagging embeds each objective statement and links chunks above a threshold; professors can correct it. An objective's optional `concept_id` is how the Learning adapter filters by `conceptId` (Q5).
-- **Model ids** come from env with these defaults, checked with `models.list` in the real-provider PR (docs disagree on `gemini-embedding-2` vs `gemini-embedding-2-preview`): `CONTENT_CHAT_MODEL=gemini-3.8-flash`, `CONTENT_GUARD_MODEL=gemini-3.5-flash-lite`, `CONTENT_EMBED_MODEL=gemini-embedding-2`.
+- **Model ids** come from env, with defaults checked against the Gemini docs and changelog on 2026-10-25: `CONTENT_CHAT_MODEL=gemini-3.8-flash` (GA 2026-09-02), `CONTENT_GUARD_MODEL=gemini-3.5-flash-lite` (GA 2026-07-21), `CONTENT_EMBED_MODEL=gemini-embedding-2` (GA 2026-04-22; the models table still lists the `-preview` code). `pnpm --filter @athena/api content:models` confirms them for a given key. `CONTENT_MIN_SIMILARITY` (default 0.55) is the retrieval evidence threshold for real embeddings; tune it after the first real run.
 
 ## 5. Retrieval and citation
 
@@ -94,7 +94,7 @@ UI shows four states, mapped from six: `uploaded` → Subido / Uploaded, `extrac
 4. Server validation (Learning's rule): a supported answer has ≥ 1 citation and every citation is in the retrieved set, otherwise it becomes an abstain. Membership is not entailment; `unsupported` is the model's own judgement, which the guardrail fixtures test.
 5. The server remaps `[Sn]` to `[1]`, `[2]` in order of first use and returns shared `citationSchema` per cited chunk: `{ materialId, materialTitle, page?, section?, chunkId, excerpt }`. Excerpts are truncated to 300 chars in the content layer (the shared schema has no max) and shown verbatim in the material's language.
 
-`ContentCurriculumContext` (for Learning) reuses steps 1-2 and returns Learning's discriminated union: `no_approved_content` (no active generation for the topic), `insufficient_evidence` (below threshold), `curriculum_version_mismatch`, `concept_not_found` (no objective maps to the concept); `limit ≤ 10`.
+`ContentCurriculumContext` (for Learning; not built until P2 answers Q5, because Learning's request has a course but no class) reuses steps 1-2 and returns Learning's discriminated union: `no_approved_content` (no active generation for the topic), `insufficient_evidence` (below threshold), `curriculum_version_mismatch`, `concept_not_found` (no objective maps to the concept); `limit ≤ 10`.
 
 ## 6. Chat route and guardrails
 
@@ -131,21 +131,23 @@ Flags are visible to the class professor and admins only, store at most a 280-ch
 
 All under `/api/content`. Class routes check authorization before existence (analytics pattern); material-id routes return **404 both when the id is missing and when the caller cannot see it**, so ids from other classes do not leak. Errors use the platform `{ error }` body. All routes are class-scoped, so they use `canManageClass` / `canAccessClass`; `canAccessCourse` is not needed (the Learning adapter relies on Learning's own access check).
 
-| Method & path                                           | Who                               | Returns                                                        |
-| ------------------------------------------------------- | --------------------------------- | -------------------------------------------------------------- |
-| `POST /classes/:classId/materials`                      | `canManageClass`                  | `201 { material, uploadUrl }` or `200 { material, duplicate }` |
-| `POST /materials/:materialId/complete`                  | `canManageClass`                  | `Material` (verified)                                          |
-| `POST /materials/:materialId/process`                   | `canManageClass`                  | `Material` after one bounded step                              |
-| `GET /classes/:classId/materials`                       | `canAccessClass`                  | professor: all + status; student: ready only, public fields    |
-| `GET /materials/:materialId`                            | manage, or access if ready        | `Material`                                                     |
-| `PATCH /materials/:materialId`                          | `canManageClass`                  | title, topics                                                  |
-| `DELETE /materials/:materialId`                         | `canManageClass`                  | `204`                                                          |
-| `GET /materials/:materialId/download`                   | `canManageClass`                  | signed URL (60 s)                                              |
-| `GET /classes/:classId/objectives`, `/milestones`       | `canAccessClass`                  | ordered lists                                                  |
-| `PUT /objectives/:id`, `/milestones/:id`; `DELETE` same | `canManageClass` (via `class_id`) | upsert by id, soft delete, `409` on stale `updatedAt`          |
-| `POST /classes/:classId/chat`                           | `canAccessClass`                  | §6                                                             |
-| `GET /classes/:classId/flags`, `POST /flags/:id/review` | `canManageClass`                  | professor inbox                                                |
-| `POST /admin/content/reindex`                           | admin                             | queues re-embedding (§4)                                       |
+| Method & path                                                            | Who                        | Returns                                                                                |
+| ------------------------------------------------------------------------ | -------------------------- | -------------------------------------------------------------------------------------- |
+| `POST /classes/:classId/materials`                                       | `canManageClass`           | `201 { material, uploadUrl }` or `200 { material, duplicate }`                         |
+| `POST /materials/:materialId/complete`                                   | `canManageClass`           | `Material` (verified)                                                                  |
+| `POST /materials/:materialId/process`                                    | `canManageClass`           | `Material` after one bounded step                                                      |
+| `GET /classes/:classId/materials`                                        | `canAccessClass`           | professor: all + status; student: ready only, public fields                            |
+| `GET /materials/:materialId`                                             | manage, or access if ready | `Material`                                                                             |
+| `PATCH /materials/:materialId`                                           | `canManageClass`           | title, topics                                                                          |
+| `DELETE /materials/:materialId`                                          | `canManageClass`           | `204`                                                                                  |
+| `GET /materials/:materialId/download`                                    | `canManageClass`           | signed URL (60 s)                                                                      |
+| `GET /classes/:classId/objectives`, `/milestones`                        | `canAccessClass`           | ordered lists                                                                          |
+| `PUT /classes/:classId/objectives/:id`, `/milestones/:id`; `DELETE` same | `canManageClass`           | upsert by client id, soft delete, `409` on stale `expectedUpdatedAt` or duplicate code |
+| `POST /classes/:classId/chat`                                            | `canAccessClass`           | §6                                                                                     |
+| `GET /classes/:classId/flags`, `POST /flags/:id/review`                  | `canManageClass`           | professor inbox                                                                        |
+| `POST /admin/content/reindex`                                            | admin                      | queues re-embedding (§4)                                                               |
+
+In mock storage only, `PUT /content/dev-uploads/:token` (authenticated, `application/octet-stream`) stands in for the Supabase signed upload URL so mock mode works end to end.
 
 Request/response zod schemas go in a new `shared/src/content.ts`, reusing `materialStatusSchema` and `citationSchema`.
 

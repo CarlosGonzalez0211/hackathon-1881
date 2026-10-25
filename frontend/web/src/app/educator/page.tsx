@@ -2,6 +2,7 @@
 import { t } from "@/lib/i18n";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { Class } from "@athena/shared";
 import { RoleGate } from "@/features/auth";
 import { ClassDashboard } from "@/features/analytics";
@@ -77,6 +78,12 @@ function ClassPicker() {
           {current.term ? ` · ${current.term}` : ""}
         </p>
       )}
+      <Link
+        href={`/educator/classes/${current.id}/content`}
+        className="inline-flex min-h-[var(--athena-target-min)] items-center rounded-[var(--athena-radius-small)] border border-[var(--athena-border)] px-4 text-sm font-medium"
+      >
+        Material del curso y tutor / Course material and tutor
+      </Link>
       <ClassDashboard key={current.id} classId={current.id} />
     </div>
   );

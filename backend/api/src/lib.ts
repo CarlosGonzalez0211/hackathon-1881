@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { createGeminiClient } from "@athena/ai";
 import { Resend } from "resend";
@@ -14,6 +15,11 @@ export function supabaseAdmin() {
 
 export function gemini() {
   return createGeminiClient(env.GEMINI_API_KEY);
+}
+
+export function anthropic() {
+  if (!env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not set");
+  return new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 }
 
 export function resend() {
