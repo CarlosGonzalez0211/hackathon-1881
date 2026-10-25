@@ -8,26 +8,59 @@ import {
   worldDefinition,
 } from "../config";
 import type { LegacyContext } from "./legacy-context";
+import type { EngineLifecycle } from "./lifecycle";
+import { resolveForLoader, toLegacyLoaderPath } from "../assets/athena-manifest";
+import type { LegacyLoaderName } from "../assets/athena-manifest";
+
+export interface RecoveredEngineOptions {
+  athenaAssets?: boolean;
+  lifecycle?: EngineLifecycle;
+}
 
 /** Bind authoring data to the recovered implementation, before a scene is built. */
-export function configureRecoveredEngine(scope: LegacyContext) {
+export function configureRecoveredEngine(
+  scope: LegacyContext,
+  options: RecoveredEngineOptions = {},
+) {
   const byOriginalPath = new Map(assetCatalog.map((asset) => [asset.id, asset]));
-  const resolve = (family: string, relative: string) => {
+  const legacyResolve = (family: string, relative: string) => {
     const normalized = relative.replace(/^(\.\/|\/)+/, "");
     const id = `${family}.${normalized.replaceAll("/", ".")}`;
     const asset = byOriginalPath.get(id);
     return asset ? asset.path.replace(new RegExp(`^${family}/`), "") : relative;
   };
+  /**
+   * Athena first, but only when the legacy loader can consume the Athena format (see
+   * `resolveForLoader`): `.drc` geometry slots keep their legacy file until a GLB path
+   * replaces them; textures (PNG/KTX2) and audio (OGG/WAV) swap now.
+   */
+  const resolve = (loader: LegacyLoaderName, family: string, relative: string) => {
+    const athena = options.athenaAssets === false ? undefined : resolveForLoader(loader, relative);
+    return athena
+      ? { path: toLegacyLoaderPath(athena.url), athena }
+      : { path: legacyResolve(family, relative), athena };
+  };
   const loadGeometry = scope.geometryLoader.load.bind(scope.geometryLoader);
   scope.geometryLoader.load = (relative: string, ...args: unknown[]) =>
-    loadGeometry(resolve("geometries", relative), ...args);
+    loadGeometry(resolve("geometry", "geometries", relative).path, ...args);
   const loadTexture = scope.textureLoader.load.bind(scope.textureLoader);
-  scope.textureLoader.load = (relative: string, ...args: unknown[]) =>
-    loadTexture(resolve("images", relative), ...args);
-  const loadAudio = scope.audiobufferLoader?._initLoad.bind(scope.audiobufferLoader);
+  scope.textureLoader.load = (relative?: string, mode = "default", ...args: unknown[]) => {
+    if (typeof relative !== "string") return loadTexture(relative, mode, ...args);
+    const { path, athena } = resolve("texture", "images", relative);
+    // Legacy KTX2 is uploaded unflipped; keep that orientation for a PNG stand-in.
+    const noflip = athena?.format === "png" && /\.ktx2$/i.test(relative) && !/noflip/i.test(mode);
+    return loadTexture(path, noflip ? `${mode}-noflip` : mode, ...args);
+  };
+  // `_initLoad` only keys the cache; the fetch happens in `load`, so resolve there.
+  const loadAudio = scope.audiobufferLoader?.load?.bind(scope.audiobufferLoader);
   if (loadAudio)
-    scope.audiobufferLoader._initLoad = (relative: string, ...args: unknown[]) =>
-      loadAudio(resolve("audio", relative), ...args);
+    scope.audiobufferLoader.load = (relative: string, ...args: unknown[]) => {
+      const { path, athena } = resolve("audio", "audio", relative);
+      // The legacy loader maps .ogg → .mp3 where Opus/Vorbis is unsupported (Safari);
+      // there is no Athena MP3, so those clients stay on the legacy request.
+      const playable = athena?.format !== "ogg" || scope.client$1?.capabilities?.opus !== false;
+      return loadAudio(playable ? path : legacyResolve("audio", relative), ...args);
+    };
 
   scope.client$1.localStorage.modelFiles = [...defaultAvatarAccessories];
   scope.DEFAULT_FILES.animationFiles = avatarDefinition.animations.map((animation) =>

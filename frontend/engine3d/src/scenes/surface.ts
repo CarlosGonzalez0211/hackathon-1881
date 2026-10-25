@@ -1,7 +1,12 @@
-import type { HouseState, PlanetState } from "@athena/shared";
+import type { HouseState, PlanetState, QuestState } from "@athena/shared";
+import { celebrate, celebrationModel } from "../athena/celebrations";
+import type { AthenaInstallation } from "../athena/install";
+import { setReducedMotion } from "../athena/models";
+import type { AthenaWorldEngine } from "../athena/world-engine";
 import { houseInteractionAnchors, renderingDefinition } from "../config";
 import { createEngineContext, disposeEngineContext } from "../runtime/context";
 import type { LegacyContext } from "../runtime/legacy-context";
+import type { Vector3Tuple } from "../types";
 
 export interface ProjectedHouse {
   slot: number;
@@ -9,6 +14,11 @@ export interface ProjectedHouse {
   y: number;
   visible: boolean;
   distance: number;
+  /**
+   * Within the house's interaction radius (anchor or door). The same rule as the E key:
+   * the house marker may only be activated when this is true.
+   */
+  inReach: boolean;
 }
 export interface EngineStats {
   fps: number;
@@ -23,11 +33,18 @@ export interface SurfaceOptions {
   onProjection?: (houses: ProjectedHouse[]) => void;
   onStats?: (stats: EngineStats) => void;
   onReady?: () => void;
+  /** Resolve assets through the Athena manifest first (default true). */
+  athenaAssets?: boolean;
 }
-export interface SurfaceHandle {
+export interface SurfaceHandle extends AthenaWorldEngine {
+  /** Same as `updatePlanet`. */
   update(state: PlanetState): void;
+  /** Latest quest state given to `updateQuests`. */
+  readonly quests: readonly QuestState[];
   setPaused(paused: boolean): void;
   setMuted(muted: boolean): void;
+  /** Music (score + ambient bed) and effects volumes, 0-1 (brand guide 07). */
+  setVolumes(volumes: { music?: number; effects?: number }): void;
   dispose(): void;
   readonly resourceCounts: {
     listeners: number;
@@ -42,7 +59,7 @@ export async function createSurfaceEngine(
   host: HTMLElement,
   options: SurfaceOptions,
 ): Promise<SurfaceHandle> {
-  const { scope, lifecycle } = await createEngineContext();
+  const { scope, lifecycle } = await createEngineContext({ athenaAssets: options.athenaAssets });
   let state = options.state;
   let disposed = false;
   let controller: LegacyContext | undefined;
@@ -121,6 +138,7 @@ export async function createSurfaceEngine(
     scene.userData.planetState = state;
     const position = new scope.Vector3();
     const projected = new scope.Vector3();
+    const door = new scope.Vector3();
     let nearest: number | undefined;
     let lastUi = 0;
     scene.beforeRenderCbs.push(() => {
@@ -130,23 +148,34 @@ export async function createSurfaceEngine(
       const player = scene.characters.mesh._localObject;
       let min = Infinity;
       nearest = undefined;
+      // Athena houses stand beside their anchors (athena/houses.ts): labels go above the
+      // roof, and E works near the anchor (legacy) or the house door.
+      const sites = scene.userData.athenaHouseSites as
+        Map<number, { top: Vector3Tuple; door: Vector3Tuple }> | undefined;
       const points = houseInteractionAnchors.map((anchor) => {
+        const slot = anchor.interaction!.slot!;
+        const site = sites?.get(slot);
         position.fromArray(anchor.position);
-        const distance = position.distanceTo(player.position);
-        if (distance < min && distance < (anchor.interaction?.radius || 2.2)) {
+        let distance = position.distanceTo(player.position);
+        if (site)
+          distance = Math.min(distance, door.fromArray(site.door).distanceTo(player.position));
+        const inReach = distance < (anchor.interaction?.radius || 2.2);
+        if (inReach && distance < min) {
           min = distance;
-          nearest = anchor.interaction?.slot;
+          nearest = slot;
         }
+        if (site) position.fromArray(site.top);
         projected
           .copy(position)
-          .addScaledVector(position.clone().normalize(), 1.2)
+          .addScaledVector(position.clone().normalize(), site ? 0.4 : 1.2)
           .project(scene.camera);
         return {
-          slot: anchor.interaction!.slot!,
+          slot,
           x: ((projected.x + 1) * host.clientWidth) / 2,
           y: ((1 - projected.y) * host.clientHeight) / 2,
           visible: projected.z < 1 && position.dot(scene.camera.position) > 0,
           distance,
+          inReach,
         };
       });
       options.onProjection?.(points);
@@ -166,10 +195,40 @@ export async function createSurfaceEngine(
     scope.events$1.emit("render_active", true);
     controller!.audioController.camera = scene.camera;
     options.onReady?.();
+    const athena = scope.athena as AthenaInstallation | undefined;
+    let quests: QuestState[] = [];
+    const updatePlanet = (next: PlanetState) => {
+      state = next;
+      scene.userData.planetState = state;
+    };
+    const show = (key: string) => {
+      if (!athena?.enabled) return;
+      celebrate(athena, scene, key).catch((error) =>
+        console.warn("[Athena] celebration skipped", error),
+      );
+    };
     return {
-      update(next) {
-        state = next;
-        scene.userData.planetState = state;
+      update: updatePlanet,
+      updatePlanet,
+      updateQuests(next) {
+        quests = next;
+        scene.userData.quests = next;
+      },
+      get quests() {
+        return quests;
+      },
+      showAchievement(achievement) {
+        show(celebrationModel("achievement", achievement.code));
+      },
+      showEasterEgg() {
+        show(celebrationModel("easter-egg"));
+      },
+      setAccessibility(settings) {
+        setReducedMotion(settings.reducedMotion);
+        scope.athenaAudio?.setVolumes({
+          music: settings.musicVolume,
+          effects: settings.sfxVolume,
+        });
       },
       setPaused(paused) {
         if (paused) scene.characters.disable();
@@ -177,6 +236,9 @@ export async function createSurfaceEngine(
       },
       setMuted(muted) {
         scope.events$1.emit("audio_mute_toggle", muted);
+      },
+      setVolumes(volumes) {
+        scope.athenaAudio?.setVolumes(volumes);
       },
       dispose,
       get resourceCounts() {
