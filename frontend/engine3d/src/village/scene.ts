@@ -12,6 +12,8 @@ import { createLivingLandmarks } from "./landscape-life";
 import { createWelcomeCourtyard } from "./welcome";
 import { createTerrace } from "./terrace";
 import { roundedBox, taperedTube } from "./geometry";
+import { dressWithCloth, type Cloth } from "./cloth";
+import { illuminateLumen } from "./lumen";
 import {
   direction,
   surfacePoint,
@@ -93,7 +95,10 @@ export interface VillageActor {
   name: string;
   travel: number;
   travelSign: number;
+  /** Signature cape (people only; animals, Lumen and the study trio go without). */
+  cloth?: Cloth;
 }
+const CAPELESS = new Set(["lumen", "owl-sage", "hare-pip", "study-trio"]);
 export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState, low = false) {
   const s = ctx.scope;
   const root = new s.Group();
@@ -116,6 +121,7 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
   const breeze = { value: 0 };
   const terraces: ReturnType<typeof createTerrace>[] = [];
   let ambience: Awaited<ReturnType<typeof buildAmbience>> | undefined;
+  let lumenLight: ReturnType<typeof illuminateLumen> | undefined;
   const groves = [
     direction(-0.8, 0.95),
     direction(0.8, -1.05),
@@ -133,6 +139,30 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
     ...rocks.map((up) => ({ up, radius: 0.65 })),
   ];
   const tasks: Promise<unknown>[] = [];
+  /**
+   * Ground-level footprint: only geometry in the lower part of the model counts, so roof
+   * eaves, awnings and signs no longer push the invisible wall out past the real walls.
+   */
+  const footprint = (root: LegacyContext) => {
+    const full = localBounds(s, root);
+    const cut = full.min.y + (full.max.y - full.min.y) * 0.32;
+    const box = new s.Box3(),
+      point = new s.Vector3(),
+      toLocal = root.matrixWorld.clone().invert(),
+      matrix = new s.Matrix4();
+    root.updateMatrixWorld(true);
+    root.traverse((child: LegacyContext) => {
+      if (!child.isMesh || child.userData.athenaInk || child.isInstancedMesh) return;
+      const position = child.geometry.attributes.position;
+      if (!position) return;
+      matrix.multiplyMatrices(toLocal, child.matrixWorld);
+      for (let i = 0; i < position.count; i++) {
+        point.fromBufferAttribute(position, i).applyMatrix4(matrix);
+        if (point.y <= cut) box.expandByPoint(point);
+      }
+    });
+    return box.isEmpty() ? full : box;
+  };
   const fitObstacle = (
     model: AthenaModel,
     up: Vec,
@@ -140,7 +170,7 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
     scale: number,
     obstacle?: Obstacle,
   ) => {
-    const bounds = localBounds(s, model.root);
+    const bounds = footprint(model.root);
     const fitted = buildingObstacle(
       {
         min: [bounds.min.x, bounds.min.y, bounds.min.z],
@@ -447,10 +477,14 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
             const up = npc.id === "lumen" ? direction(0.08, 0.08) : direction(npc.lon, npc.lat);
             const placed = await place(npc.model, up, [1, 0, 0], npc.id === "lumen" ? 1.1 : 1);
             if (placed) {
+              if (npc.id === "lumen") lumenLight = illuminateLumen(ctx, placed.model.root);
               const player = new ClipPlayer(s, placed.model.root, placed.model.animations);
               player.play("idle");
               player.update(actors.length * 0.37);
               actors.push({
+                cloth: CAPELESS.has(npc.id)
+                  ? undefined
+                  : dressWithCloth(ctx, placed.model.root, "cape"),
                 id: npc.id,
                 name: npc.name,
                 travel: 0,
@@ -530,6 +564,7 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
       clouds.tick(reduced ? 0 : time);
       landscapeLife.tick(reduced ? 0 : time);
       ambience?.tick(dt, time, reduced);
+      lumenLight?.tick(reduced ? 0 : time);
       for (let i = fades.length - 1; i >= 0; i--) {
         const fade = fades[i]!;
         fade.elapsed += dt;

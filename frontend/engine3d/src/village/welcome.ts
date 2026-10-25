@@ -192,25 +192,6 @@ export function createWelcomeCourtyard(
   paving("welcome_courtyard", 0, 5.15, mat("#d9cca7"));
   paving("courtyard_outer_binding", 5.02, 5.22, teal);
   paving("courtyard_gold_binding", 4.76, 4.84, gold);
-  paving("courtyard_compass_ring", 1.22, 1.29, gold, 1.3);
-  const floorPos: number[] = [],
-    floorIx: number[] = [];
-  floorPos.push(...groundPoint(0, 1.3, 0.055));
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 16) * Math.PI * 2,
-      r = i % 2 ? 0.25 : i % 4 === 0 ? 1.11 : 0.72;
-    floorPos.push(...groundPoint(Math.sin(a) * r, 1.3 + Math.cos(a) * r, 0.055));
-    if (i) floorIx.push(0, i, i + 1);
-  }
-  floorIx.push(0, 16, 1);
-  const compass = new s.BufferGeometry();
-  compass.setAttribute("position", new s.Float32BufferAttribute(floorPos, 3));
-  compass.setIndex(floorIx);
-  compass.computeVertexNormals();
-  const mosaic = mesh("courtyard_compass_mosaic", compass, teal.clone());
-  mosaic.material.side = s.DoubleSide;
-  mosaic.userData.athenaNoInk = true;
-  mosaic.castShadow = false;
   mergeStaticMeshes(s, gate, new Set(["halo_gate_crest"]));
   ctx.toon.apply(gate);
   gate.traverse((o: LegacyContext) => {

@@ -282,6 +282,7 @@ export async function createSurfaceEngine(
               : "idle";
         avatarPlayer!.play(clip);
         avatarPlayer!.update(dt);
+
         if (
           walker.moving &&
           !walker.altitude &&
@@ -322,7 +323,9 @@ export async function createSurfaceEngine(
               actor.up = candidate;
             } else actor.travelSign *= -1;
           }
-          const moved = arcDistance(before, actor.up) > 0.0001;
+          const step = arcDistance(before, actor.up);
+          const moved = step > 0.0001;
+          actor.cloth?.tick(dt, now / 1000, dt > 0 ? step / dt : 0, 0, reduced);
           const close = arcDistance(walker.up, actor.up) < 2.6;
           actor.root.position.set(...surfacePoint(actor.up));
           orient(
