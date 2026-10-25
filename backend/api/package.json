@@ -20,7 +20,8 @@
     "@athena/analytics": "workspace:*",
     "@athena/curriculum": "workspace:*",
     "@athena/learning": "workspace:*",
-    "@athena/platform": "workspace:*"
+    "@athena/platform": "workspace:*",
+    "@athena/world": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

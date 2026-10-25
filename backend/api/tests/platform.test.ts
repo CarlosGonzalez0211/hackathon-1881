@@ -6,7 +6,12 @@ import {
   classAnalyticsSchema,
   type DomainEvent,
 } from "@athena/shared";
-import { InMemoryDomainEventStore } from "@athena/platform";
+import {
+  AllowAllAuthService,
+  AllowAllAuthorizationService,
+  InMemoryDomainEventStore,
+  RoleAuthorizationService,
+} from "@athena/platform";
 import { createApp } from "../src/app.js";
 
 test("health and CORS preflight never need a caller; real mode refuses the allow-all stub", async () => {
@@ -29,7 +34,29 @@ test("health and CORS preflight never need a caller; real mode refuses the allow
   } finally {
     await app.close();
   }
-  await assert.rejects(createApp({ logger: false, dataMode: "real" }), /real AuthService/);
+  // Real mode without credentials fails loudly instead of falling back to the allow-all stub.
+  await assert.rejects(createApp({ logger: false, dataMode: "real" }), /SUPABASE_URL/);
+  // Real mode with the stub injected explicitly is also refused.
+  await assert.rejects(
+    createApp({
+      logger: false,
+      dataMode: "real",
+      platform: { auth: new AllowAllAuthService(), authorization: new RoleAuthorizationService() },
+    }),
+    /real auth and authorization/,
+  );
+  // Real auth with the allow-all authorization stub is refused too.
+  await assert.rejects(
+    createApp({
+      logger: false,
+      dataMode: "real",
+      platform: {
+        auth: { authenticate: async () => new AllowAllAuthService().authenticate("") },
+        authorization: new AllowAllAuthorizationService(),
+      },
+    }),
+    /real auth and authorization/,
+  );
 });
 
 const event = (overrides: Partial<DomainEvent> = {}) => ({
@@ -110,6 +137,7 @@ test("analytics refuses classes the authorization service denies", async () => {
     platform: {
       authorization: {
         canAccessClass: () => false,
+        canManageClass: () => false,
         canAccessCourse: () => false,
         canAccessStudent: () => false,
       },

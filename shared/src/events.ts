@@ -47,3 +47,22 @@ export const eventQuerySchema = z.object({
   since: isoDateSchema.optional(),
 });
 export type EventQuery = z.infer<typeof eventQuerySchema>;
+
+/**
+ * Payload proposals for the events analytics projects. Producers (Learning, AI) should emit
+ * these shapes; the projection ignores events whose payload does not parse.
+ */
+const unitInterval = z.number().min(0).max(1);
+export const masteryUpdatedPayloadSchema = z.object({
+  topicId: idSchema,
+  previous: unitInterval,
+  next: unitInterval,
+  /** Misconception codes observed in the answers that moved this mastery. */
+  misconceptions: z.array(z.object({ code: z.string(), label: z.string() })).default([]),
+});
+export type MasteryUpdatedPayload = z.infer<typeof masteryUpdatedPayloadSchema>;
+
+export const aiUsageRecordedPayloadSchema = z.object({
+  kind: z.enum(["chat", "podcast", "video", "summary", "hint", "quiz_answer"]),
+});
+export type AiUsageRecordedPayload = z.infer<typeof aiUsageRecordedPayloadSchema>;

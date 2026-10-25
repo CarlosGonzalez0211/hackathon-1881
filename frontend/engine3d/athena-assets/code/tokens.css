@@ -1,0 +1,67 @@
+/* Athena brand tokens v1.0 — drop-in for frontend/brand/src/tokens.css (existing names preserved) */
+@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=IBM+Plex+Mono:wght@400;500&display=swap");
+:root {
+  /* UI ink & paper (AA on paper: ink 15.2:1, muted 7.4:1) */
+  --athena-ink: #1b2433;
+  --athena-muted: #4a5568;
+  --athena-paper: #fbf8f3;
+  --athena-surface: #ffffff;
+  --athena-veil: rgba(251, 248, 243, 0.94); /* panel over 3D world */
+  --athena-border: #8a8f98;
+  --athena-hairline: #e2d9cc;
+  --athena-accent: #0b6a6c;
+  --athena-accent-ink: #ffffff;
+  --athena-focus: #2457c5;
+  --athena-light: #d9a441; /* decorative only — never text */
+  --athena-light-ink: #7a5300;
+  /* learning states — always paired with shape + label */
+  --athena-locked: #4f5a66;
+  --athena-available: #0b6a6c;
+  --athena-in-progress: #8a5a00;
+  --athena-done: #2e6b45;
+  /* world */
+  --athena-sky-zenith: #5e93b8;
+  --athena-sky-mid: #c6e0e4;
+  --athena-sky-horizon: #f8f3e8;
+  --athena-dusk: #1b2238;
+  --athena-orbit-bg: #1b2238;
+  /* type */
+  --athena-font-display: "Newsreader", Georgia, serif;
+  --athena-font-body: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, sans-serif;
+  --athena-font-mono: "IBM Plex Mono", Consolas, monospace;
+  --athena-text-xs: 0.8125rem;  /* 13 */
+  --athena-text-sm: 0.9375rem;  /* 15 */
+  --athena-text-md: 1.0625rem;  /* 17 body */
+  --athena-text-lg: 1.375rem;   /* 22 */
+  --athena-text-xl: 2rem;       /* 32 */
+  --athena-text-2xl: 3rem;      /* 48 */
+  --athena-leading: 1.55;
+  /* shape */
+  --athena-radius-small: 0.5rem;
+  --athena-radius-panel: 1.25rem;
+  --athena-radius-pill: 999px;
+  /* 4px base */
+  --athena-space-xs: 0.25rem;
+  --athena-space-small: 0.5rem;
+  --athena-space-medium: 1rem;
+  --athena-space-large: 1.5rem;
+  --athena-space-xl: 2rem;
+  --athena-space-2xl: 3rem;
+  --athena-target-min: 44px;
+  --athena-shadow-panel: 0 8px 32px rgba(27, 36, 51, 0.14);
+  /* motion */
+  --athena-motion-fast: 140ms;
+  --athena-motion-standard: 320ms;
+  --athena-motion-calm: 900ms;
+  --athena-ease: cubic-bezier(0.33, 0, 0.15, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --athena-motion-fast: 0ms;
+    --athena-motion-standard: 0ms;
+    --athena-motion-calm: 0ms;
+  }
+}
+@media (prefers-contrast: more) {
+  :root { --athena-veil: #fbf8f3; --athena-border: #1b2433; --athena-muted: #2e3746; }
+}
