@@ -38,6 +38,7 @@ export {
 } from "./contracts/learning-world.js";
 export * from "./mocks.js";
 export * from "./mocks/index.js";
+export * from "./mocks/demo-curriculum.js";
 export * from "./world.js";
 export * from "./world-integration.js";
 export * from "./contracts/curriculum-world.js";

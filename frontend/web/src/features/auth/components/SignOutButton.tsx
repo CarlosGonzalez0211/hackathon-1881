@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n";
 
 import { useRouter } from "next/navigation";
 import { useMocks } from "@/lib/mode";
@@ -22,8 +23,7 @@ export function SignOutButton({ className }: { className?: string }) {
         router.push("/login");
       }}
     >
-      Cerrar sesión
-      <span className="sr-only"> / Sign out</span>
+      {t("Sign out")}
     </button>
   );
 }

@@ -1,0 +1,22 @@
+{
+  "branch": "origin/feat/learning-policy-freeze",
+  "commit": "43062843460aefb3d10646f007f96607fa544e8c",
+  "files": [
+    {
+      "sourcePath": "shared/src/common.ts",
+      "localFile": "common.ts",
+      "sha256": "ae3c1d357d4c788de9b0d190b2eb122110ffa056fb31cfb72c274d110906e4af"
+    },
+    {
+      "sourcePath": "shared/src/curriculum.ts",
+      "localFile": "curriculum.ts",
+      "sha256": "8872f337ffaccf177541703a68d250e6277741dd9a24d6e957b19600565ba495"
+    },
+    {
+      "sourcePath": "shared/src/learning-curriculum.ts",
+      "localFile": "learning-curriculum.ts",
+      "sha256": "61ee4ac8d346d441b9191a26675b85d2444b4872009754a297041398b69b3b94"
+    }
+  ],
+  "purpose": "Read-only consumer contract snapshots used only by Person 1 tests; no production exports."
+}

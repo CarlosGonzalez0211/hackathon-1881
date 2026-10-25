@@ -1,0 +1,6 @@
+[DEMO] Pensamiento crítico — notes
+
+Authored Athena teaching fixture attributed to a fictional demo instructor. Not a real upload or primary historical source. The storage key is illustrative; text lives in source chunks.
+
+[es] Comprobar razonamientos
+Comprueba las unidades y los pasos de un cálculo. Compara el área de un triángulo con el rectángulo de la misma base y altura para detectar la omisión del factor 1/2.

@@ -1,0 +1,6 @@
+[DEMO] Funciones — notes
+
+Authored Athena teaching fixture attributed to a fictional demo instructor. Not a real upload or primary historical source. The storage key is illustrative; text lives in source chunks.
+
+[es] Reglas de correspondencia
+Una función asigna exactamente una salida a cada entrada de su dominio. En f(x) = 2x, la entrada 3 produce la salida 6.

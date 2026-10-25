@@ -5,6 +5,7 @@
 import type { LegacyContext } from "../runtime/legacy-context";
 import type { AthenaInstallContext } from "./install";
 import { animatedNodeNames, mergeStaticMeshes } from "./merge";
+import { applyCharacterLook } from "./character-look";
 
 type Object3D = LegacyContext;
 type AnimationClip = LegacyContext;
@@ -40,7 +41,10 @@ export async function loadAthenaModel(
     object.receiveShadow = true;
   });
   if (merge) mergeStaticMeshes(ctx.scope, scene, animatedNodeNames(animations));
-  if (toon) ctx.toon.apply(scene);
+  if (toon) {
+    ctx.toon.apply(scene);
+    applyCharacterLook(ctx, scene);
+  }
   scene.userData.athenaUrl = url;
   return { root: scene, animations, url };
 }
@@ -49,6 +53,7 @@ export async function loadAthenaModel(
 export function finishModel(ctx: AthenaInstallContext, model: AthenaModel) {
   mergeStaticMeshes(ctx.scope, model.root, animatedNodeNames(model.animations));
   ctx.toon.apply(model.root);
+  applyCharacterLook(ctx, model.root);
   return model;
 }
 
@@ -69,6 +74,14 @@ export function graftByNodeName(scope: LegacyContext, base: Object3D, part: Obje
   const inverse = new scope.Matrix4();
   let grafted = 0;
   for (const mesh of meshes) {
+    // Accessory socket transforms are supplied by the base rig. Apply the fit
+    // to its geometry after grafting, otherwise matching that socket cancels it.
+    let ancestor = mesh.parent;
+    let satchel = false;
+    while (ancestor && ancestor !== part) {
+      satchel ||= ancestor.name === "acc_satchel";
+      ancestor = ancestor.parent;
+    }
     let anchor = mesh.parent;
     let target: Object3D | undefined;
     while (anchor && anchor !== part) {
@@ -83,6 +96,7 @@ export function graftByNodeName(scope: LegacyContext, base: Object3D, part: Obje
     // Pose relative to the matched ancestor in the part, re-applied under the base node.
     const relative = inverse.copy(anchor.matrixWorld).invert().multiply(mesh.matrixWorld);
     relative.decompose(mesh.position, mesh.quaternion, mesh.scale);
+    if (satchel && base.getObjectByName("poncho")) mesh.position.z += 0.16;
     target.add(mesh);
     grafted++;
   }
@@ -103,6 +117,8 @@ export class ClipPlayer {
   ) {
     this.mixer = new scope.AnimationMixer(root);
     for (const clip of clips) this.actions.set(clip.name, this.mixer.clipAction(clip));
+    // Expressions animate a separate face node and keep playing during locomotion/talk.
+    this.actions.get("expression_blink")?.play();
   }
   has(name: string) {
     return this.actions.has(name);

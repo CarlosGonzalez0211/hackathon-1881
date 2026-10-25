@@ -1,0 +1,20 @@
+[AUTHORED DEMO] Guion de diapositivas: comparar revoluciones
+Format: slides; representation: slide_outline; locale: es
+Script/outline only. No playable media or presentation file.
+
+Diapositiva 1: 1776, Declaración de Independencia estadounidense
+Source: material-topic-comparing-rights-timeline; Cronología comparada; material-topic-comparing-rights-timeline-chunk-1; excerpt: 1776, Declaración de Independencia estadounidense
+
+Diapositiva 2: 1789–1799, Revolución francesa
+Source: material-topic-comparing-rights-timeline; Cronología comparada; material-topic-comparing-rights-timeline-chunk-1; excerpt: 1789–1799, Revolución francesa
+
+Diapositiva 3: 1791–1804, Revolución haitiana
+Source: material-topic-comparing-rights-timeline; Cronología comparada; material-topic-comparing-rights-timeline-chunk-1; excerpt: 1791–1804, Revolución haitiana
+
+Diapositiva 4: coincidencia temporal: Las revoluciones francesa y haitiana coincidieron en el tiempo.
+Source: material-topic-comparing-rights-timeline; Cronología comparada; material-topic-comparing-rights-timeline-chunk-1; excerpt: Las revoluciones francesa y haitiana coincidieron en el tiempo.
+
+Diapositiva 5: comparar derechos: Compara las afirmaciones sobre derechos con evidencia de su ejercicio.
+Source: material-topic-comparing-rights-timeline; Cronología comparada; material-topic-comparing-rights-timeline-chunk-1; excerpt: Compara las afirmaciones sobre derechos con evidencia de su ejercicio.
+
+Pregunta para discutir: ¿Qué evidencia buscarías para ampliar la comparación?

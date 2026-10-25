@@ -1,4 +1,6 @@
 "use client";
+import { localizeContent, t } from "@/lib/i18n";
+
 import { useEffect, useState } from "react";
 import type { HouseContent } from "@athena/shared";
 import { getCurriculumContentClient } from "../house-content-client";
@@ -13,11 +15,13 @@ export function HouseContentPanel({
   studentId,
   cta,
   onStart,
+  showStart = true,
 }: {
   topicId: string;
   studentId: string;
   cta: string;
   onStart: () => void;
+  showStart?: boolean;
 }) {
   const [content, setContent] = useState<HouseContent | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +33,7 @@ export function HouseContentPanel({
     setError(null);
     getCurriculumContentClient()
       .getHouseContent(topicId)
-      .then((value) => active && setContent(value))
+      .then((value) => active && setContent(localizeContent(value)))
       .catch((cause) => active && setError(cause instanceof Error ? cause.message : String(cause)));
     return () => {
       active = false;
@@ -39,15 +43,15 @@ export function HouseContentPanel({
   if (error)
     return (
       <div className={styles.compact} role="alert">
-        <p>No pudimos cargar el material.</p>
+        <p>{t("Could not load the material.")}</p>
         <button className={styles.secondary} onClick={() => setAttempt((value) => value + 1)}>
-          Reintentar
+          {t("Retry")}
         </button>
       </div>
     );
   if (!content)
     return (
-      <div className={styles.skeleton} role="status" aria-label="Cargando material">
+      <div className={styles.skeleton} role="status" aria-label={t("Loading material")}>
         <span />
         <span />
       </div>
@@ -57,7 +61,7 @@ export function HouseContentPanel({
   return (
     <div className={styles.stack}>
       {content.summary && <p className={styles.lead}>{content.summary}</p>}
-      <ul className={styles.cards} aria-label="Material del tema">
+      <ul className={styles.cards} aria-label={t("Topic material")}>
         {ready.map((material) => (
           <li key={material.id} className={styles.card}>
             <span className={styles.fileBadge} aria-hidden="true">
@@ -67,15 +71,15 @@ export function HouseContentPanel({
               <strong>{material.title}</strong>
               <small>
                 {material.filename}
-                {material.pageCount ? ` · ${material.pageCount} páginas` : ""}
+                {material.pageCount ? t(" · {0} pages", { 0: material.pageCount }) : ""}
               </small>
             </span>
             {material.url ? (
               <a className={styles.secondary} href={material.url} target="_blank" rel="noreferrer">
-                Abrir
+                {t("Open")}
               </a>
             ) : (
-              <span className={styles.muted}>Vista previa pronto</span>
+              <span className={styles.muted}>{t("Preview coming soon")}</span>
             )}
           </li>
         ))}
@@ -86,9 +90,11 @@ export function HouseContentPanel({
           {resource.body && <p>{resource.body}</p>}
         </article>
       ))}
-      <button className={styles.primary} onClick={onStart}>
-        {cta}
-      </button>
+      {showStart && (
+        <button className={styles.primary} onClick={onStart}>
+          {cta}
+        </button>
+      )}
     </div>
   );
 }

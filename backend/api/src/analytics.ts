@@ -1,14 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { interventionStatusSchema, type InterventionStatus } from "@athena/shared";
+import { interventionSchema, interventionStatusSchema } from "@athena/shared";
 import type {
   AnalyticsRoutesOptions,
   ClassRoster,
+  InterventionDecision,
   InterventionStatusStore,
   RosterProvider,
 } from "@athena/analytics";
 import { env } from "./env.js";
 import { supabaseAdmin } from "./lib.js";
+import { fetchAll } from "./supabase-paging.js";
 
 const classRow = z.object({ id: z.string(), course_id: z.string() });
 const enrollmentRow = z.object({
@@ -35,49 +37,73 @@ export function supabaseRosterProvider(
     if (found.error) throw new Error(`Supabase query failed: ${found.error.message}`);
     if (!found.data) return null;
     const klass = classRow.parse(found.data);
-    const members = await client
-      .from("class_enrollments")
-      .select("profiles!class_enrollments_student_id_fkey(id, display_name)")
-      .eq("class_id", classId)
-      .eq("status", "active");
-    if (members.error) throw new Error(`Supabase query failed: ${members.error.message}`);
+    const members = z
+      .array(enrollmentRow)
+      .parse(
+        await fetchAll((from, to) =>
+          client
+            .from("class_enrollments")
+            .select("profiles!class_enrollments_student_id_fkey(id, display_name)")
+            .eq("class_id", classId)
+            .eq("status", "active")
+            .order("student_id")
+            .range(from, to),
+        ),
+      );
     return {
       classId: klass.id,
       courseId: klass.course_id,
-      students: z
-        .array(enrollmentRow)
-        .parse(members.data ?? [])
-        .map((row) => ({ id: row.profiles.id, displayName: row.profiles.display_name })),
+      students: members.map((row) => ({
+        id: row.profiles.id,
+        displayName: row.profiles.display_name,
+      })),
       topics: await topics(klass.course_id),
     };
   };
 }
 
-const statusRow = z.object({ intervention_id: z.string(), status: interventionStatusSchema });
+const statusRow = z.object({
+  intervention_id: z.string(),
+  status: interventionStatusSchema,
+  severity: interventionSchema.shape.severity,
+});
 
 /** Acknowledge/resolve decisions in `intervention_status` (migration 0401), service role only. */
 export class SupabaseInterventionStatusStore implements InterventionStatusStore {
   constructor(private readonly client: SupabaseClient) {}
 
   async statuses(classId: string) {
-    const { data, error } = await this.client
-      .from("intervention_status")
-      .select("intervention_id, status")
-      .eq("class_id", classId);
-    if (error) throw new Error(`Supabase query failed: ${error.message}`);
+    const rows = z
+      .array(statusRow)
+      .parse(
+        await fetchAll((from, to) =>
+          this.client
+            .from("intervention_status")
+            .select("intervention_id, status, severity")
+            .eq("class_id", classId)
+            .order("intervention_id")
+            .range(from, to),
+        ),
+      );
     return new Map(
-      z
-        .array(statusRow)
-        .parse(data ?? [])
-        .map((row): [string, InterventionStatus] => [row.intervention_id, row.status]),
+      rows.map((row): [string, InterventionDecision] => [
+        row.intervention_id,
+        { status: row.status, severity: row.severity },
+      ]),
     );
   }
 
-  async set(classId: string, interventionId: string, status: InterventionStatus, actorId: string) {
+  async set(
+    classId: string,
+    interventionId: string,
+    decision: InterventionDecision,
+    actorId: string,
+  ) {
     const { error } = await this.client.from("intervention_status").upsert({
       class_id: classId,
       intervention_id: interventionId,
-      status,
+      status: decision.status,
+      severity: decision.severity,
       updated_by: actorId,
       updated_at: new Date().toISOString(),
     });

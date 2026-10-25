@@ -1,0 +1,22 @@
+[AUTHORED DEMO] Three revolutions: chronology and questions
+Format: podcast; representation: script; locale: en
+Script/outline only. No playable media or presentation file.
+
+Host: Let's review the course notes. Which dates appear?
+
+Co-host: 1776, American Declaration of Independence
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: 1776, American Declaration of Independence
+
+Co-host: 1789–1799, French Revolution
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: 1789–1799, French Revolution
+
+Co-host: 1791–1804, Haitian Revolution
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: 1791–1804, Haitian Revolution
+
+Host: The French and Haitian revolutions overlapped.
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: The French and Haitian revolutions overlapped.
+
+Question: Why should we compare claims with evidence?
+
+Co-host: Political independence and equal participation are different questions: compare a document's claims with evidence about who could exercise rights.
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: Political independence and equal participation are different questions: compare a document's claims with evidence about who could exercise rights.

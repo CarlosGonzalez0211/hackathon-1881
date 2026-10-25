@@ -37,6 +37,10 @@ export async function createApp(
     );
   }
   const app = Fastify({ logger: options.logger ?? true });
+  if (mode === "mock" && process.env.NODE_ENV === "production") {
+    // Mock mode lets every caller in as the demo admin; fine for fixtures, never for real data.
+    app.log.warn("ATHENA_DATA_MODE=mock in production: every caller is the demo admin");
+  }
   installPlatform(app, services);
   // Register before child plugins so every route inherits the same validation handling.
   app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {

@@ -36,7 +36,7 @@ test("the developer outfit resolves to part GLBs, accessory included", () => {
   assert.deepEqual(outfitKeys(), [
     "models/avatar/athena-avatar-hair-bob.glb",
     "models/avatar/athena-avatar-top-poncho.glb",
-    "models/avatar/athena-avatar-bottom-shorts.glb",
+    "models/avatar/athena-avatar-bottom-trousers.glb",
     "models/avatar/athena-avatar-shoes-boots.glb",
     "models/avatar/athena-avatar-acc-scarf-satchel.glb",
   ]);

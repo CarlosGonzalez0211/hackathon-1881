@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n";
 
 import { useState } from "react";
 import { useMocks } from "@/lib/mode";
@@ -12,8 +13,7 @@ const PROVIDERS: { id: Provider; label: string }[] = [
   { id: "github", label: "GitHub" },
 ];
 
-const FAILED_ES = "No se pudo iniciar sesión. Inténtalo de nuevo.";
-const FAILED_EN = "Sign-in failed. Please try again.";
+const FAILED = t("Sign-in failed. Please try again.");
 
 const buttonClass =
   "inline-flex w-full items-center justify-center rounded-md border border-neutral-300 bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-60";
@@ -41,8 +41,7 @@ export function SignIn({ next = "/", error }: { next?: string; error?: string | 
   if (useMocks) {
     return (
       <div role="status" className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm">
-        <p className="font-medium">Modo demo: no hace falta iniciar sesión</p>
-        <p className="text-neutral-600">Demo mode: no sign-in required</p>
+        <p className="font-medium">{t("Demo mode: no sign-in required")}</p>
       </div>
     );
   }
@@ -50,8 +49,7 @@ export function SignIn({ next = "/", error }: { next?: string; error?: string | 
   return (
     <div className="flex w-full max-w-sm flex-col gap-3">
       <div>
-        <h1 className="text-xl font-semibold">Inicia sesión</h1>
-        <p className="text-sm text-neutral-600">Sign in</p>
+        <h1 className="text-xl font-semibold">{t("Sign in")}</h1>
       </div>
       {PROVIDERS.map((p) => (
         <button
@@ -61,15 +59,13 @@ export function SignIn({ next = "/", error }: { next?: string; error?: string | 
           disabled={pending !== null}
           onClick={() => void signIn(p.id)}
         >
-          {pending === p.id ? "Redirigiendo…" : `Continuar con ${p.label}`}
-          <span className="sr-only"> / Continue with {p.label}</span>
+          {pending === p.id ? t("Redirecting…") : t("Continue with {0}", { 0: p.label })}
         </button>
       ))}
       <div aria-live="polite" role="status" className="min-h-10 text-sm text-red-700">
         {failed ? (
           <>
-            <p>{FAILED_ES}</p>
-            <p className="text-neutral-600">{FAILED_EN}</p>
+            <p>{FAILED}</p>
           </>
         ) : null}
       </div>
