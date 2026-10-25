@@ -7,6 +7,7 @@ export * from "./platform.js";
 export * from "./curriculum.js";
 export * from "./analytics.js";
 export * from "./learning.js";
+export * from "./content.js";
 export * from "./mocks.js";
 export * from "./mocks/index.js";
 export * from "./world.js";
