@@ -1,7 +1,8 @@
 "use client";
 import { useRouter } from "next/navigation";
 import type { ClassOrbitStudent } from "@athena/shared";
-import { t } from "@/lib/i18n";
+import { useMemo } from "react";
+import { localizeContent, t } from "@/lib/i18n";
 import { Planet } from "./Planet";
 import { usePlanetArrival } from "./use-planet-arrival";
 
@@ -18,12 +19,14 @@ export function VisitExplorer({
 }) {
   const router = useRouter();
   const { overview, setOverview, leaving, onReady, leave } = usePlanetArrival();
+  // Demo house titles follow the app language, as in the student's own world.
+  const planet = useMemo(() => localizeContent(student.planet), [student.planet]);
   return (
     <main
       className={`world-app is-visit${overview ? " is-overview" : ""}${leaving ? " is-leaving" : ""}`}
     >
       <Planet
-        state={student.planet}
+        state={planet}
         mode="surface"
         overview={overview}
         onOverviewChange={setOverview}

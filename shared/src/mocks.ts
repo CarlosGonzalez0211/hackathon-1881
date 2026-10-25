@@ -1,13 +1,7 @@
 import type { ClassOrbit, ClassSummary, HouseState, PlanetState } from "./learning.js";
 
-const titles = [
-  "Fracciones",
-  "Geometría",
-  "Ecosistemas",
-  "Energía",
-  "Lectura",
-  "Pensamiento crítico",
-];
+/** Demo topic titles in English; the web app localizes them (locales/es.json). */
+const titles = ["Fractions", "Geometry", "Ecosystems", "Energy", "Reading", "Critical thinking"];
 const fixedTheme = { palette: "athena-default", character: "messenger-provisional" };
 function planet(student: number): PlanetState {
   const completed = student % 5;
