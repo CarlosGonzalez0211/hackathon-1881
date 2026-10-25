@@ -30,6 +30,8 @@ export interface SurfaceOptions {
   onStats?: (stats: EngineStats) => void;
   onReady?: () => void;
   onOverviewChange?: (overview: boolean) => void;
+  /** Open in the planet overview pose (arriving from the class orbit). Default false. */
+  overview?: boolean;
   onEvent?: EngineEventListener;
   /** Resolve assets through the Athena manifest first (default true). */
   athenaAssets?: boolean;

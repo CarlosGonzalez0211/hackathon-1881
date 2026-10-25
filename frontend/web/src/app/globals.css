@@ -459,6 +459,81 @@ progress {
   font: inherit;
   cursor: pointer;
 }
+/* Visit and landing dives: the camera owns the view, so labels and controls step aside. */
+.orbital-app .planet-label,
+.orbital-app .world-controls,
+.orbital-app .orbit-roster-toggle,
+.orbital-app .world-footer {
+  transition:
+    background var(--athena-motion-fast) var(--athena-ease),
+    opacity var(--athena-motion-standard) var(--athena-ease);
+}
+.orbital-app.is-visiting .planet-label,
+.orbital-app.is-landing .planet-label,
+.orbital-app.is-landing .world-controls,
+.orbital-app.is-landing .orbit-roster-toggle,
+.orbital-app.is-landing .orbit-list,
+.orbital-app.is-landing .world-footer {
+  opacity: 0;
+  pointer-events: none;
+}
+/* Orbit → world hand-off (components/planet/arrival.ts): the live orbit shot over the world. */
+.planet-arrival-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background: var(--athena-orbit-bg);
+  transition: opacity 1000ms var(--athena-ease);
+}
+.planet-arrival-veil.is-leaving {
+  opacity: 0;
+}
+.planet-arrival-veil .village-touch-controls,
+.planet-arrival-veil .village-interaction-hint {
+  display: none;
+}
+/* A world built during the dive (components/planet/prepared-world.ts): drawn, never seen. */
+.engine-host.is-prepared {
+  position: fixed;
+  inset: auto;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Leaving a world for the orbit: the camera rises, the HUD steps aside. */
+.world-app.is-leaving > :not(.scene) {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--athena-motion-standard) var(--athena-ease);
+}
+.world-app.is-leaving .house-markers {
+  visibility: hidden;
+}
+.planet-arrival-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 48px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 16px;
+  border-radius: var(--athena-radius-pill);
+  background: var(--athena-veil);
+  color: var(--athena-ink);
+  font-size: var(--athena-text-sm);
+  opacity: 0;
+  /* Only a slow world load ever shows it. */
+  animation: planet-arrival-caption 400ms var(--athena-ease) 1.6s forwards;
+}
+@keyframes planet-arrival-caption {
+  to {
+    opacity: 1;
+  }
+}
 .visit-dialog {
   /* The global reset strips the UA's auto margins: centre the modal explicitly. */
   position: fixed;

@@ -92,8 +92,16 @@ export interface AthenaOrbit {
   readonly positions: Map<string, Object3D>;
   /** Planet radius (world units) of every student, after the latest `tick`. */
   readonly radii: Map<string, number>;
-  /** Advance orbits/spin (seconds). Static with reduced motion. */
-  tick(time: number): void;
+  /**
+   * Advance orbits (`time`) and self rotation (`spinTime`, default `time`), in seconds.
+   * Static with reduced motion.
+   */
+  tick(time: number, spinTime?: number): void;
+  /**
+   * Visit staging: the rest of the class shrinks away (`others` 1 → 0) with the paths, and
+   * the `focus` planet turns an extra `turn` radians. `null` focus restores everyone.
+   */
+  stage(focus: string | null, others: number, turn: number): void;
   update(states: PlanetState[]): void;
   /** Student id under a raycaster, if any. */
   pick(raycaster: LegacyContext): string | undefined;
@@ -231,14 +239,20 @@ export async function buildAthenaOrbit(
   const spin = new scope.Matrix4();
   const euler = new scope.Euler();
   const scale = new scope.Vector3();
-  const tick = (time: number) => {
-    const t = prefersReducedMotion() ? 0 : time;
+  const ribbonOpacity = ribbon.material.opacity;
+  const staged = { focus: null as string | null, others: 1, turn: 0 };
+  const tick = (time: number, spinTime = time) => {
+    const reduced = prefersReducedMotion();
+    const t = reduced ? 0 : time;
+    const spinT = reduced ? 0 : spinTime;
     for (const batch of batches) {
       batch.students.forEach((studentId, index) => {
         const slot = slots.get(studentId)!;
         const state = states.find((item) => item.studentId === studentId);
         const s = planetScale(state ? demonstratedTopics(state) : 0) * crowd;
         radii.set(studentId, s * batch.radius);
+        const focused = studentId === staged.focus;
+        const shown = staged.focus && !focused ? staged.others : 1;
         // Outer rings move slower (Kepler-ish), so the class reads as one system.
         const angle = slot.phase + (t * orbitLayout.speed * orbitLayout.baseRadius) / slot.radius;
         tiltMatrix.makeRotationFromEuler(euler.set(slot.tilt, 0, slot.tilt * 0.5));
@@ -250,9 +264,10 @@ export async function buildAthenaOrbit(
         planet.compose(
           centre,
           new scope.Quaternion().setFromRotationMatrix(
-            spin.makeRotationY(t * orbitLayout.spin + slot.phase),
+            spin.makeRotationY(spinT * orbitLayout.spin + slot.phase + (focused ? staged.turn : 0)),
           ),
-          scale.setScalar(s),
+          // A hidden planet keeps a sliver of scale: a zero matrix is not invertible for picking.
+          scale.setScalar(s * Math.max(1e-4, shown)),
         );
         batch.meshes.forEach((mesh, meshIndex) => {
           instance.multiplyMatrices(planet, batch.locals[meshIndex]);
@@ -268,6 +283,13 @@ export async function buildAthenaOrbit(
     positions,
     radii,
     tick,
+    stage(focus, others, turn) {
+      staged.focus = focus;
+      staged.others = focus ? Math.max(0, Math.min(1, others)) : 1;
+      staged.turn = focus ? turn : 0;
+      ribbon.material.opacity = ribbonOpacity * staged.others;
+      ribbon.visible = staged.others > 0.01;
+    },
     update(next) {
       states = next;
       tick(prefersReducedMotion() ? 0 : (performance.now() / 1000) % 1e5);

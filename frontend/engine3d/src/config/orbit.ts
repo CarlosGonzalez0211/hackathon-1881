@@ -1,4 +1,5 @@
 import { athenaBrand } from "@athena/brand";
+import { RADIUS } from "../village/layout";
 
 /** Student planet looks shipped in the kit (`athena-planet-<kind>.glb`). */
 export const planetKinds = [
@@ -98,3 +99,24 @@ export function planetScale(demonstratedTopics: number) {
     orbitLayout.scaleBase + Math.max(0, demonstratedTopics) * orbitLayout.scalePerTopic,
   );
 }
+
+/**
+ * Visit dive. The camera ends on the chosen planet at the angular size the world's overview
+ * camera sees its globe (village/surface.ts: 48 above and 25 behind the student, FOV 45), so
+ * the orbit → world hand-off keeps the planet the same size on screen.
+ */
+export const orbitDive = {
+  /** Seconds to dive in, and to climb back out to the class. */
+  inSeconds: 2.1,
+  outSeconds: 1.5,
+  fov: 45,
+  /** Peak extra field of view mid-dive: a short rush of speed. */
+  fovRush: 9,
+  /** Extra self rotation as the planet turns into full view (radians). */
+  turn: Math.PI * 0.8,
+  /** Angular radius of the world's globe in its overview pose. */
+  angularRadius: Math.asin(RADIUS / Math.hypot(RADIUS + 48, 25)),
+} as const;
+
+/** Camera distance that frames a planet of `radius` like the world's overview. */
+export const diveDistance = (radius: number) => radius / Math.sin(orbitDive.angularRadius);

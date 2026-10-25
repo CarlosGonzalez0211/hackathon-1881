@@ -3,8 +3,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import type { ClassOrbit, ClassOrbitStudent, PlanetState } from "@athena/shared";
-import type { EngineStats } from "@athena/engine3d";
 import { OrbitCanvas, Planet } from "./Planet";
+import { arrivalFor, revealWhenDrawn } from "./arrival";
+import { prepareWorld } from "./prepared-world";
 import { VisitPlanetDialog } from "./VisitPlanetDialog";
 import { WorldSketchIcon } from "@/features/world/components/WorldSketchIcon";
 import { useOutsideDismiss } from "@/components/ui/useOutsideDismiss";
@@ -12,7 +13,9 @@ import { t } from "@/lib/i18n";
 
 /**
  * Class orbit: one planet per enrolled student. The signed-in student's planet leads back to
- * their world; any classmate's planet offers a visit, which flies the camera to it.
+ * their world; a classmate's planet offers a visit to theirs. Either way the camera dives into
+ * the planet while its world is built, and the world takes over the same shot. Coming back
+ * from a world, the orbit opens on that planet and climbs out to the class.
  */
 export function OrbitExplorer({
   orbit,
@@ -28,16 +31,30 @@ export function OrbitExplorer({
   const dialogTrigger = useRef<HTMLElement | null>(null);
   useOutsideDismiss(directory, list, () => setList(false));
   const [invite, setInvite] = useState<ClassOrbitStudent | null>(null);
-  const [visiting, setVisiting] = useState<ClassOrbitStudent | null>(null);
-  const [stats, setStats] = useState<EngineStats | null>(null);
+  const [landing, setLanding] = useState<string | null>(null);
+  // Returning from a world: hold its planet until the handed-back shot has faded.
+  const [returning, setReturning] = useState(() => arrivalFor("orbit"));
   const states = useMemo(() => orbit.students.map((student) => student.planet), [orbit]);
   const byId = useMemo(
     () => new Map(orbit.students.map((student) => [student.studentId, student])),
     [orbit],
   );
+  const worldHref = (studentId: string) =>
+    studentId === viewerStudentId
+      ? "/world"
+      : `/visit/${encodeURIComponent(studentId)}?alumnos=${orbit.students.length}`;
+  /** Dive into a planet; its world (route and 3D engine) is prepared during the flight. */
+  const land = (planet: PlanetState) => {
+    if (landing || returning) return;
+    router.prefetch(worldHref(planet.studentId));
+    prepareWorld(planet);
+    setList(false);
+    setLanding(planet.studentId);
+  };
   const open = (planet: PlanetState) => {
+    if (landing || returning) return;
     if (planet.studentId === viewerStudentId) {
-      router.push("/world");
+      land(planet);
       return;
     }
     const active = document.activeElement;
@@ -53,12 +70,17 @@ export function OrbitExplorer({
     (a, b) => Number(b.studentId === viewerStudentId) - Number(a.studentId === viewerStudentId),
   );
   return (
-    <main className="world-app orbital-app">
+    <main className={`world-app orbital-app${landing || returning ? " is-landing" : ""}`}>
       <OrbitCanvas
         states={states}
         onPlanetClick={open}
-        onStats={setStats}
-        focus={visiting?.studentId ?? null}
+        focus={returning}
+        start={returning}
+        onReady={() => {
+          if (returning) revealWhenDrawn(() => setReturning(null));
+        }}
+        landing={landing}
+        onLanded={() => landing && router.push(worldHref(landing))}
       >
         {orbit.students.map((student) => (
           <Planet
@@ -72,7 +94,17 @@ export function OrbitExplorer({
         ))}
       </OrbitCanvas>
       <nav className="world-controls orbit-controls" aria-label={t("Orbit controls")}>
-        <Link href="/world" className="orbit-home-link">
+        <Link
+          href="/world"
+          className="orbit-home-link"
+          onClick={(event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+            const own = byId.get(viewerStudentId);
+            if (!own) return;
+            event.preventDefault();
+            open(own.planet);
+          }}
+        >
           <WorldSketchIcon kind="globe" />
           <span>{t("Back to my world")}</span>
           <span aria-hidden="true">↗</span>
@@ -111,18 +143,10 @@ export function OrbitExplorer({
           {t("Class directory")}
         </button>
       </div>
-      {visiting && (
-        <div className="orbit-visit-bar" role="status">
-          <span>
-            {t("Visiting")} <strong>{visiting.displayName}</strong>
-          </span>
-          <button onClick={() => setVisiting(null)}>{t("Back to class")}</button>
-        </div>
-      )}
       {invite && (
         <VisitPlanetDialog
           student={invite}
-          onVisit={() => setVisiting(invite)}
+          onVisit={() => land(invite.planet)}
           onClose={() => {
             setInvite(null);
             dialogTrigger.current?.focus({ preventScroll: true });
@@ -136,11 +160,6 @@ export function OrbitExplorer({
             : t("{0} planets", { 0: orbit.students.length })}{" "}
           {t("· learning together")}
         </p>
-        <span className="runtime-note">
-          {stats
-            ? `${Math.round(stats.fps)} fps · ${stats.drawCalls} draw calls`
-            : t("Loading shared resources")}
-        </span>
       </footer>
     </main>
   );

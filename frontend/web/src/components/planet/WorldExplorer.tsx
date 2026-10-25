@@ -7,12 +7,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { defaultWorldAccessibilitySettings } from "@athena/shared";
-import type { EngineStats } from "@athena/engine3d";
 import { useWorld } from "@/features/world/WorldProvider";
 import { PresenterControls } from "@/features/world/components/PresenterControls";
 import { WorldToasts } from "@/features/world/components/WorldToasts";
-import { useMocks } from "@/lib/mode";
 import { Planet } from "./Planet";
+import { usePlanetArrival } from "./use-planet-arrival";
 import { SoundControls } from "@/features/world/components/SoundControls";
 import type { Volumes } from "@/features/world/components/SoundControls";
 import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
@@ -27,7 +26,8 @@ import { useWorldShortcuts } from "@/features/world/use-world-shortcuts";
 export function WorldExplorer() {
   const { world, houses, activate, houseOpen, error, notify, client, studentId } = useWorld();
   const [conversation, setConversation] = useState<NpcConversation | null>(null);
-  const [overview, setOverview] = useState(false);
+  // Orbit ↔ world shot: open on the dive's overview; rise back to it when leaving.
+  const { overview, setOverview, leaving, onReady, leave } = usePlanetArrival(error);
   const [topics, setTopics] = useState(false);
   const topicArea = useRef<HTMLDivElement>(null);
   useOutsideDismiss(topicArea, topics, () => setTopics(false));
@@ -40,10 +40,14 @@ export function WorldExplorer() {
   // L / O / Esc belong to the world; the house page handles its own keys while open.
   useWorldShortcuts({
     onList: () => !houseOpen && setTopics((open) => !open),
-    onOrbit: () => !houseOpen && router.push("/orbit"),
+    onOrbit: () => !houseOpen && leaveToOrbit(),
     onEscape: () => !houseOpen && setTopics(false),
   });
-  const [stats, setStats] = useState<EngineStats | null>(null);
+  function leaveToOrbit() {
+    router.prefetch("/orbit");
+    setTopics(false);
+    leave();
+  }
 
   if (!world)
     return (
@@ -58,7 +62,7 @@ export function WorldExplorer() {
 
   return (
     <main
-      className={`world-app${overview ? " is-overview" : ""}`}
+      className={`world-app${overview ? " is-overview" : ""}${leaving ? " is-leaving" : ""}`}
       aria-hidden={houseOpen || undefined}
     >
       <a className="skip-link" href="#topic-list">
@@ -73,10 +77,12 @@ export function WorldExplorer() {
         onHouseClick={(house) => {
           if (!houseOpen) activate({ slot: house.slot });
         }}
-        paused={houseOpen || !!conversation}
+        paused={houseOpen || !!conversation || leaving}
         muted={muted}
         volumes={volumes}
-        onStats={setStats}
+        onReady={onReady}
+        leaving={leaving}
+        onLeft={() => router.push("/orbit")}
         onEvent={(event) => {
           if (event.type !== "npc_activate") return;
           const messages: Record<string, string> = {
@@ -150,7 +156,16 @@ export function WorldExplorer() {
             </button>
           </Tooltip>
           <Tooltip label={t("Class orbit")}>
-            <Link href="/orbit" className="world-tool" aria-label={t("Class orbit")}>
+            <Link
+              href="/orbit"
+              className="world-tool"
+              aria-label={t("Class orbit")}
+              onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+                event.preventDefault();
+                leaveToOrbit();
+              }}
+            >
               <WorldSketchIcon kind="globe" />
             </Link>
           </Tooltip>
@@ -233,10 +248,6 @@ export function WorldExplorer() {
             <span>{t("run")}</span>
           </div>
         </div>
-        <span className="runtime-note">
-          {useMocks ? t("Demo data") : ""}
-          {stats ? ` · ${Math.round(stats.fps)} fps` : ""}
-        </span>
       </footer>
       {conversation && (
         <NpcDialogue conversation={conversation} onClose={() => setConversation(null)} />

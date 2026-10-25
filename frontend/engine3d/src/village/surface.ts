@@ -55,7 +55,7 @@ export async function createSurfaceEngine(
     paused = false,
     disposed = false,
     reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let overview = false,
+  let overview = options.overview ?? false,
     focusSlot: number | undefined;
   const rewards: { root: LegacyContext; elapsed: number }[] = [];
   const keys = new Set<string>();
