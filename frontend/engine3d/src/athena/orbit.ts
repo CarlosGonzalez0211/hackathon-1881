@@ -3,13 +3,13 @@
  *
  * One planet GLB per kind (default `earth`; a class may pick another) is merged and drawn
  * as InstancedMeshes, one per remaining mesh (land / ocean), so eight students cost a few
- * draw calls. The teacher sun sits at the centre and lights the planets; every student
- * keeps their own orbit radius, tilt and height (config/orbit.ts), and grows with
- * demonstrated topics only. Orbit paths are one merged ribbon; stars are one Points draw.
+ * draw calls. The teacher sun sits at the centre and lights the planets; students ride
+ * shared rings (config/orbit.ts) sized for the class, and grow with demonstrated topics
+ * only. Orbit paths are one merged ribbon (one loop per ring); stars are one Points draw.
  * Target: ≤ 10 draw calls, ≤ 100k triangles.
  */
 import type { PlanetState } from "@athena/shared";
-import { orbitLayout, orbitSlot, planetScale } from "../config/orbit";
+import { crowdScale, orbitLayout, orbitSlot, planetScale } from "../config/orbit";
 import type { PlanetKind } from "../config/orbit";
 import type { LegacyContext } from "../runtime/legacy-context";
 import type { AthenaInstallContext } from "./install";
@@ -90,6 +90,8 @@ export interface AthenaOrbit {
   readonly root: Object3D;
   /** Planet centre of every student, after the latest `tick`. */
   readonly positions: Map<string, Object3D>;
+  /** Planet radius (world units) of every student, after the latest `tick`. */
+  readonly radii: Map<string, number>;
   /** Advance orbits/spin (seconds). Static with reduced motion. */
   tick(time: number): void;
   update(states: PlanetState[]): void;
@@ -105,6 +107,8 @@ interface Batch {
   readonly locals: LegacyContext[];
   /** Student ids in instance order. */
   readonly students: string[];
+  /** Model radius at scale 1 (half the largest bounding-box side). */
+  readonly radius: number;
 }
 
 export async function buildAthenaOrbit(
@@ -120,7 +124,10 @@ export async function buildAthenaOrbit(
       ? options.planetKind(state, index)
       : (options.planetKind ?? orbitLayout.defaultKind);
   let states = initial;
-  const slots = new Map(states.map((state, index) => [state.studentId, orbitSlot(index)]));
+  // The roster fixes the sky: ring layout and crowding follow the class size.
+  const count = states.length;
+  const slots = new Map(states.map((state, index) => [state.studentId, orbitSlot(index, count)]));
+  const crowd = crowdScale(count);
 
   // Teacher sun + its light. The sun glows: its opaque parts become one unlit
   // vertex-coloured mesh (colour + emission), no hull; the transparent halo stays.
@@ -142,6 +149,8 @@ export async function buildAthenaOrbit(
   for (const [kind, students] of kinds) {
     const model = await loadAthenaModel(ctx, planetSlot(kind), { toon: false });
     model.root.updateMatrixWorld(true);
+    const size = new scope.Box3().setFromObject(model.root).getSize(new scope.Vector3());
+    const radius = Math.max(size.x, size.y, size.z) / 2 || 1;
     const meshes: Object3D[] = [];
     const locals: LegacyContext[] = [];
     model.root.traverse((object: Object3D) => {
@@ -158,7 +167,7 @@ export async function buildAthenaOrbit(
     group.add(...meshes);
     ctx.toon.apply(group);
     root.add(group);
-    batches.push({ kind, meshes, locals, students });
+    batches.push({ kind, meshes, locals, students, radius });
   }
 
   // Orbit paths: every student's ring as one ribbon mesh.
@@ -168,7 +177,8 @@ export async function buildAthenaOrbit(
     const matrix = new scope.Matrix4();
     const euler = new scope.Euler();
     const point = new scope.Vector3();
-    for (const slot of slots.values()) {
+    const rings = new Map([...slots.values()].map((slot) => [slot.ring, slot]));
+    for (const slot of rings.values()) {
       matrix.makeRotationFromEuler(euler.set(slot.tilt, 0, slot.tilt * 0.5));
       matrix.setPosition(0, orbitLayout.sunHeight + slot.height, 0);
       const start = positions.length / 3;
@@ -193,7 +203,7 @@ export async function buildAthenaOrbit(
         color: orbitLayout.orbitPath,
         side: scope.DoubleSide,
         transparent: true,
-        opacity: 0.55,
+        opacity: 0.32,
         depthWrite: false,
       }),
     );
@@ -213,6 +223,7 @@ export async function buildAthenaOrbit(
   }
 
   const positions = new Map<string, Object3D>();
+  const radii = new Map<string, number>();
   for (const state of states) positions.set(state.studentId, new scope.Vector3());
   const instance = new scope.Matrix4();
   const planet = new scope.Matrix4();
@@ -226,7 +237,8 @@ export async function buildAthenaOrbit(
       batch.students.forEach((studentId, index) => {
         const slot = slots.get(studentId)!;
         const state = states.find((item) => item.studentId === studentId);
-        const s = planetScale(state ? demonstratedTopics(state) : 0);
+        const s = planetScale(state ? demonstratedTopics(state) : 0) * crowd;
+        radii.set(studentId, s * batch.radius);
         // Outer rings move slower (Kepler-ish), so the class reads as one system.
         const angle = slot.phase + (t * orbitLayout.speed * orbitLayout.baseRadius) / slot.radius;
         tiltMatrix.makeRotationFromEuler(euler.set(slot.tilt, 0, slot.tilt * 0.5));
@@ -254,6 +266,7 @@ export async function buildAthenaOrbit(
   return {
     root,
     positions,
+    radii,
     tick,
     update(next) {
       states = next;

@@ -1,0 +1,41 @@
+{
+  "request": {
+    "courseId": "00000000-0000-4000-8000-000000000a01",
+    "topicId": "00000000-0000-4000-8000-000000000b02",
+    "conceptId": "math.geometry.triangle_area",
+    "query": "¿Cómo se relacionan las áreas de un rectángulo y un triángulo?",
+    "curriculumVersion": 1,
+    "locale": "es",
+    "limit": 5
+  },
+  "response": {
+    "chunks": [
+      {
+        "text": "Un rectángulo de base 8 cm y altura 3 cm tiene área 24 cm². Una diagonal lo divide en dos triángulos de igual área; cada triángulo ocupa la mitad: 12 cm². Esta descomposición explica el factor 1/2.",
+        "conceptId": "math.geometry.triangle_area",
+        "citation": {
+          "materialId": "material-topic-geometry-notes",
+          "materialTitle": "[DEMO] Geometría — notes",
+          "section": "Descomposición visual",
+          "chunkId": "material-topic-geometry-notes-chunk-1",
+          "excerpt": "Un rectángulo de base 8 cm y altura 3 cm tiene área 24 cm². Una diagonal lo divide en dos triángulos de igual área; cada triángulo ocupa la mitad: 12 cm². Esta descomposición explica el factor 1/2."
+        },
+        "relevanceScore": 0.3333333333333333
+      },
+      {
+        "text": "El área de un triángulo es (base × altura perpendicular) / 2. Con base 8 cm y altura 3 cm, el área es 12 cm². Multiplicar solo base por altura daría 24 cm² y omitiría dividir entre dos.",
+        "conceptId": "math.geometry.triangle_area",
+        "citation": {
+          "materialId": "material-topic-geometry-notes",
+          "materialTitle": "[DEMO] Geometría — notes",
+          "section": "Área de triángulos",
+          "chunkId": "material-topic-geometry-notes-chunk-0",
+          "excerpt": "El área de un triángulo es (base × altura perpendicular) / 2. Con base 8 cm y altura 3 cm, el área es 12 cm². Multiplicar solo base por altura daría 24 cm² y omitiría dividir entre dos."
+        },
+        "relevanceScore": 0.16666666666666666
+      }
+    ],
+    "curriculumVersion": 1,
+    "unsupported": false
+  }
+}

@@ -2,7 +2,7 @@
 // Builds the Athena asset kit (`athena-assets/`, Git LFS) into web-servable files under
 // `frontend/web/public/athena/` plus `athena-manifest.runtime.json` and a budget report.
 //
-//   GLB  → dedup → prune → flatten/join → weld → simplify → meshopt (EXT_meshopt_compression + quantization)
+//   GLB  → dedup → prune → flatten/join → smooth normals → weld → simplify → meshopt (EXT_meshopt_compression + quantization)
 //   PNG  → KTX2 via `toktx` when on PATH (ETC1S colour, UASTC data maps), else copied
 //   WAV  → OGG Vorbis q4 via `ffmpeg` when on PATH, else copied
 //   SVG  → copied (icons/, brand/)
@@ -11,6 +11,8 @@
 // Filenames are content-hashed. An input-hash cache (node_modules/.cache) skips unchanged
 // inputs so `predev`/`prebuild` stay fast. Individual failures are warnings (CI without
 // LFS objects or tools still builds); pass `--strict` to make them fatal.
+import { refineCharacters } from "./refine-characters.mjs";
+import { smoothNormals } from "./smooth-normals.mjs";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -24,13 +26,25 @@ import {
   normalizeLegacyKey,
 } from "../src/assets/athena-keys.mjs";
 
-const PIPELINE_VERSION = 5;
+const PIPELINE_VERSION = 13;
+const CHARACTER_PASS_HASH = createHash("sha256")
+  .update(await fs.readFile(new URL("./refine-characters.mjs", import.meta.url)))
+  .update(await fs.readFile(new URL("./story-explorer.mjs", import.meta.url)))
+  .update(await fs.readFile(new URL("./smooth-normals.mjs", import.meta.url)))
+  .digest("hex")
+  .slice(0, 12);
 /**
- * Mesh simplification (meshoptimizer): the procedural kit tessellates every sphere/lathe
- * densely, which breaks the surface budget (≤ 250k tris) once ink hulls double it. Error is
- * relative to each mesh's extent. Collision tiles and point clouds are left exact.
+ * Mesh simplification (meshoptimizer). The luminous village draws no ink hulls, so the
+ * surface budget (≤ 250k tris) now affords far gentler reduction: curvature survives and
+ * silhouettes stay round. Error is relative to each mesh's extent. Collision tiles and
+ * point clouds are left exact.
  */
-const SIMPLIFY = { ratio: 0.25, error: 0.01 };
+const SIMPLIFY = { ratio: 0.6, error: 0.004 };
+const CHARACTER_SIMPLIFY = { ratio: 0.42, error: 0.0025 };
+/** Houses are large and many; smooth normals let them shed more triangles invisibly. */
+const BUILDING_SIMPLIFY = { ratio: 0.3, error: 0.008 };
+/** Character parts carry authored normals; terrain tiles are collision data. */
+const KEEP_NORMALS = /models\/(terrain|avatar|npcs|characters)\//;
 const NO_SIMPLIFY = /models\/terrain\/|athena-space-(starfield|galaxy)\.glb$/;
 /**
  * Avatar part GLBs keep their node hierarchy: the runtime grafts each part's meshes onto the
@@ -38,7 +52,7 @@ const NO_SIMPLIFY = /models\/terrain\/|athena-space-(starfield|galaxy)\.glb$/;
  * nodes and their descendants are preserved by gltf-transform), so simplification works on
  * whole models instead of thousands of tiny parts.
  */
-const KEEP_HIERARCHY = /models\/(avatar|terrain)\//;
+const KEEP_HIERARCHY = /models\/(avatar|terrain|npcs|characters)\//;
 const ENGINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // ATHENA_KIT_DIR points at another checkout of the kit (e.g. one with LFS objects fetched).
 const KIT = process.env.ATHENA_KIT_DIR
@@ -152,17 +166,32 @@ const processors = {
     const { io, functions, MeshoptEncoder, MeshoptSimplifier, logger } = await gltfToolchain();
     const document = await io.readBinary(new Uint8Array(input));
     document.setLogger(logger);
+    const character = refineCharacters(document, posix(absolute));
     await document.transform(
       functions.dedup(),
       // Keep empty leaf nodes (rig sockets/attachment points) and unused attributes (UV/colour
       // may be used by the toon material later).
-      functions.prune({ keepLeaves: true, keepAttributes: true }),
-      ...(KEEP_HIERARCHY.test(absolute) ? [] : [functions.flatten(), functions.join()]),
+      // Character rigs keep custom style/weave attributes; everything else drops vertex
+      // attributes no material reads (the kit is untextured), which shrinks every file.
+      functions.prune({ keepLeaves: true, keepAttributes: KEEP_NORMALS.test(posix(absolute)) }),
+      ...(KEEP_HIERARCHY.test(posix(absolute)) ? [] : [functions.flatten(), functions.join()]),
+      (doc) => {
+        if (!KEEP_NORMALS.test(posix(absolute))) smoothNormals(doc);
+      },
       functions.weld(),
-      ...(NO_SIMPLIFY.test(absolute)
+      ...(NO_SIMPLIFY.test(posix(absolute))
         ? []
-        : [functions.simplify({ simplifier: MeshoptSimplifier, ...SIMPLIFY })]),
-      functions.meshopt({ encoder: MeshoptEncoder, level: "medium" }),
+        : [
+            functions.simplify({
+              simplifier: MeshoptSimplifier,
+              ...(character
+                ? CHARACTER_SIMPLIFY
+                : posix(absolute).includes("models/buildings/")
+                  ? BUILDING_SIMPLIFY
+                  : SIMPLIFY),
+            }),
+          ]),
+      functions.meshopt({ encoder: MeshoptEncoder, level: "high" }),
     );
     return {
       buffer: Buffer.from(await io.writeBinary(document)),
@@ -233,7 +262,7 @@ const processors = {
   },
 };
 const signature = (kind) =>
-  `${PIPELINE_VERSION}:${kind}:${
+  `${PIPELINE_VERSION}:${CHARACTER_PASS_HASH}:${kind}:${
     kind === "texture"
       ? tools.toktx
         ? "toktx"

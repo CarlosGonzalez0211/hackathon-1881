@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n";
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -13,7 +14,7 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center p-6">
-      <Suspense fallback={<p role="status">Cargando… / Loading…</p>}>
+      <Suspense fallback={<p role="status">{t("Loading…")}</p>}>
         <LoginContent />
       </Suspense>
     </main>

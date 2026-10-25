@@ -1,0 +1,19 @@
+[AUTHORED DEMO] Chronology memory refrain
+Format: music; representation: lyrics; locale: en
+Script/outline only. No playable media or presentation file.
+
+Original refrain: Read it, recall it, review it again.
+
+Verse: 1776, American Declaration of Independence
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: 1776, American Declaration of Independence
+
+Verse: 1789–1799, French Revolution
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: 1789–1799, French Revolution
+
+Verse: 1791–1804, Haitian Revolution
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: 1791–1804, Haitian Revolution
+
+Repeat: Read it, recall it, review it again.
+
+Closing line: The French and Haitian revolutions overlapped.
+Source: material-topic-comparing-rights-timeline; Comparative chronology; material-topic-comparing-rights-timeline-chunk-0; excerpt: The French and Haitian revolutions overlapped.
