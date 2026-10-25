@@ -27,7 +27,17 @@ import {
   advance,
   WATER_LEVEL,
   waterDepth,
+  dot,
+  type Vec,
 } from "./layout";
+
+/** Rotate `v` about the unit `axis` (Rodrigues). */
+const rotate = (v: Vec, axis: Vec, angle: number): Vec =>
+  add(
+    add(mul(v, Math.cos(angle)), mul(cross(axis, v), Math.sin(angle))),
+    mul(axis, dot(axis, v) * (1 - Math.cos(angle))),
+  );
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 const isEditing = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
@@ -57,6 +67,19 @@ export async function createSurfaceEngine(
     reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let overview = options.overview ?? false,
     focusSlot: number | undefined;
+  // A hop over the planet to a house door (topic list): replaces walking while it lasts.
+  let travel:
+    | {
+        from: Vec;
+        axis: Vec;
+        angle: number;
+        slot: number;
+        started: number;
+        seconds: number;
+        lift: number;
+        done: (arrived: boolean) => void;
+      }
+    | undefined;
   const rewards: { root: LegacyContext; elapsed: number }[] = [];
   const keys = new Set<string>();
   let pointer: { id: number; x: number; y: number } | undefined;
@@ -293,7 +316,33 @@ export async function createSurfaceEngine(
           Number(keys.has("KeyW") || keys.has("ArrowUp")) -
           Number(keys.has("KeyS") || keys.has("ArrowDown")) +
           stick.y;
-        walker.step(dt, x, y, keys.has("ShiftLeft") || keys.has("ShiftRight"));
+        if (travel) {
+          const t = Math.min(1, (now - travel.started) / 1000 / travel.seconds);
+          const up = t < 1 ? rotate(travel.from, travel.axis, travel.angle * easeInOut(t)) : null;
+          const house = tangent(plots[travel.slot]!.up, up ?? doorDirection(travel.slot));
+          if (up) {
+            // Face the flight, then turn towards the house over the last third of the hop.
+            const along = tangent(cross(travel.axis, up), up);
+            const turn = easeInOut(Math.max(0, (t - 0.66) / 0.34));
+            walker.up = up;
+            walker.facing = tangent(add(mul(along, 1 - turn), mul(house, turn)), up);
+            walker.forward = tangent(
+              add(walker.forward, mul(walker.facing, 1 - Math.exp(-dt * 5))),
+              up,
+            );
+            walker.altitude = travel.lift * Math.sin(Math.PI * t);
+          } else {
+            walker.up = doorDirection(travel.slot);
+            walker.forward = walker.facing = house;
+            walker.altitude = 0;
+            const { done } = travel;
+            travel = undefined;
+            audio.play("audio/character/footsteps.wav");
+            done(true);
+          }
+          walker.verticalSpeed = 0;
+          walker.moving = walker.sprinting = false;
+        } else walker.step(dt, x, y, keys.has("ShiftLeft") || keys.has("ShiftRight"));
         avatarRoot.position.set(...walker.position);
         orient(s, avatarRoot, walker.up, walker.facing);
         const clip =
@@ -606,6 +655,36 @@ export async function createSurfaceEngine(
       setVolumes: audio.setVolumes,
       setOverview(value) {
         overview = value;
+      },
+      travelToHouse(slot) {
+        travel?.done(false);
+        travel = undefined;
+        if (!plots[slot] || disposed) return Promise.resolve(false);
+        clearInput();
+        overview = false;
+        options.onOverviewChange?.(false);
+        const from = walker.up;
+        const to = doorDirection(slot);
+        const angle = Math.acos(Math.max(-1, Math.min(1, dot(from, to))));
+        const meters = angle * RADIUS;
+        const axis =
+          Math.hypot(...cross(from, to)) > 1e-6
+            ? norm(cross(from, to))
+            : tangent(walker.forward, from);
+        return new Promise<boolean>((resolve) => {
+          travel = {
+            from,
+            axis,
+            angle,
+            slot,
+            started: performance.now(),
+            // Reduced motion lands on the next frame, already facing the house.
+            seconds: reduced ? 0.001 : Math.min(2.4, 0.9 + meters / 28),
+            lift: reduced ? 0 : Math.min(9, Math.max(1.6, meters * 0.22)),
+            done: resolve,
+          };
+          if (!reduced && meters > 0.5) audio.play("audio/character/jump-start.wav");
+        });
       },
       focusHouse(slot) {
         if (plots[slot]) {

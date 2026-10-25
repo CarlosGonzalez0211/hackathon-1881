@@ -44,6 +44,11 @@ export interface SurfaceHandle extends AthenaWorldEngine {
   setPaused(paused: boolean): void;
   setOverview(overview: boolean): void;
   focusHouse(slot: number): void;
+  /**
+   * Hop the avatar over the planet to the house door, landing face-on (instant with reduced
+   * motion). Resolves true on landing, false if the slot has no plot or another hop replaced it.
+   */
+  travelToHouse(slot: number): Promise<boolean>;
   setMuted(muted: boolean): void;
   /** Music (score + ambient bed) and effects volumes, 0-1 (brand guide 07). */
   setVolumes(volumes: { music?: number; effects?: number }): void;

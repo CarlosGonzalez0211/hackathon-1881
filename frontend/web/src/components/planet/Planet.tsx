@@ -1,5 +1,13 @@
 "use client";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
 import {
   achievementCatalogue,
   type HouseState,
@@ -45,6 +53,12 @@ export interface PlanetProps {
   label?: string;
   /** Orbit: this planet belongs to the signed-in student. */
   own?: boolean;
+  /** Surface: imperative engine commands (the topic list flies the avatar to a house). */
+  controls?: Ref<PlanetControls>;
+}
+export interface PlanetControls {
+  /** Resolves on landing; false when the 3D world is not ready or the slot has no plot. */
+  travelToHouse(slot: number): Promise<boolean>;
 }
 /** Orbit labels register their node; the canvas moves them every frame, outside React. */
 const OrbitContext = createContext<{
@@ -147,9 +161,13 @@ function SurfacePlanet({
   onReady,
   leaving = false,
   onLeft,
+  controls,
 }: PlanetProps) {
   const host = useRef<HTMLDivElement>(null);
   const handle = useRef<SurfaceHandle | null>(null);
+  useImperativeHandle(controls, () => ({
+    travelToHouse: async (slot) => (handle.current ? handle.current.travelToHouse(slot) : false),
+  }));
   // The engine draws into its own node so a prepared world can be adopted and the live canvas
   // handed to the arrival veil without moving React-owned elements.
   const engineNode = useRef<HTMLElement | null>(null);
