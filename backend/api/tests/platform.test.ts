@@ -8,6 +8,7 @@ import {
 } from "@athena/shared";
 import {
   AllowAllAuthService,
+  AllowAllAuthorizationService,
   InMemoryDomainEventStore,
   RoleAuthorizationService,
 } from "@athena/platform";
@@ -42,7 +43,19 @@ test("health and CORS preflight never need a caller; real mode refuses the allow
       dataMode: "real",
       platform: { auth: new AllowAllAuthService(), authorization: new RoleAuthorizationService() },
     }),
-    /real AuthService/,
+    /real auth and authorization/,
+  );
+  // Real auth with the allow-all authorization stub is refused too.
+  await assert.rejects(
+    createApp({
+      logger: false,
+      dataMode: "real",
+      platform: {
+        auth: { authenticate: async () => new AllowAllAuthService().authenticate("") },
+        authorization: new AllowAllAuthorizationService(),
+      },
+    }),
+    /real auth and authorization/,
   );
 });
 
