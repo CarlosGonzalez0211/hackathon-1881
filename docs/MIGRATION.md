@@ -78,4 +78,15 @@ Mantiene el mundo de Messenger (planeta, caminos, colisión, cámara, controles,
 
 ### Kit en Git LFS
 
-Los 293 binarios del kit (GLB/PNG/WAV) nunca se subieron al servidor LFS: el checkout remoto solo tiene punteros. Desde la máquina que los tiene: `git lfs push --all origin`. Sin ellos, el build marca cada archivo como no construido y el motor usa el arte legado en esos slots.
+Los 293 binarios del kit (GLB/PNG/WAV) están en el servidor LFS del remoto y el CI los descarga (`actions/checkout` con `lfs: true`). En un clon local que no los haya traído (`git lfs pull`) el build marca cada archivo como no construido (puntero LFS) y el motor usa el arte legado en esos slots.
+
+### Kit generado
+
+`frontend/engine3d/athena-assets/code/` contiene un generador headless (Node 22, sin DOM) con un kit de escultura (torno de perfil, barrido, jaula + subdivisión, uniones SDF, ruido, bake de color, cartas alfa). Documentación completa en `athena-assets/code/README.md`; la dirección de arte en `docs/art/ART_DIRECTION.md`.
+
+- `pnpm --filter @athena/engine3d generate:kit [--only=<familia|id>] [--list] [--force] [--out=<dir>]` escribe `frontend/engine3d/.kit-cache/models/<familia>/*.glb` y `kit-cache.json` (hash del código y de cada entrada, así que lo que no cambia se omite). La caché está en `.gitignore`.
+- `build:assets` hace una superposición por archivo con dos raíces: primero la caché generada y, si no tiene el archivo, el kit versionado (LFS). Las familias sin portar siguen cargando los GLB versionados; hoy solo la familia `spike` (cinco fixtures que prueban cada operación) sale de la caché y fluye a `public/athena/` y al manifiesto como `models/spike/*.glb`. `tests/helpers/kit-path.ts` (`kitModelPath`) aplica la misma regla en los tests.
+- `ATHENA_KIT_SOURCE=generated` (por defecto) genera y superpone; `ATHENA_KIT_SOURCE=legacy` ignora la caché para comparar A/B con el arte versionado. `ATHENA_KIT_CACHE` cambia el directorio de la caché.
+- Los GLB generados llevan `asset.extras = { athenaGenerator: 3, athenaNormals: "authored" }`: el build no suaviza sus normales ni les aplica el paso `refineCharacters`. Atributos personalizados: en three se llaman `athena_style` / `athena_weave` (sin guion bajo); el exportador escribe `_ATHENA_STYLE` y el loader los lee como `_athena_style`.
+- `athena-budget.json` incluye `perModel` (triángulos, vértices, primitivas, materiales, bytes) con los límites de la sección 6 de `ART_DIRECTION.md`; solo los modelos generados fallan con `--strict`.
+- `three` es solo una devDependency del generador, los scripts y los tests: ESLint prohíbe importarlo desde `frontend/engine3d/src/**` (el runtime usa las clases recuperadas del `scope`).
