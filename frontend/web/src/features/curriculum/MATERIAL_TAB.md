@@ -40,9 +40,9 @@ authentication unless Platform's verified auth mode is configured.
 - Language choices are course default, English, and Spanish. Requests include
   `locale` only for an explicit language choice; missing language content shows an
   empty state and never substitutes another language.
-- History resource rendering requires an authorized and explicitly published
-  History topic. The default backend/World demo still uses Mathematics; this UI
-  does not change publication, enrollment, house slots, or the world course.
+- History topics are published by default through the curriculum API and require
+  authorized course access. World still uses its existing Mathematics connection;
+  mounting this panel and connecting course selection remain World integration work.
 - `studentId` remains a view-context prop. It is not used to grant API access;
   authenticated server identity controls access.
 

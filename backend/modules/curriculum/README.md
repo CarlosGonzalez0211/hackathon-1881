@@ -309,21 +309,21 @@ README for the test scope and refresh instructions.
 
 ## Git sharing and remaining integration
 
-Work is on `feat/vianey-workspace`. Commit `0036ff9` is the published merge of main
-and package-build compatibility fixes. The subsequent Learning handoff tests,
-hint retrieval fix, World adapters, authenticated read routes, and API-backed
-Material panel are **pending local changes** until Vianey approves a commit and
-push. Daniela and the World owner cannot fetch these pending additions yet.
+The Person 1 integration work includes Learning handoff tests, the hint retrieval
+fix, World adapters, authenticated read routes, and an API-backed Material panel.
+History's six topics are published by default for authorized readers. The latest
+main has been merged before validation and publication.
 
-After publication, inspect the branch without switching an existing checkout:
+After publication, inspect main without switching an existing checkout:
 
 ```sh
 git fetch origin
-git worktree add --detach ../athena-vianey-preview origin/feat/vianey-workspace
+git worktree add --detach ../athena-vianey-preview origin/main
 ```
 
-Use an unused destination folder. These commands only preview committed,
-published work; they do not include the current pending local changes.
+Use an unused destination folder. The Material panel still needs to be connected
+by the World owner; publishing these backend topics does not change World course
+selection or enrollment.
 
 The prerequisite differences in `INTEGRATION_IDS.md` still exist in the source
 fixtures. The new World adapter preserves the shipped Mathematics demo graph
@@ -337,11 +337,11 @@ The API-backed frontend panel is ready under
 [its integration guide](../../../frontend/web/src/features/curriculum/MATERIAL_TAB.md).
 The user requested that World files stay unchanged, so the Material slot re-export
 has not been applied. A real authenticated browser session has not been verified.
-History also remains unpublished by default and requires authorized course access before showing its resources.
+History is now published by default through the curriculum API; authorized
+course access and ready materials are still required.
 
-The most recently fetched main advanced to `9f53ff1` after the published merge.
-That update is not included here. Review/synchronize it separately before final
-cross-team integration; these tests cover this feature branch and pending work.
+The latest main update `9f53ff1` has been merged, preserving its World and UI
+changes. The Person 1 additions do not edit World-owned files.
 
 Deferred Person 1 work includes persistent storage, publishing workflows,
 production authorization integration, course-management UI, and live resource

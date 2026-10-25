@@ -50,8 +50,8 @@ const history = new WorldHouseContentAdapter(
 const comparison = await history.getHouseContent("topic-comparing-rights");
 ```
 
-Use `locale: "es"` for Spanish. History is published by default, and a trusted
-explicit publication manifest is required even though authored resources exist.
+Use `locale: "es"` for Spanish. History is published by default for authorized course readers. A trusted server
+may override the publication manifest to hide topics.
 This does not change enrollment or replace Mathematics topics in the running
 world. Both languages return one source card plus the podcast script, mnemonic
 lyrics, and slide outline for the comparison topic.
