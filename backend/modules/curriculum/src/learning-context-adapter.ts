@@ -11,6 +11,8 @@ import { CurriculumRetrievalService } from "./retrieval-service.js";
 
 /** Structural mirror of Daniela's edaf75f contract; no shared schema is replaced. */
 export interface LearningCurriculumContextRequest {
+  /** Present for Learning calls; static curriculum capabilities do not need class resolution. */
+  studentId?: string;
   courseId: string;
   topicId: string;
   conceptId: string;
@@ -69,6 +71,7 @@ export function parseLearningContextRequest(
 ): LearningCurriculumContextRequest {
   const allowed = new Set([
     "courseId",
+    "studentId",
     "topicId",
     "conceptId",
     "query",
@@ -83,6 +86,8 @@ export function parseLearningContextRequest(
     typeof input !== "object" ||
     Array.isArray(input) ||
     Object.keys(input).some((key) => !allowed.has(key)) ||
+    (input.studentId !== undefined &&
+      (typeof input.studentId !== "string" || !input.studentId.length)) ||
     typeof input.courseId !== "string" ||
     !input.courseId.length ||
     typeof input.topicId !== "string" ||

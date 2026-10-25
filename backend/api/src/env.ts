@@ -10,6 +10,17 @@ const schema = z.object({
   /** mock = in-memory fixtures, real = Supabase. Modules read these when real repositories land. */
   ATHENA_DATA_MODE: z.enum(["mock", "real"]).default("mock"),
   ATHENA_AI_MODE: z.enum(["mock", "real"]).default("mock"),
+  /** Content tutor models (ATHENA_AI_MODE=real). Check them with `pnpm --filter @athena/api content:models`. */
+  CONTENT_CHAT_MODEL: z.string().default("gemini-3.8-flash"),
+  CONTENT_GUARD_MODEL: z.string().default("gemini-3.5-flash-lite"),
+  CONTENT_EMBED_MODEL: z.string().default("gemini-embedding-2"),
+  /** Cosine similarity a chunk needs to count as evidence for the real embeddings. */
+  CONTENT_MIN_SIMILARITY: z.coerce.number().min(0).max(1).default(0.55),
+  /** Lets mock mode run when NODE_ENV=production (demo deployments only). */
+  ATHENA_ALLOW_MOCK: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 export const env = schema.parse(process.env);

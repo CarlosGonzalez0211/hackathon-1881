@@ -146,3 +146,19 @@ test("role authorization matrix", () => {
 
   assert.equal(authorization.canManageClass(ctx({ role: "admin" }), OTHER_CLASS), true);
 });
+
+test("production refuses mock mode unless it is explicitly allowed", async () => {
+  const previous = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
+  try {
+    await assert.rejects(
+      createApp({ logger: false, dataMode: "mock", allowMock: false }),
+      /Refusing to start in production/,
+    );
+    const app = await createApp({ logger: false, dataMode: "mock", allowMock: true });
+    await app.close();
+  } finally {
+    if (previous === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previous;
+  }
+});

@@ -1,19 +1,19 @@
 import { z } from "zod";
+import { idSchema, isoDateSchema } from "../common.js";
 import {
   DEMO_STUDENT_ID,
   demoCheckpointEvents,
   demoClassPlanets,
+  learningEventSchema,
   type LearningEvent,
 } from "../world.js";
+import type { LearningEventIngestResult } from "../world-integration.js";
 
 /**
  * P2 Learning <-> World contract. PROPOSAL for team review, not frozen.
  * P2 owns mastery (deterministic, non-decreasing, evidence-based). World only reads it and
  * receives learning events (schemas in world.ts). Spec: docs/contracts/P2-learning-world.md.
  */
-
-const idSchema = z.string().min(1).max(200);
-const isoDateSchema = z.string().datetime();
 
 export const topicMasterySchema = z.object({
   topicId: idSchema,
@@ -71,6 +71,25 @@ export const hintResponseSchema = z.object({
   citationIds: z.array(idSchema),
 });
 export type HintResponse = z.infer<typeof hintResponseSchema>;
+
+/** Stable P2 aliases used by the Learning module. */
+export const worldLearningSessionStartRequestSchema = learningSessionStartRequestSchema;
+export type WorldLearningSessionStartRequest = LearningSessionStartRequest;
+export const worldLearningSessionStartSchema = learningSessionStartSchema;
+export type WorldLearningSessionStart = LearningSessionStart;
+export const worldHintRequestSchema = hintRequestSchema;
+export type WorldHintRequest = HintRequest;
+export const worldHintResponseSchema = hintResponseSchema;
+export type WorldHintResponse = HintResponse;
+export const worldLearningEventSchema = learningEventSchema;
+export type WorldLearningEvent = LearningEvent;
+export const worldLearningEventIngestResultSchema = z
+  .object({
+    unlockedAchievements: z.array(z.unknown()).default([]),
+    transitions: z.array(z.unknown()).default([]),
+  })
+  .transform((result) => result as LearningEventIngestResult);
+export type WorldLearningEventIngestResult = LearningEventIngestResult;
 
 // ---------------------------------------------------------------------------
 // Demo fixtures

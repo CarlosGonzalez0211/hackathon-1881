@@ -35,6 +35,10 @@ export {
 export { message, type MessageKey } from "./messages.js";
 export { ContentConflictError, ContentService, type ContentServiceDeps } from "./service.js";
 export {
+  ContentCurriculumContext,
+  type ContentCurriculumContextDeps,
+} from "./curriculum-context.js";
+export {
   MaterialIngestionService,
   type IngestionDeps,
   type IngestionOptions,

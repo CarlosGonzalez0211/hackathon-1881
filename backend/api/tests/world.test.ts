@@ -15,6 +15,7 @@ import {
   worldStateSchema,
 } from "@athena/shared";
 import { WorldService, worldRoutes } from "@athena/world";
+import { installPlatform } from "@athena/platform";
 import Fastify from "fastify";
 import { createApp } from "../src/app.js";
 
@@ -379,6 +380,7 @@ test("world routes accept an injected service", async () => {
   const service = new WorldService({ now: () => AT });
   service.handleLearningEvent(demoCheckpointEvents[0]);
   const app = Fastify({ logger: false });
+  installPlatform(app);
   await app.register(worldRoutes, { service, prefix: "/api" });
   try {
     const response = await app.inject({

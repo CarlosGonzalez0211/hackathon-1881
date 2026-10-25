@@ -25,6 +25,35 @@ Missing or invalid token: 401. Valid token but no profile: 403. Wrong role or cl
 | `mock` (default)   | Allow-all stub: every caller is the demo professor. Fixtures only. Never put real data behind it. |
 | `real`             | Needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Startup fails if they are missing.          |
 
+With `NODE_ENV=production`, mock mode refuses to start unless `ATHENA_ALLOW_MOCK=true`. Set that
+only on a demo deployment that holds no real data; everything else sets `ATHENA_DATA_MODE=real`.
+
+## Enrollment
+
+Only the class's professor (or an admin) manages who is in a class:
+
+- `GET /api/classes/:classId/enrollments` lists active students.
+- `PUT /api/classes/:classId/enrollments/:studentId` enrolls (or re-enrolls) a student profile.
+- `DELETE /api/classes/:classId/enrollments/:studentId` drops them; the row is kept as `dropped`.
+
+Without a UI, from the terminal (needs the service role in the API's environment; the student has
+to have signed in once so a profile exists):
+
+```bash
+pnpm --filter @athena/api enroll <class-id> <student-email>
+pnpm --filter @athena/api enroll <class-id> <student-email> --drop
+```
+
+Changes apply on the student's next request. Only `student` profiles can be enrolled.
+
+## Who may call the World and AI routes
+
+World routes read through the same authorization as analytics: a student reads and writes only as
+themself, a professor reads their class, and the Learning event sink and `/api/demo/world/*` are
+admin only. In real mode World reads enrollment from `class_enrollments`; its curriculum and
+mastery ports stay on mocks until Curriculum and Learning ship real ones, so real students see an
+empty planet. `/api/ai/prompt` is staff only and limited to 10 calls a minute per caller.
+
 Frontend: `NEXT_PUBLIC_USE_MOCKS=true` skips sign-in and uses the demo user.
 
 ## Setup checklist (needs your Supabase project)

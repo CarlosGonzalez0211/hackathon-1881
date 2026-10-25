@@ -8,6 +8,10 @@
 //   SVG  → copied (icons/, brand/)
 //   libs → decoder libraries (basis, draco, glyph) copied from the legacy mount
 //
+// Kit sources are two roots read per file, generated first: `.kit-cache/` (written by
+// `athena-assets/code/generate.mjs`, gitignored) shadows the committed kit file by file, so
+// unported families keep loading the committed GLBs. `ATHENA_KIT_SOURCE=legacy` ignores the
+// cache (A/B switch); the default `generated` runs the generator first (instant when fresh).
 // Filenames are content-hashed. An input-hash cache (node_modules/.cache) skips unchanged
 // inputs so `predev`/`prebuild` stay fast. Individual failures are warnings (CI without
 // LFS objects or tools still builds); pass `--strict` to make them fatal.
@@ -26,7 +30,7 @@ import {
   normalizeLegacyKey,
 } from "../src/assets/athena-keys.mjs";
 
-const PIPELINE_VERSION = 13;
+const PIPELINE_VERSION = 14;
 const CHARACTER_PASS_HASH = createHash("sha256")
   .update(await fs.readFile(new URL("./refine-characters.mjs", import.meta.url)))
   .update(await fs.readFile(new URL("./story-explorer.mjs", import.meta.url)))
@@ -45,6 +49,7 @@ const CHARACTER_SIMPLIFY = { ratio: 0.42, error: 0.0025 };
 const BUILDING_SIMPLIFY = { ratio: 0.3, error: 0.008 };
 /** Character parts carry authored normals; terrain tiles are collision data. */
 const KEEP_NORMALS = /models\/(terrain|avatar|npcs|characters)\//;
+const CHARACTER_PATH = /models\/(avatar|npcs|characters)\//;
 const NO_SIMPLIFY = /models\/terrain\/|athena-space-(starfield|galaxy)\.glb$/;
 /**
  * Avatar part GLBs keep their node hierarchy: the runtime grafts each part's meshes onto the
@@ -58,6 +63,15 @@ const ENGINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const KIT = process.env.ATHENA_KIT_DIR
   ? path.resolve(process.env.ATHENA_KIT_DIR)
   : path.join(ENGINE, "athena-assets");
+// Generated kit (athena-assets/code/generate.mjs). Same resolution as tests/helpers/kit-path.ts.
+const KIT_SOURCE = process.env.ATHENA_KIT_SOURCE ?? "generated";
+if (!["generated", "legacy"].includes(KIT_SOURCE)) {
+  console.error(`ATHENA_KIT_SOURCE must be "generated" or "legacy", got "${KIT_SOURCE}"`);
+  process.exit(2);
+}
+const GENERATED = process.env.ATHENA_KIT_CACHE
+  ? path.resolve(process.env.ATHENA_KIT_CACHE)
+  : path.join(ENGINE, ".kit-cache");
 const PUBLIC = path.resolve(ENGINE, "..", "web", "public");
 const LEGACY = path.join(PUBLIC, "assets", "athena");
 const OUT = path.join(PUBLIC, "athena");
@@ -68,6 +82,59 @@ const BUDGET_FILE = "athena-budget.json";
 const FIRST_LOAD_BUDGET = 8 * 1024 * 1024;
 const STRICT = process.argv.includes("--strict");
 const UASTC_PATTERN = /water-normal|noise|lut/;
+const KB = 1024;
+/**
+ * Per-model limits from docs/art/ART_DIRECTION.md section 6 (triangles after simplify, bytes
+ * after meshopt, not counting an embedded atlas image). First match wins. They gate GENERATED models only (origin "generated"); the
+ * committed kit is reported with the same limits but never fails the build, because it predates
+ * them. Mapping of section-6 classes to files: large civic = library, observatory, school hall,
+ * greenhouse; small civic = every other building; trees count crown + trunk (300 + 60).
+ */
+const MODEL_LIMITS = [
+  {
+    pattern: /^models\/spike\/athena-spike-rig\.glb$/,
+    label: "character",
+    triangles: 7000,
+    bytes: 60 * KB,
+  },
+  { pattern: /^models\/spike\//, label: "prop", triangles: 1200, bytes: 30 * KB },
+  {
+    pattern: /^models\/buildings\/athena-house-/,
+    label: "topic house",
+    triangles: 6000,
+    bytes: 110 * KB,
+  },
+  {
+    pattern:
+      /^models\/buildings\/athena-building-(library|observatory|school-hall|greenhouse)\.glb$/,
+    label: "large civic building",
+    triangles: 8000,
+    bytes: 140 * KB,
+  },
+  {
+    pattern: /^models\/buildings\//,
+    label: "small civic building",
+    triangles: 3000,
+    bytes: 60 * KB,
+  },
+  {
+    pattern: /^models\/avatar\/athena-avatar-base\.glb$/,
+    label: "avatar base",
+    triangles: 5000,
+    bytes: 60 * KB,
+  },
+  { pattern: /^models\/avatar\//, label: "avatar part", triangles: 1500, bytes: 60 * KB },
+  { pattern: /^models\/(npcs|characters)\//, label: "character", triangles: 7000, bytes: 60 * KB },
+  { pattern: /^models\/nature\/athena-tree-/, label: "tree", triangles: 360, bytes: 40 * KB },
+  {
+    pattern: /^models\/nature\/athena-cliff-/,
+    label: "cliff shell",
+    triangles: 400,
+    bytes: 30 * KB,
+  },
+  { pattern: /^models\/props\//, label: "prop", triangles: 1200, bytes: 30 * KB },
+];
+const limitFor = (source) => MODEL_LIMITS.find((limit) => limit.pattern.test(source));
 
 const posix = (p) => p.split(path.sep).join("/");
 const sha = (buffer) => createHash("sha256").update(buffer).digest("hex");
@@ -159,44 +226,83 @@ async function gltfToolchain() {
   return gltf;
 }
 
+/** Triangles / vertices / primitives / materials of what the scene draws (per node instance). */
+function modelStats(document) {
+  const scene = document.getRoot().listScenes()[0];
+  let triangles = 0;
+  let vertices = 0;
+  let primitives = 0;
+  const materials = new Set();
+  scene?.traverse((node) => {
+    const mesh = node.getMesh();
+    if (!mesh) return;
+    for (const primitive of mesh.listPrimitives()) {
+      const position = primitive.getAttribute("POSITION");
+      if (!position) continue;
+      primitives++;
+      vertices += position.getCount();
+      if (primitive.getMode() === 4)
+        triangles += (primitive.getIndices()?.getCount() ?? position.getCount()) / 3;
+      const material = primitive.getMaterial();
+      if (material) materials.add(material);
+    }
+  });
+  // Embedded images (the shared foliage atlas) are a world-level texture cost, reported apart.
+  const imageBytes = document
+    .getRoot()
+    .listTextures()
+    .reduce((sum, texture) => sum + (texture.getImage()?.byteLength ?? 0), 0);
+  return { triangles, vertices, primitives, materials: materials.size, imageBytes };
+}
+
 // ------------------------------------------------------------------------ processors
 /** Each processor: (input buffer, absolute input path) → { buffer, extension, format }. */
 const processors = {
-  async glb(input, absolute) {
+  async glb(input, absolute, relative) {
     const { io, functions, MeshoptEncoder, MeshoptSimplifier, logger } = await gltfToolchain();
     const document = await io.readBinary(new Uint8Array(input));
     document.setLogger(logger);
-    const character = refineCharacters(document, posix(absolute));
+    // Generated models (athena-assets/code) declare how they were made in the asset extras:
+    // athenaGenerator >= 3 has authored faces/rigs (no refine pass), athenaNormals "authored"
+    // keeps the normals as exported, athenaKeepHierarchy keeps the node tree (rigs).
+    const extras = document.getRoot().getExtras() ?? {};
+    const generated = Number(extras.athenaGenerator ?? 0) >= 3;
+    const authoredNormals = extras.athenaNormals === "authored";
+    const keepHierarchy = KEEP_HIERARCHY.test(relative) || extras.athenaKeepHierarchy === true;
+    const character = CHARACTER_PATH.test(relative);
+    if (!generated) refineCharacters(document, relative);
     await document.transform(
       functions.dedup(),
       // Keep empty leaf nodes (rig sockets/attachment points) and unused attributes (UV/colour
       // may be used by the toon material later).
       // Character rigs keep custom style/weave attributes; everything else drops vertex
       // attributes no material reads (the kit is untextured), which shrinks every file.
-      functions.prune({ keepLeaves: true, keepAttributes: KEEP_NORMALS.test(posix(absolute)) }),
-      ...(KEEP_HIERARCHY.test(posix(absolute)) ? [] : [functions.flatten(), functions.join()]),
+      functions.prune({ keepLeaves: true, keepAttributes: KEEP_NORMALS.test(relative) }),
+      ...(keepHierarchy ? [] : [functions.flatten(), functions.join()]),
       (doc) => {
-        if (!KEEP_NORMALS.test(posix(absolute))) smoothNormals(doc);
+        if (!KEEP_NORMALS.test(relative) && !authoredNormals) smoothNormals(doc);
       },
       functions.weld(),
-      ...(NO_SIMPLIFY.test(posix(absolute))
+      ...(NO_SIMPLIFY.test(relative)
         ? []
         : [
             functions.simplify({
               simplifier: MeshoptSimplifier,
               ...(character
                 ? CHARACTER_SIMPLIFY
-                : posix(absolute).includes("models/buildings/")
+                : relative.includes("models/buildings/")
                   ? BUILDING_SIMPLIFY
                   : SIMPLIFY),
             }),
           ]),
       functions.meshopt({ encoder: MeshoptEncoder, level: "high" }),
     );
+    const stats = modelStats(document);
     return {
       buffer: Buffer.from(await io.writeBinary(document)),
       extension: ".glb",
       format: "glb-meshopt",
+      stats,
     };
   },
   async texture(input, absolute, relative) {
@@ -275,8 +381,29 @@ const signature = (kind) =>
   }`;
 
 // ---------------------------------------------------------------------------- inputs
+/**
+ * Generate the kit first (a fresh cache exits at once), then resolve every kit file against
+ * two roots: the generated cache shadows the committed kit file by file. Only `models/**.glb`
+ * is read from the cache. A failed generation is a warning: the committed files still build.
+ */
+if (KIT_SOURCE === "generated") {
+  const generator = spawnSync(
+    process.execPath,
+    [path.join(ENGINE, "athena-assets", "code", "generate.mjs"), `--out=${GENERATED}`, "--quiet"],
+    { stdio: "inherit" },
+  );
+  if (generator.status !== 0)
+    warn(`kit generation failed (exit ${generator.status}), using the committed kit`);
+}
+const sources = new Map(); // kit-relative path → { absolute, origin }
+for (const file of await walk(KIT))
+  sources.set(file, { absolute: path.join(KIT, file), origin: "legacy" });
+if (KIT_SOURCE === "generated")
+  for (const file of await walk(GENERATED))
+    if (/^models\/.+\.glb$/.test(file))
+      sources.set(file, { absolute: path.join(GENERATED, file), origin: "generated" });
 const kitManifest = JSON.parse(await fs.readFile(path.join(KIT, "asset-manifest.json"), "utf8"));
-const kitFiles = await walk(KIT);
+const kitFiles = [...sources.keys()].sort();
 const jobs = [
   ...kitFiles.filter((f) => /^models\/.+\.glb$/.test(f)).map((source) => ({ source, kind: "glb" })),
   ...kitFiles
@@ -305,12 +432,16 @@ const stats = { built: 0, cached: 0, failed: 0 };
 await fs.mkdir(OUT, { recursive: true });
 
 async function processJob({ source, kind }) {
-  const absolute = path.join(KIT, source);
+  const { absolute, origin } = sources.get(source);
   try {
     const stat = await fs.stat(absolute);
     const sig = signature(kind);
     const previous = cache.entries[source];
-    const quick = previous && previous.size === stat.size && previous.mtimeMs === stat.mtimeMs;
+    const quick =
+      previous &&
+      previous.origin === origin &&
+      previous.size === stat.size &&
+      previous.mtimeMs === stat.mtimeMs;
     let input;
     let inputHash = quick ? previous.inputHash : undefined;
     if (!inputHash) {
@@ -323,12 +454,14 @@ async function processJob({ source, kind }) {
       previous.inputHash === inputHash &&
       existsSync(path.join(OUT, previous.out))
     ) {
-      cache.entries[source] = { ...previous, size: stat.size, mtimeMs: stat.mtimeMs };
+      cache.entries[source] = { ...previous, origin, size: stat.size, mtimeMs: stat.mtimeMs };
       outputs.set(source, {
         out: previous.out,
         kind,
         format: previous.format,
         bytes: previous.bytes,
+        origin,
+        modelStats: previous.modelStats,
       });
       stats.cached++;
       return;
@@ -340,7 +473,13 @@ async function processJob({ source, kind }) {
     const out = hashedName(source, sha(result.buffer), result.extension);
     await fs.mkdir(path.dirname(path.join(OUT, out)), { recursive: true });
     await fs.writeFile(path.join(OUT, out), result.buffer);
-    const record = { out, format: result.format, bytes: result.buffer.length };
+    const record = {
+      out,
+      format: result.format,
+      bytes: result.buffer.length,
+      origin,
+      modelStats: result.stats,
+    };
     cache.entries[source] = { ...record, sig, inputHash, size: stat.size, mtimeMs: stat.mtimeMs };
     outputs.set(source, { ...record, kind });
     stats.built++;
@@ -456,13 +595,40 @@ const totalBytes = [...outputs.values()].reduce((sum, output) => sum + output.by
 const sourceBytes = (
   await Promise.all(
     jobs.map(({ source }) =>
-      fs.stat(path.join(KIT, source)).then(
+      fs.stat(sources.get(source).absolute).then(
         (s) => s.size,
         () => 0,
       ),
     ),
   )
 ).reduce((sum, size) => sum + size, 0);
+// Per-model report: what each GLB draws after the pipeline, against its section-6 limit.
+const perModel = {};
+const budgetViolations = [];
+let legacyOver = 0;
+for (const [source, output] of [...outputs.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+  if (output.kind !== "glb" || !output.modelStats) continue;
+  const limit = limitFor(source);
+  const over = [];
+  if (limit && output.modelStats.triangles > limit.triangles)
+    over.push(`${output.modelStats.triangles} triangles > ${limit.triangles}`);
+  // The byte limit is for geometry and rig: an embedded atlas is counted by `imageBytes`.
+  const modelBytes = output.bytes - (output.modelStats.imageBytes ?? 0);
+  if (limit && modelBytes > limit.bytes) over.push(`${modelBytes} bytes > ${limit.bytes}`);
+  const enforced = output.origin === "generated";
+  perModel[source] = {
+    origin: output.origin,
+    ...output.modelStats,
+    bytes: output.bytes,
+    modelBytes,
+    limit: limit
+      ? { class: limit.label, triangles: limit.triangles, bytes: limit.bytes, enforced }
+      : null,
+    over,
+  };
+  if (over.length && enforced) budgetViolations.push(`${source}: ${over.join(", ")}`);
+  else if (over.length) legacyOver++;
+}
 const budget = {
   totalBytes,
   sourceBytes,
@@ -478,7 +644,10 @@ const budget = {
     npcs: groupBytes(/^models\/npcs\//),
     avatar: groupBytes(/^models\/avatar\//),
     space: groupBytes(/^models\/space\//),
+    spike: groupBytes(/^models\/spike\//),
   },
+  perModel,
+  budgetViolations,
   surfaceFirstLoad: {
     bytes: firstLoadBytes,
     budgetBytes: FIRST_LOAD_BUDGET,
@@ -512,7 +681,26 @@ console.log(
       `(${firstLoadFiles.size} files) ${budget.surfaceFirstLoad.withinBudget ? "OK" : "OVER BUDGET"}`,
   ].join("\n"),
 );
-if (STRICT && warnings.length) {
-  console.error(`[athena-assets] --strict: ${warnings.length} warning(s)`);
+const generatedModels = Object.entries(perModel).filter(([, m]) => m.origin === "generated");
+if (generatedModels.length) {
+  console.log(
+    `[athena-assets] generated models (${generatedModels.length}), limits per section 6:`,
+  );
+  for (const [source, m] of generatedModels)
+    console.log(
+      `  ${source.padEnd(40)} ${String(m.triangles).padStart(6)} tris ${String(m.vertices).padStart(6)} verts ` +
+        `${String(m.primitives).padStart(3)} prims ${String(m.materials).padStart(2)} mats ` +
+        `${String(m.modelBytes).padStart(7)} B${m.imageBytes ? ` (+${m.imageBytes} B image)` : ""}  ${m.limit ? `${m.limit.class} (${m.limit.triangles} tris, ${m.limit.bytes} B)` : "no limit"}` +
+        `${m.over.length ? `  OVER: ${m.over.join(", ")}` : "  ok"}`,
+    );
+}
+if (legacyOver)
+  console.log(
+    `[athena-assets] ${legacyOver} committed model(s) exceed their section-6 limit (informational, see perModel in ${BUDGET_FILE})`,
+  );
+if (STRICT && (warnings.length || budgetViolations.length)) {
+  if (warnings.length) console.error(`[athena-assets] --strict: ${warnings.length} warning(s)`);
+  for (const violation of budgetViolations)
+    console.error(`[athena-assets] --strict: over budget: ${violation}`);
   process.exit(1);
 }

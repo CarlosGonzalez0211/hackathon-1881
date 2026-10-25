@@ -153,7 +153,12 @@ export interface VersionedRepository<T extends VersionedRecord> {
    * Returns "conflict" when expectedUpdatedAt is given and no longer matches, or when the id
    * already belongs to another class.
    */
-  upsert(record: T, expectedUpdatedAt?: string): Promise<T | "conflict">;
+  /** actorId is stored as created_by on insert. */
+  upsert(
+    record: T,
+    expectedUpdatedAt: string | undefined,
+    actorId: string,
+  ): Promise<T | "conflict">;
   softDelete(id: string, now: string): Promise<void>;
 }
 

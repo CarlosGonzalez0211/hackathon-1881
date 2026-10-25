@@ -471,6 +471,33 @@ export class WorldService {
     return { challenge: clone(challenge), unlockedAchievements };
   }
 
+  // ---- Enrollment sync -----------------------------------------------------
+
+  /**
+   * The sync checks below (`assertStudent`, team rosters) read the store, which is only seeded
+   * with the demo class. Routes call these first so students and classes known to the
+   * enrollment port (the real class_enrollments in real mode) are known to the store too, and
+   * a student who is no longer enrolled stops being accepted.
+   */
+  async syncStudent(studentId: string): Promise<void> {
+    const enrollment = await this.ports.enrollment.getEnrollment(studentId);
+    if (!enrollment) {
+      this.store.studentIds.delete(studentId);
+      return;
+    }
+    this.store.studentIds.add(studentId);
+    const roster = this.store.classStudents.get(enrollment.classId) ?? [];
+    if (!roster.includes(studentId))
+      this.store.classStudents.set(enrollment.classId, [...roster, studentId]);
+  }
+
+  async syncClass(classId: string): Promise<void> {
+    const studentIds = await this.ports.enrollment.listStudents(classId);
+    if (!studentIds) return;
+    this.store.classStudents.set(classId, [...studentIds]);
+    for (const studentId of studentIds) this.store.studentIds.add(studentId);
+  }
+
   private assertStudent(studentId: string): void {
     if (!this.store.studentIds.has(studentId)) throw notFound("Student", studentId);
   }
