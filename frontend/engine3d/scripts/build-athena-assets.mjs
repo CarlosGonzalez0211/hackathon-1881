@@ -15,7 +15,6 @@
 // Filenames are content-hashed. An input-hash cache (node_modules/.cache) skips unchanged
 // inputs so `predev`/`prebuild` stay fast. Individual failures are warnings (CI without
 // LFS objects or tools still builds); pass `--strict` to make them fatal.
-import { refineCharacters } from "./refine-characters.mjs";
 import { smoothNormals } from "./smooth-normals.mjs";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -32,8 +31,6 @@ import {
 
 const PIPELINE_VERSION = 14;
 const CHARACTER_PASS_HASH = createHash("sha256")
-  .update(await fs.readFile(new URL("./refine-characters.mjs", import.meta.url)))
-  .update(await fs.readFile(new URL("./story-explorer.mjs", import.meta.url)))
   .update(await fs.readFile(new URL("./smooth-normals.mjs", import.meta.url)))
   .digest("hex")
   .slice(0, 12);
@@ -263,14 +260,12 @@ const processors = {
     const document = await io.readBinary(new Uint8Array(input));
     document.setLogger(logger);
     // Generated models (athena-assets/code) declare how they were made in the asset extras:
-    // athenaGenerator >= 3 has authored faces/rigs (no refine pass), athenaNormals "authored"
+    // athenaGenerator >= 3 has authored faces/rigs, athenaNormals "authored"
     // keeps the normals as exported, athenaKeepHierarchy keeps the node tree (rigs).
     const extras = document.getRoot().getExtras() ?? {};
-    const generated = Number(extras.athenaGenerator ?? 0) >= 3;
     const authoredNormals = extras.athenaNormals === "authored";
     const keepHierarchy = KEEP_HIERARCHY.test(relative) || extras.athenaKeepHierarchy === true;
     const character = CHARACTER_PATH.test(relative);
-    if (!generated) refineCharacters(document, relative);
     await document.transform(
       functions.dedup(),
       // Keep empty leaf nodes (rig sockets/attachment points) and unused attributes (UV/colour

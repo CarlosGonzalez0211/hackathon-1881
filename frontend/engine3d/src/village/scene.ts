@@ -1,17 +1,18 @@
 import type { PlanetState } from "@athena/shared";
 import type { AthenaInstallContext } from "../athena/install";
 import { ClipPlayer, loadAthenaModel, localBounds, type AthenaModel } from "../athena/models";
-import { mergeStaticMeshes } from "../athena/merge";
 import type { LegacyContext } from "../runtime/legacy-context";
 import { createWater } from "./water";
 import { createTerrain } from "./terrain";
-import { paintMaterial, windMaterial } from "./look";
+import { paintMaterial } from "./look";
+import { dressHouse } from "./houses-look";
 import { buildAmbience, createBanners } from "./ambience";
 import { createGroves, createMeadows, createCloudBelt } from "./botanical";
 import { createLivingLandmarks } from "./landscape-life";
 import { createWelcomeCourtyard } from "./welcome";
 import { createTerrace } from "./terrace";
-import { roundedBox, taperedTube } from "./geometry";
+import { createBridges } from "./bridges";
+import { createCliffShells, createCliffTerraces, createIslets, createRockScatter } from "./cliffs";
 import { dressWithCloth, type Cloth } from "./cloth";
 import { illuminateLumen } from "./lumen";
 import { createSpiritDressing } from "./spirit";
@@ -25,7 +26,6 @@ import {
   landmarks,
   tangent,
   doorDirection,
-  bridges,
   advance,
   mul,
   cross,
@@ -48,43 +48,6 @@ export function orient(scope: LegacyContext, object: LegacyContext, up: Vec, for
   const x = new scope.Vector3().crossVectors(y, z).normalize();
   object.quaternion.setFromRotationMatrix(new scope.Matrix4().makeBasis(x, y, z));
 }
-/** One draw per source part, irrespective of vegetation count. */
-async function instanceModel(
-  ctx: AthenaInstallContext,
-  root: LegacyContext,
-  key: string,
-  points: Vec[],
-  scale: number,
-  breeze?: { value: number },
-) {
-  if (!points.length) return;
-  const s = ctx.scope;
-  const model = await loadAthenaModel(ctx, key);
-  if (ctx.lifecycle.disposed) return;
-  model.root.updateMatrixWorld(true);
-  const transform = new s.Object3D(),
-    matrix = new s.Matrix4();
-  model.root.traverse((part: LegacyContext) => {
-    if (!part.isMesh || part.isSkinnedMesh) return;
-    const material = breeze ? part.material.clone() : part.material;
-    if (breeze) windMaterial(material, breeze);
-    const batch = new s.InstancedMesh(part.geometry, material, points.length);
-    batch.name = `village-${key.split("/").pop()}-${part.name}`;
-    batch.castShadow = !part.userData.athenaInk;
-    batch.receiveShadow = !part.userData.athenaInk;
-    points.forEach((up, i) => {
-      transform.position.set(...surfacePoint(up, -0.025));
-      orient(s, transform, up, [Math.sin(i * 2.4), 0.7, Math.cos(i * 2.4)]);
-      transform.scale.setScalar(scale * (0.85 + (i % 7) * 0.045));
-      transform.updateMatrix();
-      matrix.multiplyMatrices(transform.matrix, part.matrixWorld);
-      batch.setMatrixAt(i, matrix);
-    });
-    batch.instanceMatrix.needsUpdate = true;
-    batch.computeBoundingSphere();
-    root.add(batch);
-  });
-}
 export interface VillageActor {
   id: string;
   root: LegacyContext;
@@ -105,8 +68,9 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
   const root = new s.Group();
   root.name = "athena-village";
   const ground = createTerrain(ctx, low);
-  const water = createWater(ctx);
+  const water = createWater(ctx, low);
   root.add(ground.mesh, water.mesh);
+  createCliffShells(ctx, root, low);
   const cameraObstacles: LegacyContext[] = [];
   const houses = new Map<
     number,
@@ -134,7 +98,7 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
     locked: { base: 0, flicker: 0 },
     available: { base: 0.9, flicker: 0.08 },
     in_progress: { base: 1.7, flicker: 0.35 },
-    done: { base: 2.6, flicker: 0.12 },
+    done: { base: 2.2, flicker: 0.12 },
   };
   function lightWindows(slot: number, model: AthenaModel, status: string) {
     const materials: { material: LegacyContext; weight: number }[] = [];
@@ -142,18 +106,23 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
       if (!part.isMesh) return;
       for (const material of Array.isArray(part.material) ? part.material : [part.material]) {
         const name = String(material?.name);
-        // Windows carry the glow; beacons and gilt trim only accent it.
+        // Windows carry the glow; lanterns follow, beacons, gilt trim and vine buds accent it.
         const weight = /window_glow/.test(name)
           ? 1
-          : /beacon/.test(name)
-            ? 0.35
-            : /gilt/.test(name)
-              ? 0.2
-              : 0;
+          : /lantern_glow/.test(name)
+            ? 0.8
+            : /beacon/.test(name)
+              ? 0.35
+              : /gilt/.test(name)
+                ? 0.5
+                : /vine_bloom/.test(name)
+                  ? 0.15
+                  : 0;
         if (weight && material.emissive) materials.push({ material, weight });
       }
     });
     const lamp = LAMP[status] ?? LAMP.available!;
+    dressHouse(model, status, breeze);
     lamps.set(slot, { materials, ...lamp });
     for (const { material, weight } of materials) material.emissiveIntensity = lamp.base * weight;
   }
@@ -222,9 +191,20 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
     promise.catch((error) =>
       console.warn("[Athena] optional village decoration unavailable", error),
     );
-  createGroves(ctx, root, forest, breeze);
+  createGroves(ctx, root, forest, breeze, low);
   const clouds = createCloudBelt(ctx, root);
-  tasks.push(optional(instanceModel(ctx, root, "models/nature/athena-rock-set.glb", rocks, 0.65)));
+  // Rocks: the obstacle boulders plus talus, edge stones and shore pebbles (visual only).
+  tasks.push(createRockScatter(ctx, root, low, rocks));
+  tasks.push(createCliffTerraces(ctx, root, low));
+  // Floating islets far beyond the cloud belt (high tier).
+  let islets: { tick(time: number): void } | undefined;
+  tasks.push(
+    optional(
+      createIslets(ctx, root, low).then((value) => {
+        islets = value;
+      }),
+    ),
+  );
   for (const plot of plots) {
     const group = new s.Group();
     group.name = `athena-house-${plot.slot}`;
@@ -440,42 +420,7 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
     );
   }
   // Wooden bridges follow the exact same arch sampled by the walking controller.
-  for (const bridge of bridges) {
-    const group = new s.Group();
-    group.name = "athena-wooden-bridge";
-    const wood = new s.MeshStandardMaterial({ color: "#a07f5f", roughness: 1 });
-    const plankShape = roundedBox(s, 2.2, 0.1, 0.22, 0.2, 8);
-    const postShape = taperedTube(s, 0.05, 0.065, 0.7, 10, 1);
-    const capShape = roundedBox(s, 0.16, 0.12, 0.16, 0.5, 6);
-    for (let index = 0; index <= 28; index++) {
-      const up = advance(bridge.up, bridge.forward, -3.4 + (index * 6.8) / 28).up;
-      const plank = new s.Mesh(plankShape, wood);
-      plank.position.set(...mul(up, walkingRadius(up) - 0.045));
-      orient(s, plank, up, bridge.forward);
-      group.add(plank);
-      if (index % 4 === 0)
-        for (const side of [-1, 1]) {
-          const edge = advance(up, bridge.side, side * 1.1).up;
-          const post = new s.Mesh(postShape, wood);
-          post.position.set(...mul(edge, walkingRadius(up) + 0.3));
-          orient(s, post, edge, bridge.forward);
-          const cap = new s.Mesh(capShape, wood);
-          cap.position.set(...mul(edge, walkingRadius(up) + 0.68));
-          orient(s, cap, edge, bridge.forward);
-          group.add(post, cap);
-        }
-    }
-    mergeStaticMeshes(s, group, new Set());
-    ctx.toon.apply(group);
-    group.traverse((part: LegacyContext) => {
-      if (part.isMesh && !part.userData.athenaInk) {
-        part.castShadow = true;
-        part.receiveShadow = true;
-      }
-    });
-    root.add(group);
-    cameraObstacles.push(group);
-  }
+  createBridges(ctx, root, cameraObstacles);
   if (!low) {
     const npcs = [
       ["mentor-elena", "Elena", -0.25, -0.01, false],
@@ -625,6 +570,7 @@ export async function buildVillage(ctx: AthenaInstallContext, state: PlanetState
       ground.tick(reduced ? 0 : time);
       breeze.value = reduced ? 0 : time;
       clouds.tick(reduced ? 0 : time);
+      islets?.tick(reduced ? 0 : time);
       landscapeLife.tick(reduced ? 0 : time);
       ambience?.tick(dt, time, reduced);
       lumenLight?.tick(reduced ? 0 : time);

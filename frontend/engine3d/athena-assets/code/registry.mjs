@@ -15,16 +15,19 @@
  * exporting `entries`, import it below and add it to the list. File names must match the
  * committed ones (`athena-house-done-v0.glb`, ...) so the build replaces them per file.
  */
+import { entries as characterEntries } from "./families/characters.mjs";
 import { entries as spike } from "./families/spike.mjs";
+import { entries as houses } from "./families/houses.mjs";
+import { entries as natureEntries } from "./families/nature.mjs";
 
 // TODO(world art): one module per family, same names as the committed kit folders.
-/** models/buildings: topic houses (`athena-house-<status>-v<slot>.glb`) and civic buildings. */
-export const houses = [];
+/** models/buildings: topic houses (`athena-house-<status>-v<slot>.glb`, families/houses.mjs) and civic buildings. */
+export { houses };
 export const buildings = [];
 /** models/nature: trees, rocks, grass, flowers, clouds. */
-export const nature = [];
+export const nature = natureEntries;
 /** models/avatar, models/npcs, models/characters: rigs keep the documented node names. */
-export const characters = [];
+export const characters = characterEntries;
 /** models/props: lamp posts, benches, signs, crates. */
 export const props = [];
 
