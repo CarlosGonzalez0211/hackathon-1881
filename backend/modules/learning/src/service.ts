@@ -1,7 +1,10 @@
 import {
+  assessmentQuizSchema,
   checkpointResultSchema,
   diagnosticResultSchema,
   studentLearningStateSchema,
+  type AssessmentPurpose,
+  type AssessmentQuiz,
   type AuthContext,
   type CheckpointEvidence,
   type CheckpointResult,
@@ -32,6 +35,7 @@ import {
 import { updateKnowledgeProbability } from "./domain/knowledge-tracing.js";
 import { calculateMastery } from "./domain/mastery.js";
 import { scheduleRetention } from "./domain/retention.js";
+import { selectAssessmentQuestions } from "./domain/question-selection.js";
 import type { LearningRepository } from "./repository.js";
 
 export class LearningService {
@@ -201,10 +205,11 @@ export class LearningService {
       submission.studentId,
       submission.topicId,
     );
+    const requiredConceptIds = await this.assessments.listRequiredConceptIds(submission.topicId);
     const calculation = calculateMastery({
       previous: previousMastery?.mastery ?? 0,
       attempts: allEvidence,
-      requiredConceptIds: [submission.conceptId],
+      requiredConceptIds,
     });
     const mastery: StudentTopicMastery = {
       studentId: submission.studentId,
@@ -340,6 +345,65 @@ export class LearningService {
       recommendedStrategy,
       strategyChanged: recommendedStrategy !== submission.strategy,
       retention,
+    });
+  }
+
+  async getQuiz(
+    context: AuthContext,
+    input: {
+      studentId: string;
+      courseId: string;
+      topicId: string;
+      purpose: AssessmentPurpose;
+      limit: number;
+    },
+  ): Promise<AssessmentQuiz> {
+    this.assertAccess(context, input.studentId, input.courseId);
+    const questions = await this.assessments.listByTopic(input.topicId, input.purpose);
+    if (questions.length === 0) throw notFound("Assessment questions", input.topicId);
+
+    const [knowledge, mastery, evidence, activeMisconceptions, requiredConceptIds] =
+      await Promise.all([
+        this.repository.listKnowledge(input.studentId),
+        this.repository.getMastery(input.studentId, input.topicId),
+        this.repository.listEvidence(input.studentId, input.topicId),
+        this.repository.listActiveMisconceptions(input.studentId, input.topicId),
+        this.assessments.listRequiredConceptIds(input.topicId),
+      ]);
+    const knowledgeByConcept = Object.fromEntries(
+      knowledge.map((state) => [state.conceptId, state.probabilityKnown]),
+    );
+    const required = new Set(requiredConceptIds);
+    const selected = selectAssessmentQuestions({
+      candidates: questions.map((question) => ({
+        ...question,
+        requiredForMastery: required.has(question.conceptId),
+      })),
+      purpose: input.purpose,
+      limit: input.limit,
+      knowledgeByConcept,
+      demonstratedConceptIds: mastery?.demonstratedConceptIds ?? [],
+      activeMisconceptionIds: activeMisconceptions,
+      recentQuestionIds: evidence.slice(-5).map((attempt) => attempt.questionId),
+    });
+    if (selected.length === 0) throw notFound("Assessment questions", input.topicId);
+
+    return assessmentQuizSchema.parse({
+      studentId: input.studentId,
+      courseId: input.courseId,
+      topicId: input.topicId,
+      purpose: input.purpose,
+      questions: selected.map(({ question, reason }) => ({
+        id: question.id,
+        topicId: question.topicId,
+        conceptId: question.conceptId,
+        purpose: question.purpose,
+        prompt: question.prompt,
+        format: question.format,
+        ...(question.format === "multiple_choice" ? { choices: question.choices } : {}),
+        difficulty: question.difficulty,
+        selectionReason: reason,
+      })),
     });
   }
 

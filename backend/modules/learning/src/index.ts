@@ -12,6 +12,12 @@ export {
 } from "./domain/strategy-selection.js";
 export { rankRecommendations, type RecommendationCandidate } from "./domain/recommendations.js";
 export { scheduleRetention } from "./domain/retention.js";
+export {
+  selectAssessmentQuestions,
+  type AssessmentSelectionCandidate,
+  type AssessmentSelectionInput,
+  type SelectedAssessmentQuestion,
+} from "./domain/question-selection.js";
 export { type CurriculumContextPort, type TutorProvider } from "./ports.js";
 export { InMemoryLearningRepository, type LearningRepository } from "./repository.js";
 export { LearningService } from "./service.js";

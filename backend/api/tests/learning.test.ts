@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   athenaDemoIds,
+  assessmentQuizSchema,
   checkpointResultSchema,
   demoDiagnosticSubmission,
   demoLearningIds,
@@ -14,6 +15,7 @@ import {
   calculateStrategyReward,
   rankRecommendations,
   scheduleRetention,
+  selectAssessmentQuestions,
   selectTeachingStrategy,
   updateKnowledgeProbability,
   updateStrategyPosterior,
@@ -144,6 +146,85 @@ test("recommendations respect prerequisites and retention uses spaced intervals"
   assert.equal(second.intervalDays, 3);
 });
 
+test("adaptive question selection covers required concepts, targets misconceptions and avoids repeats", () => {
+  const candidates = [
+    {
+      id: "recent-misconception-item",
+      purpose: "checkpoint" as const,
+      conceptId: demoLearningIds.concepts.triangleArea,
+      difficulty: 0.4,
+      requiredForMastery: true,
+      targetMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
+      transfer: false,
+    },
+    {
+      id: "fresh-base-height-item",
+      purpose: "checkpoint" as const,
+      conceptId: demoLearningIds.concepts.triangleBaseHeight,
+      difficulty: 0.4,
+      requiredForMastery: true,
+      targetMisconceptionIds: [],
+      transfer: false,
+    },
+    {
+      id: "optional-review-item",
+      purpose: "checkpoint" as const,
+      conceptId: demoLearningIds.concepts.rectangleArea,
+      difficulty: 0.9,
+      requiredForMastery: false,
+      targetMisconceptionIds: [],
+      transfer: false,
+    },
+  ];
+
+  const withoutRepeat = selectAssessmentQuestions({
+    candidates,
+    purpose: "checkpoint",
+    limit: 1,
+    knowledgeByConcept: {},
+    demonstratedConceptIds: [],
+    activeMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
+    recentQuestionIds: ["recent-misconception-item"],
+  });
+  assert.equal(withoutRepeat[0]?.question.id, "fresh-base-height-item");
+  assert.equal(withoutRepeat[0]?.reason, "uncovered_required_concept");
+
+  const misconceptionRepair = selectAssessmentQuestions({
+    candidates,
+    purpose: "checkpoint",
+    limit: 1,
+    knowledgeByConcept: { [demoLearningIds.concepts.triangleArea]: 0.3 },
+    demonstratedConceptIds: [
+      demoLearningIds.concepts.triangleArea,
+      demoLearningIds.concepts.triangleBaseHeight,
+    ],
+    activeMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
+    recentQuestionIds: [],
+  });
+  assert.equal(misconceptionRepair[0]?.question.id, "recent-misconception-item");
+  assert.equal(misconceptionRepair[0]?.reason, "misconception_repair");
+});
+
+test("quiz route returns adaptive learner-safe questions without answer keys", async () => {
+  const app = await createApp({ logger: false });
+  try {
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/learning/quiz/${athenaDemoIds.topics.geometry}?studentId=${athenaDemoIds.students.lucia}&courseId=${athenaDemoIds.course}&purpose=checkpoint&limit=2`,
+    });
+    assert.equal(response.statusCode, 200, response.body);
+    const quiz = assessmentQuizSchema.parse(response.json());
+    assert.equal(quiz.questions.length, 2);
+    assert.equal(new Set(quiz.questions.map((question) => question.conceptId)).size, 2);
+    for (const question of response.json().questions) {
+      assert.equal("answerKey" in question, false);
+      assert.equal("misconceptionAnswers" in question, false);
+    }
+  } finally {
+    await app.close();
+  }
+});
+
 test("diagnostic, failed checkpoint and successful checkpoint form the learning foundation", async () => {
   const app = await createApp({
     logger: false,
@@ -203,7 +284,7 @@ test("diagnostic, failed checkpoint and successful checkpoint form the learning 
     assert.equal(passedResponse.statusCode, 200, passedResponse.body);
     const passed = checkpointResultSchema.parse(passedResponse.json());
     assert.equal(passed.evidence.correct, true);
-    assert.equal(passed.mastery.mastery, 0.65);
+    assert.equal(passed.mastery.mastery, 0.55);
     assert.deepEqual(passed.activeMisconceptionIds, []);
     assert.equal(passed.retention?.intervalDays, 1);
 
@@ -214,7 +295,7 @@ test("diagnostic, failed checkpoint and successful checkpoint form the learning 
     assert.equal(stateResponse.statusCode, 200, stateResponse.body);
     const state = studentLearningStateSchema.parse(stateResponse.json());
     assert.equal(state.diagnostics.length, 1);
-    assert.equal(state.mastery[0]?.mastery, 0.65);
+    assert.equal(state.mastery[0]?.mastery, 0.55);
     assert.equal(state.knowledge[0]?.evidenceCount, 3);
     assert.equal(state.retention.length, 1);
   } finally {

@@ -11,7 +11,7 @@ test("health responds without credentials or a network listener", async () => {
     assert.equal(healthResponseSchema.parse(response.json()).status, "ok");
     assert.equal(
       (await app.inject({ method: "GET", url: "/api/learning/quiz/topic-1" })).statusCode,
-      404,
+      400,
     );
   } finally {
     await app.close();

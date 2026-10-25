@@ -95,6 +95,66 @@ export type TeachingStrategy = z.infer<typeof teachingStrategySchema>;
 export const conceptStatusSchema = z.enum(["mastered", "partial", "struggling", "unassessed"]);
 export type ConceptStatus = z.infer<typeof conceptStatusSchema>;
 
+export const assessmentPurposeSchema = z.enum(["diagnostic", "checkpoint", "retention"]);
+export type AssessmentPurpose = z.infer<typeof assessmentPurposeSchema>;
+
+export const questionSelectionReasonSchema = z.enum([
+  "uncovered_required_concept",
+  "misconception_repair",
+  "transfer_practice",
+  "difficulty_match",
+  "review",
+]);
+export type QuestionSelectionReason = z.infer<typeof questionSelectionReasonSchema>;
+
+const assessmentQuestionBaseSchema = z.object({
+  id: idSchema,
+  topicId: idSchema,
+  conceptId: idSchema,
+  purpose: assessmentPurposeSchema,
+  prompt: z.string().min(1),
+  difficulty: z.number().min(0).max(1),
+  selectionReason: questionSelectionReasonSchema,
+});
+
+export const learnerAssessmentQuestionSchema = z.discriminatedUnion("format", [
+  assessmentQuestionBaseSchema.extend({ format: z.literal("numeric") }),
+  assessmentQuestionBaseSchema.extend({
+    format: z.literal("multiple_choice"),
+    choices: z.array(z.string().min(1)).min(2),
+  }),
+  assessmentQuestionBaseSchema.extend({ format: z.literal("short_text") }),
+]);
+export type LearnerAssessmentQuestion = z.infer<typeof learnerAssessmentQuestionSchema>;
+
+export const assessmentQuizSchema = z
+  .object({
+    studentId: idSchema,
+    courseId: idSchema,
+    topicId: idSchema,
+    purpose: assessmentPurposeSchema,
+    questions: z.array(learnerAssessmentQuestionSchema).min(1),
+  })
+  .superRefine((quiz, ctx) => {
+    quiz.questions.forEach((question, index) => {
+      if (question.topicId !== quiz.topicId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["questions", index, "topicId"],
+          message: "Question topic must match the quiz topic",
+        });
+      }
+      if (question.purpose !== quiz.purpose) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["questions", index, "purpose"],
+          message: "Question purpose must match the quiz purpose",
+        });
+      }
+    });
+  });
+export type AssessmentQuiz = z.infer<typeof assessmentQuizSchema>;
+
 export const diagnosticAnswerSchema = z.object({
   questionId: idSchema,
   answer: z.unknown(),

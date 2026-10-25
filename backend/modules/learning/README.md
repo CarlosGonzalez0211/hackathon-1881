@@ -7,12 +7,15 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 
 - `POST /api/learning/diagnostic`
 - `POST /api/learning/attempt`
+- `GET /api/learning/quiz/:topicId`
 - `GET /api/learning/student/:studentId/state`
 - Bayesian Knowledge Tracing as an advisory estimate
 - guarded contextual Thompson sampling primitives
 - deterministic mastery calculation that excludes hinted attempts
 - prerequisite-filtered recommendation ranking
 - spaced-retention scheduling
+- deterministic adaptive question selection using required-concept coverage, active misconceptions,
+  knowledge-adjusted difficulty, transfer practice and recent-question avoidance
 - in-memory repositories and a deterministic assessment catalog
 - domain events for diagnostics, misconceptions, checkpoints, mastery and strategy changes
 
@@ -29,3 +32,6 @@ implementation; this contract is provisional until Daniela and Vianey approve it
 The concept ids and three-concept Geometry fixture in `shared/src/mocks/demo-learning.ts` are
 intentionally centralized and provisional until Daniela and Vianey freeze the shared catalog. The
 generic `/api/ai/prompt` endpoint remains a developer demo and must not be used as the tutor.
+
+The quiz route returns only learner-safe question fields. Answer keys and misconception-answer maps
+remain inside the backend assessment repository.
