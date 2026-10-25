@@ -1,9 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Brand tokens come from @athena/brand/tokens.css (imported first in layout.tsx). */
 :root {
   color-scheme: light;
-  --ink: #242424;
-  --paper: #fff;
+  /* Legacy aliases kept so existing rules keep working; prefer --athena-* in new code. */
+  --ink: var(--athena-ink);
+  --paper: var(--athena-paper);
 }
 * {
   box-sizing: border-box;
@@ -13,9 +15,11 @@ body {
   margin: 0;
   width: 100%;
   height: 100%;
-  font-family: Arial, Helvetica, sans-serif;
-  color: var(--ink);
-  background: #f2eee7;
+  font-family: var(--athena-font-body);
+  font-size: var(--athena-text-md);
+  line-height: var(--athena-leading);
+  color: var(--athena-ink);
+  background: var(--athena-paper);
 }
 button,
 a {
@@ -26,9 +30,9 @@ button {
   color: inherit;
   cursor: pointer;
 }
-button:focus-visible,
-a:focus-visible {
-  outline: 3px solid #275fa6;
+/* Brand guide 08: visible 3 px focus ring on everything. */
+:focus-visible {
+  outline: 3px solid var(--athena-focus);
   outline-offset: 4px;
 }
 a {
@@ -71,9 +75,9 @@ a {
   justify-content: center;
   min-height: 42px;
   padding: 10px 14px;
-  background: #fff;
-  color: #242424;
-  border: 1px solid #ddd;
+  background: var(--athena-surface);
+  color: var(--athena-ink);
+  border: 1px solid var(--athena-hairline);
   border-radius: 4px;
   font-size: 12px;
   box-shadow: 0 2px 5px #0002;
@@ -84,10 +88,10 @@ a {
   right: 24px;
   top: 80px;
   width: 278px;
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--athena-surface);
+  border: 1px solid var(--athena-hairline);
   border-radius: 4px;
-  box-shadow: 0 4px 20px #0002;
+  box-shadow: var(--athena-shadow-panel);
   max-height: calc(100svh - 160px);
   overflow: auto;
 }
@@ -107,7 +111,7 @@ a {
 .subtle {
   font-size: 12px;
   line-height: 1.6;
-  color: #666;
+  color: var(--athena-muted);
 }
 .topic-row {
   display: flex;
@@ -118,10 +122,10 @@ a {
   padding: 12px 7px;
   background: transparent;
   border: 0;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--athena-hairline);
 }
 .topic-row:hover {
-  background: #f5f5f5;
+  background: var(--athena-paper);
 }
 .topic-row strong {
   display: block;
@@ -131,13 +135,13 @@ a {
 .topic-row small {
   display: block;
   font-size: 10px;
-  color: #666;
+  color: var(--athena-muted);
   margin-top: 4px;
 }
 .status-symbol {
   display: grid;
   place-items: center;
-  border: 1px solid #aaa;
+  border: 1px solid var(--athena-border);
   width: 29px;
   height: 29px;
   font-size: 17px;
@@ -148,7 +152,7 @@ a {
 .topic-progress {
   margin-left: auto;
   font-size: 11px;
-  color: #666;
+  color: var(--athena-muted);
 }
 .world-footer {
   position: absolute;
@@ -161,7 +165,7 @@ a {
   justify-content: space-between;
   gap: 14px;
   font-size: 11px;
-  color: white;
+  color: var(--athena-paper);
   text-shadow: 0 1px 5px #000;
 }
 .world-footer p {
@@ -194,8 +198,8 @@ kbd {
   justify-content: center;
   flex-direction: column;
   gap: 14px;
-  background: #f2eee7;
-  color: #333;
+  background: var(--athena-paper);
+  color: var(--athena-ink);
   font-size: 12px;
   padding: 30px;
   text-align: center;
@@ -207,8 +211,8 @@ kbd {
 .loader-orbit {
   width: 32px;
   height: 32px;
-  border: 1px solid #ccc;
-  border-top: 2px solid #333;
+  border: 1px solid var(--athena-border);
+  border-top: 2px solid var(--athena-ink);
   border-radius: 50%;
   animation: spin 1.4s linear infinite;
 }
@@ -230,9 +234,9 @@ kbd {
   align-items: center;
   padding: 8px 11px;
   border-radius: 4px;
-  background: #fffe;
-  border: 1px solid #aaa;
-  color: #222;
+  background: var(--athena-veil);
+  border: 1px solid var(--athena-border);
+  color: var(--athena-ink);
   pointer-events: auto;
   font-size: 11px;
   white-space: nowrap;
@@ -240,11 +244,30 @@ kbd {
 .house-marker.locked {
   border-style: dashed;
 }
+/* Wayfinding label only: not clickable until the student is within reach. */
+.house-marker.far {
+  pointer-events: none;
+  opacity: 0.85;
+}
+.house-marker.near {
+  cursor: pointer;
+  border-color: var(--athena-accent);
+  box-shadow: 0 0 0 2px var(--athena-accent);
+  font-weight: 600;
+}
+.house-marker kbd {
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--athena-ink);
+  color: var(--athena-paper);
+  font-family: var(--athena-font-mono);
+  font-size: 10px;
+}
 .house-dialog {
   position: relative;
-  border: 1px solid #ddd;
-  background: white;
-  color: #242424;
+  border: 1px solid var(--athena-hairline);
+  background: var(--athena-surface);
+  color: var(--athena-ink);
   border-radius: 5px;
   padding: 38px;
   width: min(480px, calc(100vw - 36px));
@@ -267,9 +290,9 @@ kbd {
   place-items: center;
   width: 34px;
   height: 34px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--athena-border);
   border-radius: 4px;
-  background: white;
+  background: var(--athena-surface);
   font-size: 22px;
 }
 .dialog-close {
@@ -287,8 +310,8 @@ kbd {
   padding: 14px 20px;
   border: 0;
   border-radius: 4px;
-  background: #333;
-  color: white;
+  background: var(--athena-accent);
+  color: var(--athena-accent-ink);
   width: 100%;
   font-size: 13px;
 }
@@ -308,7 +331,7 @@ progress {
   left: 20px;
   top: -90px;
   z-index: 20;
-  background: white;
+  background: var(--athena-surface);
   padding: 15px;
 }
 .skip-link:focus {
@@ -321,8 +344,8 @@ progress {
   right: 24px;
   width: 220px;
   padding: 16px;
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--athena-surface);
+  border: 1px solid var(--athena-hairline);
   border-radius: 4px;
 }
 .orbit-list h2 {
@@ -342,14 +365,14 @@ progress {
 .planet-label {
   position: absolute;
   transform: translate(-50%, 0);
-  border: 1px solid #aaa;
+  border: 1px solid var(--athena-border);
   border-radius: 4px;
   padding: 8px 12px;
   display: flex;
   gap: 12px;
   align-items: center;
-  background: #fffe;
-  color: #222;
+  background: var(--athena-veil);
+  color: var(--athena-ink);
   font-size: 10px;
   white-space: nowrap;
 }
@@ -360,7 +383,7 @@ progress {
   top: 80px;
   width: 280px;
   border-radius: 4px;
-  background: white;
+  background: var(--athena-surface);
   padding: 32px 24px;
 }
 .student-card h2 {
@@ -371,17 +394,17 @@ progress {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--athena-hairline);
   padding-top: 10px;
 }
 .student-card small {
   font-size: 10px;
-  color: #666;
+  color: var(--athena-muted);
   line-height: 1.5;
 }
 .reference-page {
   height: 100svh;
-  background: white;
+  background: var(--athena-surface);
   display: flex;
   flex-direction: column;
 }
@@ -403,7 +426,7 @@ progress {
 }
 .reference-caption {
   font-size: 10px;
-  color: #666;
+  color: var(--athena-muted);
   text-align: center;
   margin: 8px;
 }
