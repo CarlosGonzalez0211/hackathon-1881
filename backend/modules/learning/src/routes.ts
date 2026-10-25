@@ -46,6 +46,7 @@ import {
 } from "./misconception-classifier.js";
 import type { CurriculumContextPort, TutorProvider } from "./ports.js";
 import { MockCurriculumContextPort, MockTutorProvider } from "./tutor-adapters.js";
+import { SubmissionCoordinator } from "./submission-coordinator.js";
 import {
   connectLearningEventsToWorld,
   InMemoryWorldEventSink,
@@ -110,6 +111,7 @@ export async function learningRoutes(app: FastifyInstance, options: LearningRout
     options.random,
   );
   const masteryReadPort = new LearningMasteryReadAdapter(repository, assessments);
+  const submissionCoordinator = new SubmissionCoordinator();
   const unsubscribeWorldEvents = connectLearningEventsToWorld(
     app.platform.events,
     options.worldEventSink ?? new InMemoryWorldEventSink(),
@@ -121,17 +123,31 @@ export async function learningRoutes(app: FastifyInstance, options: LearningRout
   app.post<{ Reply: DiagnosticResult }>("/learning/diagnostic", async (request) =>
     service.submitDiagnostic(request.auth, diagnosticSubmissionSchema.parse(request.body)),
   );
-  app.post<{ Reply: CheckpointResult }>("/learning/attempt", async (request) =>
-    service.submitCheckpoint(request.auth, checkpointSubmissionSchema.parse(request.body)),
-  );
+  app.post<{ Reply: CheckpointResult }>("/learning/attempt", async (request) => {
+    const input = checkpointSubmissionSchema.parse(request.body);
+    const run = () =>
+      submissionCoordinator.runSerial(`learning:${input.studentId}:${input.topicId}`, () =>
+        service.submitCheckpoint(request.auth, input),
+      );
+    return input.submissionId
+      ? submissionCoordinator.runOnce(`checkpoint:${input.studentId}:${input.submissionId}`, run)
+      : run();
+  });
   app.get<{ Reply: AssessmentQuiz }>("/learning/quiz/:topicId", async (request) => {
     const params = quizParamsSchema.parse(request.params);
     const query = quizQuerySchema.parse(request.query);
     return service.getQuiz(request.auth, { ...query, topicId: params.topicId });
   });
-  app.post<{ Reply: RetentionCheckResult }>("/learning/retention-check", async (request) =>
-    service.submitRetentionCheck(request.auth, retentionCheckSubmissionSchema.parse(request.body)),
-  );
+  app.post<{ Reply: RetentionCheckResult }>("/learning/retention-check", async (request) => {
+    const input = retentionCheckSubmissionSchema.parse(request.body);
+    const run = () =>
+      submissionCoordinator.runSerial(`learning:${input.studentId}:${input.topicId}`, () =>
+        service.submitRetentionCheck(request.auth, input),
+      );
+    return input.submissionId
+      ? submissionCoordinator.runOnce(`retention:${input.studentId}:${input.submissionId}`, run)
+      : run();
+  });
   app.get<{ Reply: StudentLearningState }>("/learning/student/:studentId/state", async (request) =>
     service.getStudentState(request.auth, studentParamsSchema.parse(request.params).studentId),
   );

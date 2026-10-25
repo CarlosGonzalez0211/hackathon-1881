@@ -29,6 +29,7 @@ import {
   rankRecommendations,
   scheduleRetention,
   selectAssessmentQuestions,
+  SubmissionCoordinator,
   SupabaseAssessmentRepository,
   SupabaseLearningRepository,
   connectLearningEventsToWorld,
@@ -311,7 +312,7 @@ test("quiz route returns adaptive learner-safe questions without answer keys", a
   }
 });
 
-test("checkpoint and retention submission ids are idempotent", async () => {
+test("concurrent checkpoint and retention retries are idempotent", async () => {
   const app = await createApp({
     logger: false,
     platform: {
@@ -331,16 +332,18 @@ test("checkpoint and retention submission ids are idempotent", async () => {
       strategy: "visual_decomposition",
       hintCount: 0,
     };
-    const firstCheckpoint = await app.inject({
-      method: "POST",
-      url: "/api/learning/attempt",
-      payload: checkpointPayload,
-    });
-    const duplicateCheckpoint = await app.inject({
-      method: "POST",
-      url: "/api/learning/attempt",
-      payload: checkpointPayload,
-    });
+    const [firstCheckpoint, duplicateCheckpoint] = await Promise.all([
+      app.inject({
+        method: "POST",
+        url: "/api/learning/attempt",
+        payload: checkpointPayload,
+      }),
+      app.inject({
+        method: "POST",
+        url: "/api/learning/attempt",
+        payload: checkpointPayload,
+      }),
+    ]);
     assert.equal(firstCheckpoint.statusCode, 200, firstCheckpoint.body);
     assert.equal(duplicateCheckpoint.statusCode, 200, duplicateCheckpoint.body);
     assert.equal(
@@ -358,16 +361,18 @@ test("checkpoint and retention submission ids are idempotent", async () => {
       questionId: demoLearningIds.questions.retentionTriangleArea,
       answer: 30,
     };
-    const firstRetention = await app.inject({
-      method: "POST",
-      url: "/api/learning/retention-check",
-      payload: retentionPayload,
-    });
-    const duplicateRetention = await app.inject({
-      method: "POST",
-      url: "/api/learning/retention-check",
-      payload: retentionPayload,
-    });
+    const [firstRetention, duplicateRetention] = await Promise.all([
+      app.inject({
+        method: "POST",
+        url: "/api/learning/retention-check",
+        payload: retentionPayload,
+      }),
+      app.inject({
+        method: "POST",
+        url: "/api/learning/retention-check",
+        payload: retentionPayload,
+      }),
+    ]);
     assert.equal(firstRetention.statusCode, 200, firstRetention.body);
     assert.equal(duplicateRetention.statusCode, 200, duplicateRetention.body);
     assert.equal(
@@ -378,6 +383,37 @@ test("checkpoint and retention submission ids are idempotent", async () => {
   } finally {
     await app.close();
   }
+});
+
+test("learning mutations for one student topic are serialized", async () => {
+  const coordinator = new SubmissionCoordinator();
+  const order: string[] = [];
+  let releaseFirst!: () => void;
+  let markFirstStarted!: () => void;
+  const firstStarted = new Promise<void>((resolve) => {
+    markFirstStarted = resolve;
+  });
+  const firstGate = new Promise<void>((resolve) => {
+    releaseFirst = resolve;
+  });
+
+  const first = coordinator.runSerial("student:topic", async () => {
+    order.push("first:start");
+    markFirstStarted();
+    await firstGate;
+    order.push("first:end");
+  });
+  await firstStarted;
+  const second = coordinator.runSerial("student:topic", async () => {
+    order.push("second:start");
+    order.push("second:end");
+  });
+  await Promise.resolve();
+  assert.deepEqual(order, ["first:start"]);
+
+  releaseFirst();
+  await Promise.all([first, second]);
+  assert.deepEqual(order, ["first:start", "first:end", "second:start", "second:end"]);
 });
 
 test("student strategy overrides stay separate from effectiveness and respect accessibility blocks", async () => {

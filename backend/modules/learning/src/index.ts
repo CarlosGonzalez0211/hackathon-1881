@@ -42,6 +42,7 @@ export { SupabaseAssessmentRepository } from "./supabase-assessment.js";
 export { SupabaseLearningRepository } from "./supabase-learning-repository.js";
 export { SupabaseLearningRestClient, type LearningRestClient } from "./supabase-rest.js";
 export { LearningService } from "./service.js";
+export { SubmissionCoordinator } from "./submission-coordinator.js";
 export { learningRoutes, type LearningRoutesOptions } from "./routes.js";
 export {
   connectLearningEventsToWorld,

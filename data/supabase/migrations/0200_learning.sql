@@ -56,8 +56,7 @@ create table if not exists public.checkpoint_evidence (
   evidence_eligible boolean not null,
   misconception_resolved boolean not null,
   submitted_at timestamptz not null,
-  result jsonb,
-  unique nulls not distinct (student_id, submission_id)
+  result jsonb
 );
 
 create table if not exists public.student_topic_mastery (
@@ -129,8 +128,7 @@ create table if not exists public.retention_evidence (
   score numeric(5,4) not null check (score between 0 and 1),
   scheduled_for timestamptz not null,
   checked_at timestamptz not null,
-  result jsonb,
-  unique nulls not distinct (student_id, submission_id)
+  result jsonb
 );
 
 create table if not exists public.student_learning_preferences (

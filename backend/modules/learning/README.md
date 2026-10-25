@@ -59,6 +59,13 @@ revokes direct browser access by default; Carlos must review final production po
 shared project applies the migration. `SupabaseLearningRestClient` requires a backend-only
 service-role key and can be replaced by a test driver through the same interface.
 
+Checkpoint and retention mutations for one student/topic are serialized inside one API process;
+requests with the same `submissionId` are also coalesced while in flight. Migration
+`0201_learning_submission_idempotency.sql` adds partial unique indexes so the same student
+submission cannot be stored twice across processes, while submissions that omit an id remain valid.
+A production multi-instance adapter should translate a unique-conflict retry into a read of the
+already-stored result and use a database transaction or RPC for cross-instance mastery updates.
+
 ## World integration
 
 `LearningMasteryReadAdapter` implements World's read-only `MasteryReadPort`. Requested topics with
