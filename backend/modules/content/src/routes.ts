@@ -2,30 +2,40 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
   CONTENT_LIMITS,
+  contentChatRequestSchema,
   createContentMaterialRequestSchema,
   updateContentMaterialRequestSchema,
   upsertContentMilestoneRequestSchema,
   upsertContentObjectiveRequestSchema,
 } from "@athena/shared";
+import { ChatService, type RateLimitOptions, type RetrievalOptions } from "./chat.js";
 import { DefaultDocumentExtractor, MockEmbeddingProvider, ParagraphChunker } from "./extraction.js";
+import { MockAnswerGenerator, type AnswerGenerator } from "./generation.js";
+import { LayeredGuardrailClassifier, type GuardrailClassifier } from "./guardrails.js";
 import { MaterialIngestionService, type IngestionOptions } from "./ingestion.js";
 import {
+  defaultProfilePreferences,
   demoCurriculumCatalog,
+  InMemoryAiCallLedger,
   InMemoryChunkRepository,
+  InMemoryFlagRepository,
   InMemoryMaterialRepository,
   InMemoryMaterialStorage,
   InMemoryVersionedRepository,
 } from "./memory.js";
 import type {
+  AiCallLedger,
   ChunkRepository,
   ChunkingStrategy,
   CurriculumCatalogPort,
   DocumentExtractor,
   EmbeddingProvider,
+  FlagRepository,
   MaterialRepository,
   MaterialStorage,
   MilestoneRecord,
   ObjectiveRecord,
+  ProfilePreferencesPort,
   VersionedRepository,
 } from "./ports.js";
 import { ContentService } from "./service.js";
@@ -35,6 +45,7 @@ const materialParams = z.object({ materialId: z.string().uuid() });
 const objectiveParams = classParams.extend({ objectiveId: z.string().uuid() });
 const milestoneParams = classParams.extend({ milestoneId: z.string().uuid() });
 const uploadParams = z.object({ token: z.string().uuid() });
+const flagParams = z.object({ flagId: z.string().uuid() });
 
 export interface ContentRoutesOptions {
   materials?: MaterialRepository;
@@ -49,6 +60,15 @@ export interface ContentRoutesOptions {
   objectives?: VersionedRepository<ObjectiveRecord>;
   milestones?: VersionedRepository<MilestoneRecord>;
   ingestion?: IngestionOptions;
+  /** The tutor. Defaults to a deterministic mock that quotes and cites the best source. */
+  generator?: AnswerGenerator;
+  /** Defaults to the Spanish/English heuristics with no model classifier. */
+  classifier?: GuardrailClassifier;
+  preferences?: ProfilePreferencesPort;
+  ledger?: AiCallLedger;
+  flags?: FlagRepository;
+  retrieval?: RetrievalOptions;
+  rateLimit?: RateLimitOptions;
 }
 
 /** Register inside the `/api` prefix, after `installPlatform` ran on the root app. */
@@ -62,6 +82,8 @@ export async function contentRoutes(app: FastifyInstance, options: ContentRoutes
   if (!chunks) throw new Error("contentRoutes: pass `chunks` with a custom material repository");
   const storage = options.storage ?? new InMemoryMaterialStorage();
   const { platform } = app;
+  const embeddings = options.embeddings ?? new MockEmbeddingProvider();
+  const catalog = options.catalog ?? demoCurriculumCatalog;
   const ingestion = new MaterialIngestionService(
     {
       materials,
@@ -69,7 +91,7 @@ export async function contentRoutes(app: FastifyInstance, options: ContentRoutes
       storage,
       extractor: options.extractor ?? new DefaultDocumentExtractor(),
       chunker: options.chunker ?? new ParagraphChunker(),
-      embeddings: options.embeddings ?? new MockEmbeddingProvider(),
+      embeddings,
       events: platform.events,
       clock: platform.clock,
       ids: platform.ids,
@@ -79,7 +101,7 @@ export async function contentRoutes(app: FastifyInstance, options: ContentRoutes
   const service = new ContentService({
     authorization: platform.authorization,
     classes: platform.classes,
-    catalog: options.catalog ?? demoCurriculumCatalog,
+    catalog,
     materials,
     chunks,
     storage,
@@ -90,6 +112,40 @@ export async function contentRoutes(app: FastifyInstance, options: ContentRoutes
     clock: platform.clock,
     ids: platform.ids,
   });
+  const chat = new ChatService({
+    authorization: platform.authorization,
+    classes: platform.classes,
+    catalog,
+    materials,
+    chunks,
+    embeddings,
+    generator: options.generator ?? new MockAnswerGenerator(),
+    classifier: options.classifier ?? new LayeredGuardrailClassifier(),
+    preferences: options.preferences ?? defaultProfilePreferences,
+    ledger: options.ledger ?? new InMemoryAiCallLedger(),
+    flags: options.flags ?? new InMemoryFlagRepository(),
+    events: platform.events,
+    clock: platform.clock,
+    ids: platform.ids,
+    retrieval: options.retrieval,
+    rateLimit: options.rateLimit,
+  });
+
+  app.post("/content/classes/:classId/chat", async (request, reply) => {
+    const { classId } = classParams.parse(request.params);
+    const body = contentChatRequestSchema.parse(request.body);
+    const result = await chat.chat(request.auth, classId, body);
+    if (result.status === 429) reply.header("retry-after", result.body.retryAfterSeconds);
+    return reply.status(result.status).send(result.body);
+  });
+
+  app.get("/content/classes/:classId/flags", async (request) =>
+    chat.listFlags(request.auth, classParams.parse(request.params).classId),
+  );
+
+  app.post("/content/flags/:flagId/review", async (request) =>
+    chat.reviewFlag(request.auth, flagParams.parse(request.params).flagId),
+  );
 
   app.post("/content/classes/:classId/materials", async (request, reply) => {
     const { classId } = classParams.parse(request.params);

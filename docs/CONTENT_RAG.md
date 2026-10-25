@@ -94,7 +94,7 @@ UI shows four states, mapped from six: `uploaded` → Subido / Uploaded, `extrac
 4. Server validation (Learning's rule): a supported answer has ≥ 1 citation and every citation is in the retrieved set, otherwise it becomes an abstain. Membership is not entailment; `unsupported` is the model's own judgement, which the guardrail fixtures test.
 5. The server remaps `[Sn]` to `[1]`, `[2]` in order of first use and returns shared `citationSchema` per cited chunk: `{ materialId, materialTitle, page?, section?, chunkId, excerpt }`. Excerpts are truncated to 300 chars in the content layer (the shared schema has no max) and shown verbatim in the material's language.
 
-`ContentCurriculumContext` (for Learning) reuses steps 1-2 and returns Learning's discriminated union: `no_approved_content` (no active generation for the topic), `insufficient_evidence` (below threshold), `curriculum_version_mismatch`, `concept_not_found` (no objective maps to the concept); `limit ≤ 10`.
+`ContentCurriculumContext` (for Learning; not built until P2 answers Q5, because Learning's request has a course but no class) reuses steps 1-2 and returns Learning's discriminated union: `no_approved_content` (no active generation for the topic), `insufficient_evidence` (below threshold), `curriculum_version_mismatch`, `concept_not_found` (no objective maps to the concept); `limit ≤ 10`.
 
 ## 6. Chat route and guardrails
 

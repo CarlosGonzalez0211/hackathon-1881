@@ -16,7 +16,6 @@ import {
 import {
   forbidden,
   notFound,
-  PlatformError,
   type AuthorizationService,
   type ClassCatalog,
   type Clock,
@@ -24,6 +23,7 @@ import {
   type IdGenerator,
 } from "@athena/platform";
 import { sha256Hex, sniffMatches } from "./extraction.js";
+import { assertTopicsInCourse, badRequest, courseOfClass } from "./scope.js";
 import type { MaterialIngestionService } from "./ingestion.js";
 import type {
   ChunkRepository,
@@ -45,7 +45,6 @@ export class ContentConflictError extends Error {
   }
 }
 
-const badRequest = (message: string) => new PlatformError(message, 400);
 const DOWNLOAD_SECONDS = 60;
 
 export interface ContentServiceDeps {
@@ -355,18 +354,12 @@ export class ContentService {
     return record;
   }
 
-  private async courseOf(context: AuthContext, classId: string) {
-    const found = (await this.deps.classes.listFor(context)).find((item) => item.id === classId);
-    if (!found) throw notFound("Class", classId);
-    return found.courseId;
+  private courseOf(context: AuthContext, classId: string) {
+    return courseOfClass(this.deps.classes, context, classId);
   }
 
-  private async assertTopics(courseId: string, topicIds: string[]) {
-    if (topicIds.length === 0) return;
-    const known = new Set((await this.deps.catalog.listTopics(courseId)).map((t) => t.id));
-    const unknown = topicIds.filter((id) => !known.has(id));
-    if (unknown.length > 0)
-      throw badRequest(`Unknown topic for this course: ${unknown.join(", ")}`);
+  private assertTopics(courseId: string, topicIds: string[]) {
+    return assertTopicsInCourse(this.deps.catalog, courseId, topicIds);
   }
 
   /** Returns whether the id exists in this class; an id owned by another class is a 404. */
