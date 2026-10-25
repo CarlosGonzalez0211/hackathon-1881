@@ -222,7 +222,9 @@ export const contentAiCallOutcomeSchema = z.enum([
 ]);
 export type ContentAiCallOutcome = z.infer<typeof contentAiCallOutcomeSchema>;
 
-export const contentCitationSchema = citationSchema.extend({
+// Curriculum's citation requires a page or a section; plain-text material has neither, so this
+// keeps its fields and drops that refinement.
+export const contentCitationSchema = citationSchema.innerType().extend({
   excerpt: z.string().max(CONTENT_LIMITS.maxCitationExcerpt),
 });
 export type ContentCitation = z.infer<typeof contentCitationSchema>;

@@ -17,7 +17,7 @@
     "format:check": "prettier --check .",
     "prepare": "husky",
     "build:platform": "pnpm --filter ./shared --filter ./ai --filter \"./backend/modules/*\" build",
-    "test": "pnpm build:platform && pnpm --filter @athena/api exec tsx --test ../../shared/tests/*.test.ts tests/*.test.ts ../../frontend/engine3d/tests/*.test.ts ../../frontend/brand/tests/*.test.ts ../../frontend/web/tests/*.test.ts",
+    "test": "pnpm build:platform && pnpm --filter @athena/engine3d build:assets && pnpm --filter @athena/api exec tsx --test ../../shared/tests/*.test.ts tests/*.test.ts ../../frontend/engine3d/tests/*.test.ts ../../frontend/brand/tests/*.test.ts ../../frontend/web/tests/*.test.ts",
     "check:assets": "node frontend/engine3d/scripts/check-assets.mjs"
   },
   "lint-staged": {

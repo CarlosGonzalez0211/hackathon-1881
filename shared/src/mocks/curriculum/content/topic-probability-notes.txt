@@ -1,0 +1,6 @@
+[DEMO] Probabilidad — notes
+
+Authored Athena teaching fixture attributed to a fictional demo instructor. Not a real upload or primary historical source. The storage key is illustrative; text lives in source chunks.
+
+[es] Resultados equiprobables
+Con resultados equiprobables, la probabilidad es la cantidad de resultados favorables dividida entre el total. En un dado justo de seis caras, obtener 2 tiene probabilidad 1/6.

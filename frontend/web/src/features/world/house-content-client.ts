@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import { demoHouseContent, houseContentSchema, type HouseContent } from "@athena/shared";
 import { api } from "@/lib/api";
 import { useMocks } from "@/lib/mode";
@@ -19,7 +20,7 @@ export class ApiCurriculumContentClient implements CurriculumContentClient {
 export class MockCurriculumContentClient implements CurriculumContentClient {
   async getHouseContent(topicId: string) {
     const content = demoHouseContent[topicId];
-    if (!content) throw new Error(`Sin contenido de demostración para ${topicId}`);
+    if (!content) throw new Error(t("No demo content for {0}", { 0: topicId }));
     return houseContentSchema.parse(content);
   }
 }

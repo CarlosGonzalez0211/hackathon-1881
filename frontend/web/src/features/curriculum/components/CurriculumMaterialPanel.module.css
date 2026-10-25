@@ -1,0 +1,56 @@
+.panel {
+  display: grid;
+  gap: var(--athena-space-medium);
+  color: var(--athena-ink);
+}
+.panel select,
+.panel button,
+.panel a {
+  width: fit-content;
+  max-width: 100%;
+}
+.panel select,
+.panel button {
+  padding: var(--athena-space-small) var(--athena-space-medium);
+  border: 1px solid var(--athena-hairline);
+  border-radius: var(--athena-radius-panel);
+  background: var(--athena-paper);
+  color: var(--athena-ink);
+  font: inherit;
+}
+.panel button,
+.panel a {
+  cursor: pointer;
+}
+.panel :focus-visible {
+  outline: 2px solid var(--athena-accent);
+  outline-offset: 3px;
+}
+.panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.panel li,
+.panel article {
+  display: grid;
+  gap: var(--athena-space-small);
+  padding: var(--athena-space-medium);
+  border: 1px solid var(--athena-hairline);
+  border-radius: var(--athena-radius-panel);
+  overflow-wrap: anywhere;
+}
+.panel li + li {
+  margin-top: var(--athena-space-small);
+}
+.panel p,
+.panel h3 {
+  margin: 0;
+}
+.panel small {
+  color: var(--athena-muted);
+}
+.panel .start {
+  background: var(--athena-accent);
+  color: var(--athena-paper);
+}
