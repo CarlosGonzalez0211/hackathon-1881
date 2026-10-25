@@ -88,6 +88,7 @@ create table if not exists public.student_misconceptions (
   active boolean not null default true,
   identified_at timestamptz not null default now(),
   resolved_at timestamptz,
+  evidence_ids uuid[] not null default '{}',
   primary key (student_id, topic_id, misconception_id)
 );
 

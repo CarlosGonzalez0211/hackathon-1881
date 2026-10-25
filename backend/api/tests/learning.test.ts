@@ -814,6 +814,32 @@ test("Supabase adapters satisfy assessment and core learning repository contract
   assert.deepEqual(await repository.listActiveMisconceptions(mastery.studentId, mastery.topicId), [
     demoLearningIds.misconceptions.triangleMissingHalf,
   ]);
+  await repository.recordMisconceptionIdentified({
+    studentId: mastery.studentId,
+    topicId: mastery.topicId,
+    misconceptionId: demoLearningIds.misconceptions.triangleMissingHalf,
+    status: "active",
+    identifiedAt: "2026-10-24T12:00:00.000Z",
+    evidenceIds: ["00000000-0000-4000-8000-000000009904"],
+  });
+  await repository.recordMisconceptionResolved(
+    mastery.studentId,
+    mastery.topicId,
+    demoLearningIds.misconceptions.triangleMissingHalf,
+    "2026-10-25T12:00:00.000Z",
+    "00000000-0000-4000-8000-000000009905",
+  );
+  assert.deepEqual(await repository.listMisconceptionMemory(mastery.studentId, mastery.topicId), [
+    {
+      studentId: mastery.studentId,
+      topicId: mastery.topicId,
+      misconceptionId: demoLearningIds.misconceptions.triangleMissingHalf,
+      status: "resolved",
+      identifiedAt: "2026-10-24T12:00:00.000Z",
+      resolvedAt: "2026-10-25T12:00:00.000Z",
+      evidenceIds: ["00000000-0000-4000-8000-000000009904", "00000000-0000-4000-8000-000000009905"],
+    },
+  ]);
 
   const observation = {
     id: "00000000-0000-4000-8000-000000009903",
@@ -961,6 +987,20 @@ test("diagnostic, failed checkpoint and successful checkpoint form the learning 
     assert.equal(state.mastery[0]?.mastery, 0.55);
     assert.equal(state.knowledge[0]?.evidenceCount, 5);
     assert.equal(state.retention.length, 1);
+
+    const evidenceResponse = await app.inject({
+      method: "GET",
+      url: `/api/learning/student/${athenaDemoIds.students.lucia}/topics/${athenaDemoIds.topics.geometry}/evidence`,
+    });
+    assert.equal(evidenceResponse.statusCode, 200, evidenceResponse.body);
+    const evidenceSnapshot = learningEvidenceSnapshotSchema.parse(evidenceResponse.json());
+    assert.equal(evidenceSnapshot.misconceptions.length, 1);
+    assert.equal(evidenceSnapshot.misconceptions[0]?.status, "resolved");
+    assert.equal(evidenceSnapshot.misconceptions[0]?.identifiedAt, diagnostic.completedAt);
+    assert.deepEqual(evidenceSnapshot.misconceptions[0]?.evidenceIds, [
+      diagnostic.attemptId,
+      passed.evidence.id,
+    ]);
   } finally {
     await app.close();
   }

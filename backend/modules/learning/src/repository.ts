@@ -8,6 +8,7 @@ import {
   type RetentionEvidence,
   type RetentionCheckResult,
   type LearningSession,
+  type MisconceptionMemory,
   type TutorMessage,
   type StrategyObservation,
   type StrategyPosterior,
@@ -37,6 +38,15 @@ export interface LearningRepository {
     ids: readonly string[],
   ): Promise<void>;
   listActiveMisconceptions(studentId: string, topicId?: string): Promise<string[]>;
+  recordMisconceptionIdentified(value: MisconceptionMemory): Promise<void>;
+  recordMisconceptionResolved(
+    studentId: string,
+    topicId: string,
+    misconceptionId: string,
+    resolvedAt: string,
+    evidenceId: string,
+  ): Promise<void>;
+  listMisconceptionMemory(studentId: string, topicId?: string): Promise<MisconceptionMemory[]>;
   getStrategyPosteriors(studentId: string, contextKey: string): Promise<StrategyPosterior[]>;
   saveStrategyPosterior(studentId: string, value: StrategyPosterior): Promise<void>;
   saveStrategyObservation(value: StrategyObservation): Promise<void>;
@@ -67,6 +77,7 @@ export class InMemoryLearningRepository implements LearningRepository {
   private readonly mastery = new Map<string, StudentTopicMastery>();
   private readonly knowledge = new Map<string, ConceptKnowledgeState>();
   private readonly misconceptions = new Map<string, Set<string>>();
+  private readonly misconceptionMemory = new Map<string, MisconceptionMemory>();
   private readonly posteriors = new Map<string, StrategyPosterior>();
   private readonly observations: StrategyObservation[] = [];
   private readonly retention = new Map<string, RetentionSchedule>();
@@ -140,6 +151,44 @@ export class InMemoryLearningRepository implements LearningRepository {
           .flatMap(([, ids]) => [...ids]),
       ),
     ];
+  }
+
+  async recordMisconceptionIdentified(value: MisconceptionMemory) {
+    const memoryKey = misconceptionKey(value.studentId, value.topicId, value.misconceptionId);
+    const existing = this.misconceptionMemory.get(memoryKey);
+    this.misconceptionMemory.set(memoryKey, {
+      ...value,
+      identifiedAt: existing?.identifiedAt ?? value.identifiedAt,
+      evidenceIds: [...new Set([...(existing?.evidenceIds ?? []), ...value.evidenceIds])],
+      status: "active",
+      resolvedAt: undefined,
+    });
+  }
+
+  async recordMisconceptionResolved(
+    studentId: string,
+    topicId: string,
+    misconceptionId: string,
+    resolvedAt: string,
+    evidenceId: string,
+  ) {
+    const memoryKey = misconceptionKey(studentId, topicId, misconceptionId);
+    const existing = this.misconceptionMemory.get(memoryKey);
+    this.misconceptionMemory.set(memoryKey, {
+      studentId,
+      topicId,
+      misconceptionId,
+      status: "resolved",
+      identifiedAt: existing?.identifiedAt ?? resolvedAt,
+      resolvedAt,
+      evidenceIds: [...new Set([...(existing?.evidenceIds ?? []), evidenceId])],
+    });
+  }
+
+  async listMisconceptionMemory(studentId: string, topicId?: string) {
+    return [...this.misconceptionMemory.values()].filter(
+      (value) => value.studentId === studentId && (!topicId || value.topicId === topicId),
+    );
   }
 
   async getStrategyPosteriors(studentId: string, contextKey: string) {
@@ -228,4 +277,8 @@ function key(left: string, right: string) {
 
 function posteriorKey(studentId: string, value: StrategyPosterior) {
   return `${studentId}:${value.contextKey}:${value.strategy}`;
+}
+
+function misconceptionKey(studentId: string, topicId: string, misconceptionId: string) {
+  return `${studentId}:${topicId}:${misconceptionId}`;
 }

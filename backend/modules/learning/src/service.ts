@@ -121,11 +121,13 @@ export class LearningService {
     );
     const concepts = this.toConceptResults(enrichedScored);
     const misconceptionIds = [...new Set(concepts.flatMap((value) => value.misconceptionIds))];
-    await this.repository.setActiveMisconceptions(
+    const activeMisconceptions = await this.repository.listActiveMisconceptions(
       submission.studentId,
       submission.topicId,
-      misconceptionIds,
     );
+    await this.repository.setActiveMisconceptions(submission.studentId, submission.topicId, [
+      ...new Set([...activeMisconceptions, ...misconceptionIds]),
+    ]);
     for (const item of enrichedScored) {
       await this.updateKnowledge(
         submission.studentId,
@@ -161,6 +163,16 @@ export class LearningService {
       completedAt,
     });
     await this.repository.saveDiagnostic(result);
+    for (const misconceptionId of misconceptionIds) {
+      await this.repository.recordMisconceptionIdentified({
+        studentId: submission.studentId,
+        topicId: submission.topicId,
+        misconceptionId,
+        status: "active",
+        identifiedAt: completedAt,
+        evidenceIds: [result.attemptId],
+      });
+    }
     await this.events.append({
       id: this.ids.next(),
       type: "DiagnosticCompleted",
@@ -420,6 +432,13 @@ export class LearningService {
     });
     if (misconceptionResolved) {
       for (const misconceptionId of activeBefore.filter((id) => !activeAfter.includes(id))) {
+        await this.repository.recordMisconceptionResolved(
+          submission.studentId,
+          submission.topicId,
+          misconceptionId,
+          submittedAt,
+          evidence.id,
+        );
         await this.events.append({
           id: this.ids.next(),
           type: "MisconceptionResolved",
@@ -793,17 +812,20 @@ export class LearningService {
     if (!this.authorization.canAccessStudent(context, studentId)) {
       throw forbidden("You cannot view this student's learning evidence");
     }
-    const [mastery, evidence, activeMisconceptionIds, observations] = await Promise.all([
-      this.repository.getMastery(studentId, topicId),
-      this.repository.listEvidence(studentId, topicId),
-      this.repository.listActiveMisconceptions(studentId, topicId),
-      this.repository.listStrategyObservations(studentId, topicId),
-    ]);
+    const [mastery, evidence, activeMisconceptionIds, misconceptions, observations] =
+      await Promise.all([
+        this.repository.getMastery(studentId, topicId),
+        this.repository.listEvidence(studentId, topicId),
+        this.repository.listActiveMisconceptions(studentId, topicId),
+        this.repository.listMisconceptionMemory(studentId, topicId),
+        this.repository.listStrategyObservations(studentId, topicId),
+      ]);
     return learningEvidenceSnapshotSchema.parse({
       studentId,
       topicId,
       mastery,
       activeMisconceptionIds,
+      misconceptions,
       resolvedMisconceptionEvidenceIds: evidence
         .filter((item) => item.misconceptionResolved)
         .map((item) => item.id),

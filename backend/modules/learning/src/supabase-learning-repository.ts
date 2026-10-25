@@ -5,6 +5,7 @@ import {
   demoStrategyPosteriors,
   diagnosticResultSchema,
   learningSessionSchema,
+  misconceptionMemorySchema,
   retentionCheckResultSchema,
   retentionEvidenceSchema,
   retentionScheduleSchema,
@@ -18,6 +19,7 @@ import {
   type ConceptKnowledgeState,
   type DiagnosticResult,
   type LearningSession,
+  type MisconceptionMemory,
   type RetentionCheckResult,
   type RetentionEvidence,
   type RetentionSchedule,
@@ -171,6 +173,72 @@ export class SupabaseLearningRepository implements LearningRepository {
       ...(topicId ? { topic_id: topicId } : {}),
     });
     return rows.map((row) => String(row.misconception_id));
+  }
+
+  async recordMisconceptionIdentified(value: MisconceptionMemory) {
+    const filters = {
+      student_id: value.studentId,
+      topic_id: value.topicId,
+      misconception_id: value.misconceptionId,
+    };
+    const existing = (await this.rest.select<Row>("student_misconceptions", filters))[0];
+    await this.rest.upsert(
+      "student_misconceptions",
+      {
+        ...filters,
+        active: true,
+        identified_at: existing?.identified_at ?? value.identifiedAt,
+        resolved_at: null,
+        evidence_ids: [
+          ...new Set([...(toStringArray(existing?.evidence_ids) ?? []), ...value.evidenceIds]),
+        ],
+      },
+      "student_id,topic_id,misconception_id",
+    );
+  }
+
+  async recordMisconceptionResolved(
+    studentId: string,
+    topicId: string,
+    misconceptionId: string,
+    resolvedAt: string,
+    evidenceId: string,
+  ) {
+    const filters = {
+      student_id: studentId,
+      topic_id: topicId,
+      misconception_id: misconceptionId,
+    };
+    const existing = (await this.rest.select<Row>("student_misconceptions", filters))[0];
+    await this.rest.upsert(
+      "student_misconceptions",
+      {
+        ...filters,
+        active: false,
+        identified_at: existing?.identified_at ?? resolvedAt,
+        resolved_at: resolvedAt,
+        evidence_ids: [...new Set([...toStringArray(existing?.evidence_ids), evidenceId])],
+      },
+      "student_id,topic_id,misconception_id",
+    );
+  }
+
+  async listMisconceptionMemory(studentId: string, topicId?: string) {
+    const rows = await this.rest.select<Row>("student_misconceptions", {
+      student_id: studentId,
+      ...(topicId ? { topic_id: topicId } : {}),
+    });
+    return rows.map((row) =>
+      misconceptionMemorySchema.parse({
+        studentId: row.student_id,
+        topicId: row.topic_id,
+        misconceptionId: row.misconception_id,
+        status: row.active ? "active" : "resolved",
+        identifiedAt: row.identified_at,
+        resolvedAt: row.resolved_at ?? undefined,
+        evidenceIds: toStringArray(row.evidence_ids),
+      }),
+    );
   }
 
   async getStrategyPosteriors(studentId: string, contextKey: string) {
@@ -474,4 +542,8 @@ function parseSession(row: Row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   });
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String) : [];
 }

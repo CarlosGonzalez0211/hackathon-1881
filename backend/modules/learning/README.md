@@ -36,6 +36,7 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 - structured review-required misconception candidates when deterministic patterns do not match
 - educator-facing evidence snapshots with mastery, misconceptions, strategy effectiveness and
   deterministic repeated-failure signals
+- persistent misconception memory with identification, resolution and supporting evidence IDs
 
 ## Integration boundaries
 
@@ -59,6 +60,10 @@ The educator evidence route is Learning's read-only handoff to Carlos's analytic
 contains academic evidence and deterministic intervention candidates, but deliberately contains no
 click, visit, time-spent or AI-usage fields. Carlos remains responsible for class-level projection,
 educator workflows and intervention status.
+
+Misconceptions are never silently cleared by a later diagnostic. Diagnostics can identify or
+reconfirm them; only qualifying checkpoint evidence resolves them. The memory keeps the first
+identification time, resolution time and the diagnostic/checkpoint IDs that support both states.
 
 The quiz route returns only learner-safe question fields. Answer keys and misconception-answer maps
 remain inside the backend assessment repository. Written-response rubric phrases, weights and

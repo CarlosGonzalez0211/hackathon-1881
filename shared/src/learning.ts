@@ -351,11 +351,23 @@ export const educatorInterventionSignalSchema = z.object({
 });
 export type EducatorInterventionSignal = z.infer<typeof educatorInterventionSignalSchema>;
 
+export const misconceptionMemorySchema = z.object({
+  studentId: idSchema,
+  topicId: idSchema,
+  misconceptionId: idSchema,
+  status: z.enum(["active", "resolved"]),
+  identifiedAt: isoDateSchema,
+  resolvedAt: isoDateSchema.optional(),
+  evidenceIds: z.array(idSchema),
+});
+export type MisconceptionMemory = z.infer<typeof misconceptionMemorySchema>;
+
 export const learningEvidenceSnapshotSchema = z.object({
   studentId: idSchema,
   topicId: idSchema,
   mastery: studentTopicMasterySchema.nullable(),
   activeMisconceptionIds: z.array(idSchema),
+  misconceptions: z.array(misconceptionMemorySchema),
   resolvedMisconceptionEvidenceIds: z.array(idSchema),
   strategyEffectiveness: z.array(strategyEffectivenessSummarySchema),
   interventionSignals: z.array(educatorInterventionSignalSchema),
