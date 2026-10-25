@@ -8,13 +8,16 @@
     "./config": "./src/config/index.ts",
     "./assets": "./src/assets/catalog.ts",
     "./icons/*": "./athena-assets/icons/*",
-    "./brand/*": "./athena-assets/brand/*"
+    "./brand/*": "./athena-assets/brand/*",
+    "./dev": "./src/scenes/asset-viewer.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
+    "generate:kit": "node athena-assets/code/generate.mjs",
     "build:assets": "node scripts/build-athena-assets.mjs",
-    "check:assets": "node scripts/check-assets.mjs"
+    "check:assets": "node scripts/check-assets.mjs",
+    "review:render": "node scripts/render-review.mjs"
   },
   "dependencies": {
     "@athena/shared": "workspace:*",
@@ -24,6 +27,9 @@
   "devDependencies": {
     "@gltf-transform/core": "^4.5.1",
     "@gltf-transform/extensions": "^4.5.1",
-    "@gltf-transform/functions": "^4.5.1"
+    "@gltf-transform/functions": "^4.5.1",
+    "pngjs": "^7.0.0",
+    "three": "0.180.0",
+    "three-subdivide": "^1.1.5"
   }
 }
