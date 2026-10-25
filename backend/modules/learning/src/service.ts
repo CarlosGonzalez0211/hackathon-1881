@@ -1,11 +1,17 @@
 import {
   assessmentQuizSchema,
   checkpointResultSchema,
+  curriculumContextResponseSchema,
   diagnosticResultSchema,
+  hintResultSchema,
+  learningSessionSchema,
+  learningSessionStartResultSchema,
+  learningSessionSummarySchema,
   retentionCheckResultSchema,
   studentLearningPreferencesSchema,
   studentLearningStateSchema,
   topicRecommendationSchema,
+  tutorMessageSchema,
   type AssessmentPurpose,
   type AssessmentQuiz,
   type AuthContext,
@@ -16,6 +22,12 @@ import {
   type ConceptResult,
   type DiagnosticResult,
   type DiagnosticSubmission,
+  type HintResult,
+  type HintSubmission,
+  type LearningSession,
+  type LearningSessionStart,
+  type LearningSessionStartResult,
+  type LearningSessionSummary,
   type MisconceptionCandidate,
   type RetentionCheckResult,
   type RetentionCheckSubmission,
@@ -27,6 +39,7 @@ import {
   type StudentTopicMastery,
   type TeachingStrategy,
   type TopicRecommendation,
+  type TutorMessage,
 } from "@athena/shared";
 import {
   PlatformError,
@@ -54,6 +67,7 @@ import { rankRecommendations } from "./domain/recommendations.js";
 import type { RecommendationCatalogPort } from "./recommendation-catalog.js";
 import type { LearningRepository } from "./repository.js";
 import type { MisconceptionClassifier } from "./misconception-classifier.js";
+import type { CurriculumContextPort, TutorProvider } from "./ports.js";
 
 export class LearningService {
   constructor(
@@ -65,6 +79,8 @@ export class LearningService {
     private readonly ids: IdGenerator,
     private readonly recommendationCatalog: RecommendationCatalogPort,
     private readonly misconceptionClassifier: MisconceptionClassifier,
+    private readonly curriculumContext: CurriculumContextPort,
+    private readonly tutorProvider: TutorProvider,
     private readonly random: () => number = Math.random,
   ) {}
 
@@ -604,6 +620,133 @@ export class LearningService {
     return result;
   }
 
+  async startLearningSession(
+    context: AuthContext,
+    input: LearningSessionStart,
+  ): Promise<LearningSessionStartResult> {
+    this.assertAccess(context, input.studentId, input.courseId);
+    const now = this.clock.now().toISOString();
+    const sessionId = this.ids.next();
+    const draft = learningSessionSchema.parse({
+      id: sessionId,
+      studentId: input.studentId,
+      courseId: input.courseId,
+      topicId: input.topicId,
+      conceptId: input.conceptId,
+      objective: input.objective,
+      strategy: input.strategy,
+      curriculumVersion: input.curriculumVersion,
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+    });
+    const initialMessage = await this.buildGroundedTutorMessage({
+      session: draft,
+      query: input.objective,
+      mode: "lesson",
+      locale: input.locale,
+    });
+    const session = learningSessionSchema.parse({
+      ...draft,
+      status: initialMessage.unsupported ? "unsupported" : "active",
+    });
+    await this.repository.saveSession(session);
+    await this.repository.saveTutorMessage(initialMessage);
+    return learningSessionStartResultSchema.parse({ session, initialMessage });
+  }
+
+  async sendSessionMessage(
+    context: AuthContext,
+    sessionId: string,
+    content: string,
+  ): Promise<TutorMessage> {
+    const session = await this.requireSession(context, sessionId);
+    const now = this.clock.now().toISOString();
+    await this.repository.saveTutorMessage(
+      tutorMessageSchema.parse({
+        id: this.ids.next(),
+        sessionId,
+        role: "student",
+        content,
+        citations: [],
+        curriculumVersion: session.curriculumVersion,
+        sourceIds: [],
+        unsupported: false,
+        createdAt: now,
+      }),
+    );
+    const reply = await this.buildGroundedTutorMessage({
+      session,
+      query: content,
+      studentMessage: content,
+      mode: "message",
+    });
+    await this.repository.saveTutorMessage(reply);
+    await this.repository.saveSession({
+      ...session,
+      status: reply.unsupported ? "unsupported" : "active",
+      updatedAt: now,
+    });
+    return reply;
+  }
+
+  async requestHint(context: AuthContext, input: HintSubmission): Promise<HintResult> {
+    this.assertAccess(context, input.studentId, input.courseId);
+    const graded = await this.assessments.grade(input.questionId, input.currentAnswer);
+    if (!graded) throw notFound("Assessment question", input.questionId);
+    if (
+      graded.question.topicId !== input.topicId ||
+      graded.question.conceptId !== input.conceptId
+    ) {
+      throw new PlatformError("Question does not match the requested topic and concept", 400);
+    }
+    const now = this.clock.now().toISOString();
+    let session = input.sessionId
+      ? await this.requireSession(context, input.sessionId)
+      : learningSessionSchema.parse({
+          id: this.ids.next(),
+          studentId: input.studentId,
+          courseId: input.courseId,
+          topicId: input.topicId,
+          conceptId: input.conceptId,
+          objective: `Give a hint for question ${input.questionId} without revealing the answer.`,
+          strategy: input.strategy,
+          curriculumVersion: input.curriculumVersion,
+          status: "active",
+          createdAt: now,
+          updatedAt: now,
+        });
+    if (!input.sessionId) await this.repository.saveSession(session);
+    const message = await this.buildGroundedTutorMessage({
+      session,
+      query: `Hint for question ${input.questionId}`,
+      mode: "hint",
+    });
+    session = {
+      ...session,
+      status: message.unsupported ? "unsupported" : "active",
+      updatedAt: now,
+    };
+    await this.repository.saveSession(session);
+    await this.repository.saveTutorMessage(message);
+    return hintResultSchema.parse({ message, revealsAnswer: false });
+  }
+
+  async getSessionSummary(
+    context: AuthContext,
+    sessionId: string,
+  ): Promise<LearningSessionSummary> {
+    const session = await this.requireSession(context, sessionId);
+    const messages = await this.repository.listTutorMessages(sessionId);
+    return learningSessionSummarySchema.parse({
+      sessionId,
+      messageCount: messages.length,
+      citedSourceIds: [...new Set(messages.flatMap((message) => message.sourceIds))],
+      unsupported: session.status === "unsupported",
+      completedAt: this.clock.now().toISOString(),
+    });
+  }
+
   async getStudentState(context: AuthContext, studentId: string): Promise<StudentLearningState> {
     if (!this.authorization.canAccessStudent(context, studentId)) {
       throw forbidden("You cannot view this student");
@@ -729,6 +872,77 @@ export class LearningService {
     if (!this.authorization.canAccessCourse(context, courseId)) {
       throw forbidden("You cannot access this course");
     }
+  }
+
+  private async requireSession(context: AuthContext, sessionId: string) {
+    const session = await this.repository.getSession(sessionId);
+    if (!session) throw notFound("Learning session", sessionId);
+    this.assertAccess(context, session.studentId, session.courseId);
+    return session;
+  }
+
+  private async buildGroundedTutorMessage(input: {
+    session: LearningSession;
+    query: string;
+    studentMessage?: string;
+    mode: "lesson" | "message" | "hint";
+    locale?: "en" | "es";
+  }): Promise<TutorMessage> {
+    const response = curriculumContextResponseSchema.parse(
+      await this.curriculumContext.retrieve({
+        courseId: input.session.courseId,
+        topicId: input.session.topicId,
+        conceptId: input.session.conceptId,
+        query: input.query,
+        curriculumVersion: input.session.curriculumVersion,
+        locale: input.locale,
+        limit: 5,
+      }),
+    );
+    const createdAt = this.clock.now().toISOString();
+    if (response.unsupported) {
+      return tutorMessageSchema.parse({
+        id: this.ids.next(),
+        sessionId: input.session.id,
+        role: "tutor",
+        content: `The approved course material cannot support this response (${response.unsupportedReason}).`,
+        strategy: input.session.strategy,
+        citations: [],
+        curriculumVersion: response.curriculumVersion,
+        sourceIds: [],
+        unsupported: true,
+        createdAt,
+      });
+    }
+    if (response.curriculumVersion !== input.session.curriculumVersion) {
+      throw new PlatformError("Retrieved curriculum version does not match the session", 400);
+    }
+    const generated = await this.tutorProvider.respond({
+      objective: input.session.objective,
+      strategy: input.session.strategy,
+      evidence: response.chunks.map((chunk) => ({ text: chunk.text, citation: chunk.citation })),
+      studentMessage: input.studentMessage,
+      mode: input.mode,
+    });
+    if (!generated.unsupported && generated.citations.length === 0) {
+      throw new PlatformError("Supported tutor responses require at least one citation", 400);
+    }
+    const allowedChunkIds = new Set(response.chunks.map((chunk) => chunk.citation.chunkId));
+    if (generated.citations.some((citation) => !allowedChunkIds.has(citation.chunkId))) {
+      throw new PlatformError("Tutor returned a citation outside the retrieved context", 400);
+    }
+    return tutorMessageSchema.parse({
+      id: this.ids.next(),
+      sessionId: input.session.id,
+      role: "tutor",
+      content: generated.content,
+      strategy: input.session.strategy,
+      citations: generated.citations,
+      curriculumVersion: response.curriculumVersion,
+      sourceIds: [...new Set(generated.citations.map((citation) => citation.materialId))],
+      unsupported: generated.unsupported,
+      createdAt,
+    });
   }
 
   private toConceptResults(

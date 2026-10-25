@@ -31,6 +31,12 @@ export {
   MockMisconceptionClassifier,
   type MisconceptionClassifier,
 } from "./misconception-classifier.js";
+export {
+  GeminiTutorProvider,
+  MockCurriculumContextPort,
+  MockTutorProvider,
+  type GroundedTextGenerator,
+} from "./tutor-adapters.js";
 export { InMemoryLearningRepository, type LearningRepository } from "./repository.js";
 export { LearningService } from "./service.js";
 export { learningRoutes, type LearningRoutesOptions } from "./routes.js";

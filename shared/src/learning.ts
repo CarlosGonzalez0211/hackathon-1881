@@ -404,10 +404,83 @@ export const tutorMessageSchema = z.object({
   content: z.string().min(1),
   strategy: teachingStrategySchema.optional(),
   citations: z.array(citationSchema),
+  curriculumVersion: z.number().int().positive(),
+  sourceIds: z.array(idSchema),
   unsupported: z.boolean().default(false),
   createdAt: isoDateSchema,
 });
 export type TutorMessage = z.infer<typeof tutorMessageSchema>;
+
+export const learningSessionStatusSchema = z.enum(["active", "unsupported", "completed"]);
+export type LearningSessionStatus = z.infer<typeof learningSessionStatusSchema>;
+
+export const learningSessionSchema = z.object({
+  id: idSchema,
+  studentId: idSchema,
+  courseId: idSchema,
+  topicId: idSchema,
+  conceptId: idSchema,
+  objective: z.string().min(1),
+  strategy: teachingStrategySchema,
+  curriculumVersion: z.number().int().positive(),
+  status: learningSessionStatusSchema,
+  createdAt: isoDateSchema,
+  updatedAt: isoDateSchema,
+});
+export type LearningSession = z.infer<typeof learningSessionSchema>;
+
+export const learningSessionStartSchema = z.object({
+  studentId: idSchema,
+  courseId: idSchema,
+  topicId: idSchema,
+  conceptId: idSchema,
+  objective: z.string().trim().min(1).max(1_000),
+  strategy: teachingStrategySchema,
+  curriculumVersion: z.number().int().positive(),
+  locale: z.enum(["en", "es"]).optional(),
+});
+export type LearningSessionStart = z.infer<typeof learningSessionStartSchema>;
+
+export const learningSessionStartResultSchema = z.object({
+  session: learningSessionSchema,
+  initialMessage: tutorMessageSchema,
+});
+export type LearningSessionStartResult = z.infer<typeof learningSessionStartResultSchema>;
+
+export const learningSessionMessageSubmissionSchema = z.object({
+  content: z.string().trim().min(1).max(4_000),
+});
+export type LearningSessionMessageSubmission = z.infer<
+  typeof learningSessionMessageSubmissionSchema
+>;
+
+export const hintSubmissionSchema = z.object({
+  studentId: idSchema,
+  courseId: idSchema,
+  topicId: idSchema,
+  conceptId: idSchema,
+  questionId: idSchema,
+  currentAnswer: z.unknown().optional(),
+  strategy: teachingStrategySchema,
+  curriculumVersion: z.number().int().positive(),
+  sessionId: idSchema.optional(),
+});
+export type HintSubmission = z.infer<typeof hintSubmissionSchema>;
+
+export const hintResultSchema = z.object({
+  message: tutorMessageSchema,
+  revealsAnswer: z.literal(false),
+});
+export type HintResult = z.infer<typeof hintResultSchema>;
+
+export const learningSessionSummarySchema = z.object({
+  sessionId: idSchema,
+  messageCount: z.number().int().nonnegative(),
+  citedSourceIds: z.array(idSchema),
+  unsupported: z.boolean(),
+  completedAt: isoDateSchema,
+});
+export type LearningSessionSummary = z.infer<typeof learningSessionSummarySchema>;
 
 export const studentLearningStateSchema = z.object({
   studentId: idSchema,

@@ -16,6 +16,8 @@ export interface TutorProvider {
     objective: string;
     strategy: TeachingStrategy;
     evidence: { text: string; citation: Citation }[];
+    studentMessage?: string;
+    mode?: "lesson" | "message" | "hint";
   }): Promise<{
     content: string;
     citations: Citation[];

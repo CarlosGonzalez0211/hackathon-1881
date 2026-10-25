@@ -4,17 +4,24 @@ import {
   assessmentPurposeSchema,
   checkpointSubmissionSchema,
   diagnosticSubmissionSchema,
+  hintSubmissionSchema,
+  learningSessionMessageSubmissionSchema,
+  learningSessionStartSchema,
   retentionCheckSubmissionSchema,
   studentLearningPreferencesUpdateSchema,
   teacherPriorityOverrideSchema,
   type AssessmentQuiz,
   type CheckpointResult,
   type DiagnosticResult,
+  type HintResult,
+  type LearningSessionStartResult,
+  type LearningSessionSummary,
   type RetentionCheckResult,
   type StudentLearningState,
   type StudentLearningPreferences,
   type TeacherPriorityOverride,
   type TopicRecommendation,
+  type TutorMessage,
 } from "@athena/shared";
 import { InMemoryAssessmentRepository, type AssessmentRepository } from "./assessment.js";
 import { InMemoryLearningRepository, type LearningRepository } from "./repository.js";
@@ -27,6 +34,8 @@ import {
   MockMisconceptionClassifier,
   type MisconceptionClassifier,
 } from "./misconception-classifier.js";
+import type { CurriculumContextPort, TutorProvider } from "./ports.js";
+import { MockCurriculumContextPort, MockTutorProvider } from "./tutor-adapters.js";
 
 const studentParamsSchema = z.object({ studentId: z.string().min(1).max(200) });
 const quizParamsSchema = z.object({ topicId: z.string().min(1).max(200) });
@@ -41,12 +50,15 @@ const courseTopicParamsSchema = z.object({
   courseId: z.string().min(1).max(200),
   topicId: z.string().min(1).max(200),
 });
+const sessionParamsSchema = z.object({ sessionId: z.string().min(1).max(200) });
 
 export interface LearningRoutesOptions {
   repository?: LearningRepository;
   assessments?: AssessmentRepository;
   recommendationCatalog?: RecommendationCatalogPort;
   misconceptionClassifier?: MisconceptionClassifier;
+  curriculumContext?: CurriculumContextPort;
+  tutorProvider?: TutorProvider;
   random?: () => number;
 }
 
@@ -61,6 +73,8 @@ export async function learningRoutes(app: FastifyInstance, options: LearningRout
     app.platform.ids,
     options.recommendationCatalog ?? new InMemoryRecommendationCatalog(),
     options.misconceptionClassifier ?? new MockMisconceptionClassifier(),
+    options.curriculumContext ?? new MockCurriculumContextPort(),
+    options.tutorProvider ?? new MockTutorProvider(),
     options.random,
   );
 
@@ -110,5 +124,21 @@ export async function learningRoutes(app: FastifyInstance, options: LearningRout
         input.priority,
       );
     },
+  );
+  app.post<{ Reply: LearningSessionStartResult }>("/learning/session", async (request) =>
+    service.startLearningSession(request.auth, learningSessionStartSchema.parse(request.body)),
+  );
+  app.post<{ Reply: TutorMessage }>("/learning/session/:sessionId/messages", async (request) => {
+    const params = sessionParamsSchema.parse(request.params);
+    const input = learningSessionMessageSubmissionSchema.parse(request.body);
+    return service.sendSessionMessage(request.auth, params.sessionId, input.content);
+  });
+  app.get<{ Reply: LearningSessionSummary }>(
+    "/learning/session/:sessionId/summary",
+    async (request) =>
+      service.getSessionSummary(request.auth, sessionParamsSchema.parse(request.params).sessionId),
+  );
+  app.post<{ Reply: HintResult }>("/learning/hint", async (request) =>
+    service.requestHint(request.auth, hintSubmissionSchema.parse(request.body)),
   );
 }

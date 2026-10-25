@@ -7,6 +7,8 @@ import {
   type RetentionSchedule,
   type RetentionEvidence,
   type RetentionCheckResult,
+  type LearningSession,
+  type TutorMessage,
   type StrategyObservation,
   type StrategyPosterior,
   type StudentTopicMastery,
@@ -51,6 +53,10 @@ export interface LearningRepository {
     submissionId: string,
   ): Promise<RetentionCheckResult | null>;
   saveRetentionResult(submissionId: string, value: RetentionCheckResult): Promise<void>;
+  saveSession(value: LearningSession): Promise<void>;
+  getSession(sessionId: string): Promise<LearningSession | null>;
+  saveTutorMessage(value: TutorMessage): Promise<void>;
+  listTutorMessages(sessionId: string): Promise<TutorMessage[]>;
 }
 
 export class InMemoryLearningRepository implements LearningRepository {
@@ -67,6 +73,8 @@ export class InMemoryLearningRepository implements LearningRepository {
   private readonly teacherPriorities = new Map<string, number>();
   private readonly retentionEvidence: RetentionEvidence[] = [];
   private readonly retentionResults = new Map<string, RetentionCheckResult>();
+  private readonly sessions = new Map<string, LearningSession>();
+  private readonly tutorMessages: TutorMessage[] = [];
 
   async saveDiagnostic(value: DiagnosticResult) {
     this.diagnostics.push(value);
@@ -188,6 +196,22 @@ export class InMemoryLearningRepository implements LearningRepository {
 
   async saveRetentionResult(submissionId: string, value: RetentionCheckResult) {
     this.retentionResults.set(key(value.evidence.studentId, submissionId), value);
+  }
+
+  async saveSession(value: LearningSession) {
+    this.sessions.set(value.id, value);
+  }
+
+  async getSession(sessionId: string) {
+    return this.sessions.get(sessionId) ?? null;
+  }
+
+  async saveTutorMessage(value: TutorMessage) {
+    this.tutorMessages.push(value);
+  }
+
+  async listTutorMessages(sessionId: string) {
+    return this.tutorMessages.filter((message) => message.sessionId === sessionId);
   }
 }
 

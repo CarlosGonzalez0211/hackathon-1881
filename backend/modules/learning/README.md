@@ -13,6 +13,10 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 - `PUT /api/learning/student/:studentId/preferences`
 - `GET /api/learning/student/:studentId/recommendation`
 - `PUT /api/learning/course/:courseId/topics/:topicId/priority`
+- `POST /api/learning/session`
+- `POST /api/learning/session/:sessionId/messages`
+- `GET /api/learning/session/:sessionId/summary`
+- `POST /api/learning/hint`
 - Bayesian Knowledge Tracing as an advisory estimate
 - guarded contextual Thompson sampling primitives
 - student strategy overrides, accessibility blocks, explanations and repeated-failure intervention
@@ -30,6 +34,10 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 
 `CurriculumContextPort` is the seam for Vianey's authorized, cited retrieval implementation.
 `TutorProvider` is the seam for grounded Gemini output. Neither provider may write mastery.
+
+Tutor orchestration enforces course/topic/concept/version filters, explicit abstention, citation
+membership, source/version recording, and hint prompts that never receive an answer key. The mock
+and injected Gemini-shaped providers share the same interface and require no credentials in tests.
 
 The Learning-side consumer contract lives in `shared/src/learning-curriculum.ts`. It validates
 stable concept keys, concept-to-topic mappings, curriculum-version filters, cited context chunks,
