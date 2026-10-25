@@ -1,4 +1,5 @@
-import { redirect } from "next/navigation";
+import { HomeRedirect } from "@/features/auth";
+
 export default function Home() {
-  redirect("/world");
+  return <HomeRedirect />;
 }

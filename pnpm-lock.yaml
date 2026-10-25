@@ -154,6 +154,9 @@ importers:
 
   backend/modules/world:
     dependencies:
+      '@athena/platform':
+        specifier: workspace:*
+        version: link:../platform
       '@athena/shared':
         specifier: workspace:*
         version: link:../../../shared

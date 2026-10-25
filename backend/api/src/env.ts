@@ -10,6 +10,11 @@ const schema = z.object({
   /** mock = in-memory fixtures, real = Supabase. Modules read these when real repositories land. */
   ATHENA_DATA_MODE: z.enum(["mock", "real"]).default("mock"),
   ATHENA_AI_MODE: z.enum(["mock", "real"]).default("mock"),
+  /** Lets mock mode run when NODE_ENV=production (demo deployments only). */
+  ATHENA_ALLOW_MOCK: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 export const env = schema.parse(process.env);
