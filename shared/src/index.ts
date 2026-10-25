@@ -8,6 +8,7 @@ export * from "./curriculum.js";
 export * from "./analytics.js";
 export * from "./learning.js";
 export * from "./learning-curriculum.js";
+export * from "./contracts/learning-world.js";
 export * from "./mocks.js";
 export * from "./mocks/index.js";
 

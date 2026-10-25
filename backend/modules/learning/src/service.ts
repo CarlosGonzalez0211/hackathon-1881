@@ -416,6 +416,25 @@ export class LearningService {
         evidenceEligible: evidence.evidenceEligible,
       },
     });
+    if (misconceptionResolved) {
+      for (const misconceptionId of activeBefore.filter((id) => !activeAfter.includes(id))) {
+        await this.events.append({
+          id: this.ids.next(),
+          type: "MisconceptionResolved",
+          aggregateType: "misconception",
+          aggregateId: misconceptionId,
+          actorId: context.userId,
+          courseId: submission.courseId,
+          studentId: submission.studentId,
+          occurredAt: submittedAt,
+          payload: {
+            topicId: submission.topicId,
+            misconceptionId,
+            evidenceIds: [evidence.id],
+          },
+        });
+      }
+    }
     if (mastery.mastery > (previousMastery?.mastery ?? 0)) {
       await this.events.append({
         id: this.ids.next(),
@@ -427,6 +446,7 @@ export class LearningService {
         studentId: submission.studentId,
         occurredAt: submittedAt,
         payload: {
+          topicId: submission.topicId,
           previous: previousMastery?.mastery ?? 0,
           next: mastery.mastery,
           evidenceIds: mastery.evidenceIds,
@@ -451,6 +471,7 @@ export class LearningService {
           reason: strategyReason,
           explanation: strategyExplanation,
           educatorInterventionRecommended,
+          evidenceIds: [evidence.id],
         },
       });
     }
@@ -604,6 +625,7 @@ export class LearningService {
           topicId: submission.topicId,
           conceptId: submission.conceptId,
           intervalDays: retention.intervalDays,
+          evidenceIds: [evidence.id],
         },
       });
     }

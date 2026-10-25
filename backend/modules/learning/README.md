@@ -10,6 +10,7 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 - `GET /api/learning/quiz/:topicId`
 - `POST /api/learning/retention-check`
 - `GET /api/learning/student/:studentId/state`
+- `GET /api/learning/student/:studentId/mastery?topicIds=a,b`
 - `PUT /api/learning/student/:studentId/preferences`
 - `GET /api/learning/student/:studentId/recommendation`
 - `PUT /api/learning/course/:courseId/topics/:topicId/priority`
@@ -29,6 +30,7 @@ teaching-strategy selection, deterministic mastery, recommendations and retentio
 - in-memory repositories and a deterministic assessment catalog
 - server-only Supabase/PostgREST assessment and learning repositories
 - domain events for diagnostics, misconceptions, checkpoints, mastery and strategy changes
+- World-compatible mastery reads, compact tutor requests and idempotent learning-event delivery
 - structured review-required misconception candidates when deterministic patterns do not match
 
 ## Integration boundaries
@@ -56,3 +58,19 @@ remain inside the backend assessment repository.
 revokes direct browser access by default; Carlos must review final production policies before a
 shared project applies the migration. `SupabaseLearningRestClient` requires a backend-only
 service-role key and can be replaced by a test driver through the same interface.
+
+## World integration
+
+`LearningMasteryReadAdapter` implements World's read-only `MasteryReadPort`. Requested topics with
+no evidence return mastery `0`; stored mastery remains deterministic and owned by Learning.
+
+The session and hint routes accept both Daniela's full request contracts and the compact World
+contracts. Compact requests currently resolve to the shared Geometry demo course, concept and
+assessment identifiers. Replace that resolver with Vianey's approved topic-to-concept catalog when
+the cross-owner concept IDs are frozen.
+
+`connectLearningEventsToWorld` maps mastery, misconception resolution, strategy-change and
+retention events to the World schema. `HttpWorldEventSink` retries the same stable event body, and
+World is expected to ignore duplicate IDs. Configure that HTTP sink at composition time when the
+World module is available in the target environment; the default in-memory sink keeps local tests
+and isolated development credential-free.

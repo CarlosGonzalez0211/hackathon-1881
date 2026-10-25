@@ -11,6 +11,7 @@ export const DOMAIN_EVENT_TYPES = [
   "MaterialProcessed",
   "DiagnosticCompleted",
   "MisconceptionIdentified",
+  "MisconceptionResolved",
   "TeachingStrategySelected",
   "CheckpointCompleted",
   "MasteryUpdated",

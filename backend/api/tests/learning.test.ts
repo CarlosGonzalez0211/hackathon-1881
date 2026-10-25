@@ -13,25 +13,31 @@ import {
   learningSessionSummarySchema,
   retentionCheckResultSchema,
   studentLearningStateSchema,
+  studentMasterySnapshotSchema,
+  worldHintResponseSchema,
+  worldLearningSessionStartSchema,
   type CheckpointEvidence,
 } from "@athena/shared";
 import {
   calculateMastery,
   calculateStrategyReward,
   getKnowledgeTracingModel,
+  HttpWorldEventSink,
   InMemoryAssessmentRepository,
+  InMemoryWorldEventSink,
   GeminiTutorProvider,
   rankRecommendations,
   scheduleRetention,
   selectAssessmentQuestions,
   SupabaseAssessmentRepository,
   SupabaseLearningRepository,
+  connectLearningEventsToWorld,
   type LearningRestClient,
   selectTeachingStrategy,
   updateKnowledgeProbability,
   updateStrategyPosterior,
 } from "@athena/learning";
-import { fixedClock, sequentialIdGenerator } from "@athena/platform";
+import { fixedClock, InMemoryDomainEventStore, sequentialIdGenerator } from "@athena/platform";
 import { createApp } from "../src/app.js";
 
 test("knowledge tracing is advisory and reacts to evidence", () => {
@@ -830,6 +836,176 @@ test("diagnostic, failed checkpoint and successful checkpoint form the learning 
   } finally {
     await app.close();
   }
+});
+
+test("World compatibility routes expose mastery, sessions and cited hints", async () => {
+  const app = await createApp({
+    logger: false,
+    platform: {
+      clock: fixedClock("2026-10-24T12:00:00.000Z"),
+      ids: sequentialIdGenerator(1_100),
+    },
+  });
+  try {
+    const checkpoint = await app.inject({
+      method: "POST",
+      url: "/api/learning/attempt",
+      payload: {
+        submissionId: "world-mastery-checkpoint",
+        studentId: athenaDemoIds.students.lucia,
+        courseId: athenaDemoIds.course,
+        topicId: athenaDemoIds.topics.geometry,
+        conceptId: demoLearningIds.concepts.triangleArea,
+        questionId: demoLearningIds.questions.checkpointTriangleArea,
+        answer: 30,
+        strategy: "worked_example",
+        hintCount: 0,
+      },
+    });
+    assert.equal(checkpoint.statusCode, 200, checkpoint.body);
+
+    const masteryResponse = await app.inject({
+      method: "GET",
+      url: `/api/learning/student/${athenaDemoIds.students.lucia}/mastery?topicIds=${athenaDemoIds.topics.geometry},${athenaDemoIds.topics.statistics}`,
+    });
+    assert.equal(masteryResponse.statusCode, 200, masteryResponse.body);
+    const snapshot = studentMasterySnapshotSchema.parse(masteryResponse.json());
+    assert.equal(snapshot.topics.length, 2);
+    assert.equal(snapshot.topics[0]?.topicId, athenaDemoIds.topics.geometry);
+    assert.equal(snapshot.topics[0]?.demonstratedConcepts, 1);
+    assert.equal(snapshot.topics[0]?.totalConcepts, 2);
+    assert.equal(snapshot.topics[1]?.mastery, 0);
+    assert.ok((snapshot.growth ?? 0) > 0);
+
+    const sessionResponse = await app.inject({
+      method: "POST",
+      url: "/api/learning/session",
+      payload: {
+        studentId: athenaDemoIds.students.lucia,
+        topicId: athenaDemoIds.topics.geometry,
+        entryId: "world-entry-1",
+      },
+    });
+    assert.equal(sessionResponse.statusCode, 200, sessionResponse.body);
+    const session = worldLearningSessionStartSchema.parse(sessionResponse.json());
+    assert.equal(session.topicId, athenaDemoIds.topics.geometry);
+    assert.equal(session.resumed, false);
+
+    const hintResponse = await app.inject({
+      method: "POST",
+      url: "/api/learning/hint",
+      payload: {
+        studentId: athenaDemoIds.students.lucia,
+        topicId: athenaDemoIds.topics.geometry,
+        sessionId: session.sessionId,
+        source: "lumen",
+      },
+    });
+    assert.equal(hintResponse.statusCode, 200, hintResponse.body);
+    const hint = worldHintResponseSchema.parse(hintResponse.json());
+    assert.ok(hint.message.length > 0);
+    assert.deepEqual(hint.citationIds, [demoLearningIds.chunks.triangleAreaExplanation]);
+    assert.doesNotMatch(hint.message, /\b30\b/);
+  } finally {
+    await app.close();
+  }
+});
+
+test("learning events map to the idempotent World event sink", async () => {
+  const events = new InMemoryDomainEventStore();
+  const sink = new InMemoryWorldEventSink();
+  const unsubscribe = connectLearningEventsToWorld(events, sink);
+  const occurredAt = "2026-10-24T12:00:00.000Z";
+  const common = {
+    aggregateType: "student_learning",
+    actorId: athenaDemoIds.professorRuiz,
+    courseId: athenaDemoIds.course,
+    studentId: athenaDemoIds.students.lucia,
+    occurredAt,
+  };
+  try {
+    await events.append({
+      ...common,
+      id: "world-event-mastery",
+      type: "MasteryUpdated",
+      aggregateId: athenaDemoIds.topics.geometry,
+      payload: {
+        topicId: athenaDemoIds.topics.geometry,
+        previous: 0.4,
+        next: 0.8,
+        evidenceIds: ["evidence-1"],
+      },
+    });
+    await events.append({
+      ...common,
+      id: "world-event-misconception",
+      type: "MisconceptionResolved",
+      aggregateId: demoLearningIds.misconceptions.triangleMissingHalf,
+      payload: {
+        topicId: athenaDemoIds.topics.geometry,
+        misconceptionId: demoLearningIds.misconceptions.triangleMissingHalf,
+        evidenceIds: ["evidence-1"],
+      },
+    });
+    await events.append({
+      ...common,
+      id: "world-event-strategy",
+      type: "TeachingStrategySelected",
+      aggregateId: demoLearningIds.concepts.triangleArea,
+      payload: {
+        topicId: athenaDemoIds.topics.geometry,
+        previousStrategy: "worked_example",
+        selectedStrategy: "guided_questioning",
+        evidenceIds: ["evidence-1"],
+      },
+    });
+    await events.append({
+      ...common,
+      id: "world-event-retention",
+      type: "RetentionCheckPassed",
+      aggregateId: "retention-1",
+      payload: {
+        topicId: athenaDemoIds.topics.geometry,
+        conceptId: demoLearningIds.concepts.triangleArea,
+        evidenceIds: ["retention-evidence-1"],
+      },
+    });
+    assert.deepEqual(
+      sink.list().map((event) => event.type),
+      ["MasteryUpdated", "MisconceptionResolved", "StrategyChanged", "RetentionCheckPassed"],
+    );
+    const first = sink.list()[0]!;
+    await sink.publish(first);
+    assert.equal(sink.list().length, 4);
+  } finally {
+    unsubscribe();
+  }
+});
+
+test("HTTP World event delivery retries with the same stable event id", async () => {
+  const bodies: string[] = [];
+  const fakeFetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+    bodies.push(String(init?.body));
+    if (bodies.length === 1) throw new Error("temporary network failure");
+    return new Response(JSON.stringify({ unlockedAchievements: [], transitions: [] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }) as typeof fetch;
+  const sink = new HttpWorldEventSink("http://world.test", fakeFetch, 2);
+  await sink.publish({
+    id: "stable-world-event",
+    type: "MasteryUpdated",
+    studentId: athenaDemoIds.students.lucia,
+    topicId: athenaDemoIds.topics.geometry,
+    mastery: 0.8,
+    previousMastery: 0.4,
+    evidenceIds: ["evidence-1"],
+    occurredAt: "2026-10-24T12:00:00.000Z",
+  });
+  assert.equal(bodies.length, 2);
+  assert.equal(bodies[0], bodies[1]);
+  assert.equal(JSON.parse(bodies[0]!).id, "stable-world-event");
 });
 
 function seededRandom(seed: number) {

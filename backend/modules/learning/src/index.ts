@@ -43,3 +43,12 @@ export { SupabaseLearningRepository } from "./supabase-learning-repository.js";
 export { SupabaseLearningRestClient, type LearningRestClient } from "./supabase-rest.js";
 export { LearningService } from "./service.js";
 export { learningRoutes, type LearningRoutesOptions } from "./routes.js";
+export {
+  connectLearningEventsToWorld,
+  HttpWorldEventSink,
+  InMemoryWorldEventSink,
+  LearningMasteryReadAdapter,
+  mapDomainEventToWorld,
+  type MasteryReadPort,
+  type WorldEventSink,
+} from "./world-bridge.js";
