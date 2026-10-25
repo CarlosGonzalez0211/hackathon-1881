@@ -3,6 +3,8 @@ import { z } from "zod";
 /** Proposed shared contracts for frontend and backend. */
 export * from "./learning.js";
 export * from "./mocks.js";
+export * from "./curriculum.js";
+export * from "./mocks/demo-curriculum.js";
 
 export const healthResponseSchema = z.object({
   status: z.literal("ok"),

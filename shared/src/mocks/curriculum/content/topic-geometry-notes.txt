@@ -1,0 +1,9 @@
+[DEMO] Geometría — notes
+
+Authored Athena teaching fixture attributed to a fictional demo instructor. Not a real upload or primary historical source. The storage key is illustrative; text lives in source chunks.
+
+[es] Área de triángulos
+El área de un triángulo es (base × altura perpendicular) / 2. Con base 8 cm y altura 3 cm, el área es 12 cm². Multiplicar solo base por altura daría 24 cm² y omitiría dividir entre dos.
+
+[es] Descomposición visual
+Un rectángulo de base 8 cm y altura 3 cm tiene área 24 cm². Una diagonal lo divide en dos triángulos de igual área; cada triángulo ocupa la mitad: 12 cm². Esta descomposición explica el factor 1/2.

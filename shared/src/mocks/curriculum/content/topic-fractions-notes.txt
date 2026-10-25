@@ -1,0 +1,6 @@
+[DEMO] Fracciones — notes
+
+Authored Athena teaching fixture attributed to a fictional demo instructor. Not a real upload or primary historical source. The storage key is illustrative; text lives in source chunks.
+
+[es] Partes iguales
+Una fracción representa partes iguales de un todo. Un medio es equivalente a dos cuartos: 1/2 = 2/4.
