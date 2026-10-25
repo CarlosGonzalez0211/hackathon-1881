@@ -788,35 +788,32 @@ export function createCloudBelt(ctx: AthenaInstallContext, root: LegacyContext) 
       void main(){
         vec2 p=(vUv-.5)*vec2(2.8,1.5);
         int shape=int(clamp(floor(h(vSeed*3.17+1.3)*4.0),0.0,3.0));
-        float alpha=0.0, front=-1.0, edge=1.0;
-        vec3 n=vec3(0.0,0.0,1.0);
+        // One soft mass: a smooth-min union of the blobs gives a single outline (negative
+        // inside), instead of seven overlapping discs each with their own edge and halo.
+        float d=1e3, top=-1e3;
         for(int i=0;i<7;i++){
           vec3 blob=SHAPES[shape*7+i];
           // A little per-cloud variation so two banks of one silhouette are not twins.
           blob.xy+=(vec2(h(vSeed+float(i)),h(vSeed*1.7+float(i)))-.5)*.08;
-          vec2 d=(p-blob.xy)/blob.z;
-          float q=dot(d,d);
-          if(q<1.0){
-            float z=sqrt(1.0-q)*blob.z;
-            if(z>front){front=z;n=normalize(vec3(d,sqrt(1.0-q)));}
-          }
-          alpha=max(alpha,1.0-smoothstep(.80,1.0,q));
-          edge=min(edge,sqrt(q)-1.0);
+          float di=length(p-blob.xy)-blob.z;
+          float k=.2, w=clamp(.5+.5*(di-d)/k,0.0,1.0);
+          d=mix(di,d,w)-k*w*(1.0-w);
+          top=max(top,blob.y+blob.z);
         }
-        alpha*=smoothstep(-.44,-.26,p.y);
+        float belly=smoothstep(-.44,-.26,p.y);
+        float alpha=(1.0-smoothstep(-.04,.05,d))*belly;
         if(alpha<.01) discard;
-        float lit=dot(n,vSunView)*.5+.5;
-        vec3 cream=lin(vec3(1.0,.97,.93)), violet=lin(vec3(.64,.62,.86)), warm=lin(vec3(1.0,.84,.60));
-        // Two painted tones: a flat violet belly under a lit cream top, soft only at the seam.
-        vec3 c=mix(violet,cream,smoothstep(.40,.52,lit));
-        c=mix(c,violet*.94,smoothstep(.06,-.2,p.y));
-        // The ridge: a warm lit edge along the upper outline.
-        float ridge=smoothstep(.45,.85,n.y)*(1.0-smoothstep(.0,.38,front));
-        c=mix(c,warm*1.08,ridge*.85);
+        vec3 cream=lin(vec3(1.0,.97,.93)), violet=lin(vec3(.66,.65,.86)), warm=lin(vec3(1.0,.84,.60));
+        // Painted cumulus: cream on top fading to a violet belly, with a little extra light
+        // deep inside the mass so the interior reads as volume rather than a flat sticker.
+        float height=clamp((p.y+.44)/(top+.44),0.0,1.0);
+        vec3 c=mix(violet,cream,smoothstep(.12,.78,height));
+        c*=.95+.07*smoothstep(0.0,.35,-d);
+        // Silver lining only on the outer silhouette, strongest on the upper edge when backlit.
         float back=clamp(-vSunView.z,0.0,1.0);
-        float rim=pow(1.0-n.z,2.4);
-        c+=lin(vec3(1.0,.8,.55))*rim*(.25+1.7*back*back);
-        gl_FragColor=vec4(c,alpha*.97);
+        float rim=(1.0-smoothstep(0.0,.14,-d))*(.35+.65*height);
+        c+=warm*rim*(.18+1.1*back*back);
+        gl_FragColor=vec4(c,alpha*.96);
       }
     `,
   });
