@@ -3,6 +3,7 @@ import {
   type DiagnosticResult,
   type DiagnosticSubmission,
   type StrategyPosterior,
+  type TeachingStrategy,
 } from "../learning.js";
 import type {
   CurriculumConcept,
@@ -87,9 +88,12 @@ export const demoLearningIds = {
   },
   materials: {
     geometryNotes: "00000000-0000-4000-8000-00000000e001",
+    luciaGeometryGuide: "00000000-0000-4000-8000-00000000e002",
   },
   chunks: {
     triangleAreaExplanation: "00000000-0000-4000-8000-00000000e101",
+    triangleBaseHeight: "00000000-0000-4000-8000-00000000e102",
+    triangleWorkedExample: "00000000-0000-4000-8000-00000000e103",
   },
 } as const;
 
@@ -143,13 +147,38 @@ export const demoCurriculumContextResponse: CurriculumContextResponse = {
       text: "Dos triángulos iguales forman un rectángulo con la misma base y altura. Por eso, el área de un triángulo es base por altura dividido entre dos.",
       conceptId: demoLearningIds.concepts.triangleArea,
       citation: {
-        materialId: demoLearningIds.materials.geometryNotes,
-        materialTitle: "Notas de geometría del profesor",
-        section: "Área de triángulos",
+        materialId: demoLearningIds.materials.luciaGeometryGuide,
+        materialTitle: "Matemáticas I — Guía del estudiante: Geometría",
+        section: "Triángulos y rectángulos",
         chunkId: demoLearningIds.chunks.triangleAreaExplanation,
         excerpt: "Dos triángulos iguales forman un rectángulo con la misma base y altura.",
       },
       relevanceScore: 1,
+    },
+    {
+      text: "La base puede ser cualquier lado del triángulo. La altura correspondiente es la distancia perpendicular desde la base hasta el vértice opuesto; no siempre es un lado inclinado.",
+      conceptId: demoLearningIds.concepts.triangleBaseHeight,
+      citation: {
+        materialId: demoLearningIds.materials.luciaGeometryGuide,
+        materialTitle: "Matemáticas I — Guía del estudiante: Geometría",
+        section: "Cómo identificar la base y la altura",
+        chunkId: demoLearningIds.chunks.triangleBaseHeight,
+        excerpt:
+          "La altura correspondiente es la distancia perpendicular desde la base hasta el vértice opuesto.",
+      },
+      relevanceScore: 0.98,
+    },
+    {
+      text: "Ejemplo: para un triángulo con base 10 y altura 6, multiplica 10 por 6 para obtener 60 y divide entre dos. El área es 30 unidades cuadradas.",
+      conceptId: demoLearningIds.concepts.triangleArea,
+      citation: {
+        materialId: demoLearningIds.materials.luciaGeometryGuide,
+        materialTitle: "Matemáticas I — Guía del estudiante: Geometría",
+        section: "Ejemplo resuelto",
+        chunkId: demoLearningIds.chunks.triangleWorkedExample,
+        excerpt: "Multiplica 10 por 6 para obtener 60 y divide entre dos.",
+      },
+      relevanceScore: 0.96,
     },
   ],
   curriculumVersion: 1,
@@ -219,3 +248,79 @@ export const demoStrategyPosteriors: StrategyPosterior[] = [
     observations: 0,
   },
 ];
+
+export interface DemoStudentLearningProfile {
+  studentId: string;
+  displayName: string;
+  topicId: string;
+  mastery: number;
+  strengths: string[];
+  struggles: string[];
+  activeMisconceptionIds: string[];
+  preferredStrategies: TeachingStrategy[];
+  blockedStrategies: TeachingStrategy[];
+  recommendedStrategy: TeachingStrategy;
+  requiresCaptions: boolean;
+  reducedMotion: boolean;
+  recentAttempts: Array<{
+    conceptId: string;
+    correct: boolean;
+    strategy: TeachingStrategy;
+  }>;
+}
+
+/** Student-owned demo memory used to make mock tutoring visibly personal and deterministic. */
+export const demoStudentLearningProfiles: Record<string, DemoStudentLearningProfile> = {
+  [athenaDemoIds.students.lucia]: {
+    studentId: athenaDemoIds.students.lucia,
+    displayName: "Lucía Torres",
+    topicId: athenaDemoIds.topics.geometry,
+    mastery: 0.35,
+    strengths: ["recognizes the base and perpendicular height"],
+    struggles: ["remembering the divide-by-two step for triangle area"],
+    activeMisconceptionIds: [demoLearningIds.misconceptions.triangleMissingHalf],
+    preferredStrategies: ["visual_decomposition", "worked_example"],
+    blockedStrategies: ["podcast"],
+    recommendedStrategy: "visual_decomposition",
+    requiresCaptions: true,
+    reducedMotion: true,
+    recentAttempts: [
+      {
+        conceptId: demoLearningIds.concepts.triangleArea,
+        correct: false,
+        strategy: "worked_example",
+      },
+      {
+        conceptId: demoLearningIds.concepts.triangleBaseHeight,
+        correct: true,
+        strategy: "visual_decomposition",
+      },
+    ],
+  },
+  [athenaDemoIds.students.mateo]: {
+    studentId: athenaDemoIds.students.mateo,
+    displayName: "Mateo Herrera",
+    topicId: athenaDemoIds.topics.geometry,
+    mastery: 0.62,
+    strengths: ["calculates rectangle area accurately"],
+    struggles: ["explaining how a rectangle relates to two equal triangles"],
+    activeMisconceptionIds: [],
+    preferredStrategies: ["guided_questioning"],
+    blockedStrategies: [],
+    recommendedStrategy: "guided_questioning",
+    requiresCaptions: false,
+    reducedMotion: false,
+    recentAttempts: [
+      {
+        conceptId: demoLearningIds.concepts.rectangleArea,
+        correct: true,
+        strategy: "practice_first",
+      },
+      {
+        conceptId: demoLearningIds.concepts.triangleArea,
+        correct: false,
+        strategy: "worked_example",
+      },
+    ],
+  },
+};
