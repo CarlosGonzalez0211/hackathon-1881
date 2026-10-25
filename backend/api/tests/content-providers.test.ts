@@ -112,6 +112,15 @@ test("Gemini text generation sends the system prompt and asks for JSON", async (
   assert.deepEqual(answer.citedSources, ["S1"]);
 });
 
+test("Gemini text generation can return plain text for the Learning tutor", async () => {
+  const { models, generateCalls } = fakeModels(() => "Grounded lesson");
+  const text = await new GeminiTextGenerator(models, "gemini-3.8-flash", {
+    responseMimeType: "text/plain",
+  }).generate({ system: "Teach from sources", user: "Explain triangles" });
+  assert.equal(text, "Grounded lesson");
+  assert.equal(generateCalls[0]!.config?.responseMimeType, "text/plain");
+});
+
 test("Gemini text generation retries overload errors and falls back to the next model", async () => {
   const overloaded = Object.assign(new Error("UNAVAILABLE"), { status: 503 });
   const tried: string[] = [];

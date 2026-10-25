@@ -106,6 +106,8 @@ export interface RetryOptions {
   backoffMs?: number;
   /** No new attempt starts after this much time has passed. */
   deadlineMs?: number;
+  /** Content expects JSON; Learning requests plain text for direct display in the tutor UI. */
+  responseMimeType?: "application/json" | "text/plain";
 }
 
 /** Overload (429/503), server errors and our own timeout are worth another try; the rest are not. */
@@ -118,7 +120,8 @@ const isTransient = (error: unknown) => {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * The GroundedTextGenerator seam (shared with Learning's tutor): system + user -> JSON text.
+ * The GroundedTextGenerator seam shared with Learning's tutor. Content requests JSON by default;
+ * Learning opts into plain text for direct display.
  * Gemini models shed load with 503s, so transient failures retry and then move to the fallbacks.
  */
 export class GeminiTextGenerator implements GroundedTextGenerator {
@@ -129,7 +132,13 @@ export class GeminiTextGenerator implements GroundedTextGenerator {
   ) {}
 
   async generate({ system, user }: { system: string; user: string }) {
-    const { fallbackModels = [], rounds = 2, backoffMs = 400, deadlineMs = 40_000 } = this.retry;
+    const {
+      fallbackModels = [],
+      rounds = 2,
+      backoffMs = 400,
+      deadlineMs = 40_000,
+      responseMimeType = "application/json",
+    } = this.retry;
     const candidates = [this.model, ...fallbackModels];
     const started = Date.now();
     let failure: unknown;
@@ -142,7 +151,7 @@ export class GeminiTextGenerator implements GroundedTextGenerator {
             contents: user,
             config: {
               systemInstruction: system,
-              responseMimeType: "application/json",
+              responseMimeType,
               temperature: 0.2,
               abortSignal: AbortSignal.timeout(TIMEOUT_MS),
             },
