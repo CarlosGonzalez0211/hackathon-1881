@@ -681,6 +681,7 @@ export class LearningService {
       updatedAt: now,
     });
     const initialMessage = await this.buildGroundedTutorMessage({
+      context,
       session: draft,
       query: input.objective,
       mode: "lesson",
@@ -716,6 +717,7 @@ export class LearningService {
       }),
     );
     const reply = await this.buildGroundedTutorMessage({
+      context,
       session,
       query: content,
       studentMessage: content,
@@ -758,6 +760,7 @@ export class LearningService {
         });
     if (!input.sessionId) await this.repository.saveSession(session);
     const message = await this.buildGroundedTutorMessage({
+      context,
       session,
       query: `Hint for question ${input.questionId}`,
       mode: "hint",
@@ -953,6 +956,7 @@ export class LearningService {
   }
 
   private async buildGroundedTutorMessage(input: {
+    context: AuthContext;
     session: LearningSession;
     query: string;
     studentMessage?: string;
@@ -960,15 +964,19 @@ export class LearningService {
     locale?: "en" | "es";
   }): Promise<TutorMessage> {
     const response = curriculumContextResponseSchema.parse(
-      await this.curriculumContext.retrieve({
-        courseId: input.session.courseId,
-        topicId: input.session.topicId,
-        conceptId: input.session.conceptId,
-        query: input.query,
-        curriculumVersion: input.session.curriculumVersion,
-        locale: input.locale,
-        limit: 5,
-      }),
+      await this.curriculumContext.retrieve(
+        {
+          studentId: input.session.studentId,
+          courseId: input.session.courseId,
+          topicId: input.session.topicId,
+          conceptId: input.session.conceptId,
+          query: input.query,
+          curriculumVersion: input.session.curriculumVersion,
+          locale: input.locale,
+          limit: 5,
+        },
+        input.context,
+      ),
     );
     const createdAt = this.clock.now().toISOString();
     if (response.unsupported) {

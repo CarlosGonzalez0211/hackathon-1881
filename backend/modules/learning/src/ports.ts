@@ -1,4 +1,5 @@
 import type {
+  AuthContext,
   Citation,
   CurriculumContextRequest,
   CurriculumContextResponse,
@@ -7,7 +8,10 @@ import type {
 
 /** Curriculum-owned boundary. The production adapter will point at Vianey's retrieval service. */
 export interface CurriculumContextPort {
-  retrieve(input: CurriculumContextRequest): Promise<CurriculumContextResponse>;
+  retrieve(
+    input: CurriculumContextRequest,
+    context: AuthContext,
+  ): Promise<CurriculumContextResponse>;
 }
 
 /** Provider boundary; model output is never allowed to update mastery directly. */

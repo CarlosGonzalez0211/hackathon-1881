@@ -49,6 +49,8 @@ export const curriculumConceptSchema = z
 export type CurriculumConcept = z.infer<typeof curriculumConceptSchema>;
 
 export const curriculumContextRequestSchema = z.object({
+  /** Server-authorized learner whose class scopes Content retrieval. */
+  studentId: idSchema,
   courseId: idSchema,
   topicId: idSchema,
   conceptId: conceptIdSchema,

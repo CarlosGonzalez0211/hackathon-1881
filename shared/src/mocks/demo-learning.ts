@@ -127,6 +127,7 @@ export const demoCurriculumConcepts: CurriculumConcept[] = [
 ];
 
 export const demoCurriculumContextRequest: CurriculumContextRequest = {
+  studentId: athenaDemoIds.students.lucia,
   courseId: athenaDemoIds.course,
   topicId: athenaDemoIds.topics.geometry,
   conceptId: demoLearningIds.concepts.triangleArea,
