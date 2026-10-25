@@ -9,8 +9,9 @@ export class AnalyticsService {
   ) {}
 
   async getClassAnalytics(context: AuthContext, classId: string): Promise<ClassAnalytics> {
-    if (!this.authorization.canAccessClass(context, classId)) {
-      throw forbidden("You cannot view this class");
+    // Class analytics are for the teaching side only; enrolled students must not see peers.
+    if (!this.authorization.canManageClass(context, classId)) {
+      throw forbidden("Only the class professor can view class analytics");
     }
     const analytics = await this.repository.getClassAnalytics(classId);
     if (!analytics) throw notFound("Class", classId);

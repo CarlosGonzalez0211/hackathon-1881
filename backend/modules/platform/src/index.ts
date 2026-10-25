@@ -21,5 +21,16 @@ export {
   type AuthorizationService,
   type AuthService,
 } from "./auth.js";
+export { RoleAuthorizationService } from "./authorization.js";
+export {
+  DirectoryAuthService,
+  InMemoryIdentityDirectory,
+  StaticTokenVerifier,
+  type IdentityDirectory,
+  type InMemoryClass,
+  type Memberships,
+  type ProfileRecord,
+  type TokenVerifier,
+} from "./identity.js";
 export { createPlatformServices, installPlatform, type PlatformServices } from "./services.js";
 export { platformRoutes } from "./routes.js";
