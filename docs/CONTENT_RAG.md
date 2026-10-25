@@ -131,21 +131,23 @@ Flags are visible to the class professor and admins only, store at most a 280-ch
 
 All under `/api/content`. Class routes check authorization before existence (analytics pattern); material-id routes return **404 both when the id is missing and when the caller cannot see it**, so ids from other classes do not leak. Errors use the platform `{ error }` body. All routes are class-scoped, so they use `canManageClass` / `canAccessClass`; `canAccessCourse` is not needed (the Learning adapter relies on Learning's own access check).
 
-| Method & path                                           | Who                               | Returns                                                        |
-| ------------------------------------------------------- | --------------------------------- | -------------------------------------------------------------- |
-| `POST /classes/:classId/materials`                      | `canManageClass`                  | `201 { material, uploadUrl }` or `200 { material, duplicate }` |
-| `POST /materials/:materialId/complete`                  | `canManageClass`                  | `Material` (verified)                                          |
-| `POST /materials/:materialId/process`                   | `canManageClass`                  | `Material` after one bounded step                              |
-| `GET /classes/:classId/materials`                       | `canAccessClass`                  | professor: all + status; student: ready only, public fields    |
-| `GET /materials/:materialId`                            | manage, or access if ready        | `Material`                                                     |
-| `PATCH /materials/:materialId`                          | `canManageClass`                  | title, topics                                                  |
-| `DELETE /materials/:materialId`                         | `canManageClass`                  | `204`                                                          |
-| `GET /materials/:materialId/download`                   | `canManageClass`                  | signed URL (60 s)                                              |
-| `GET /classes/:classId/objectives`, `/milestones`       | `canAccessClass`                  | ordered lists                                                  |
-| `PUT /objectives/:id`, `/milestones/:id`; `DELETE` same | `canManageClass` (via `class_id`) | upsert by id, soft delete, `409` on stale `updatedAt`          |
-| `POST /classes/:classId/chat`                           | `canAccessClass`                  | §6                                                             |
-| `GET /classes/:classId/flags`, `POST /flags/:id/review` | `canManageClass`                  | professor inbox                                                |
-| `POST /admin/content/reindex`                           | admin                             | queues re-embedding (§4)                                       |
+| Method & path                                                            | Who                        | Returns                                                                                |
+| ------------------------------------------------------------------------ | -------------------------- | -------------------------------------------------------------------------------------- |
+| `POST /classes/:classId/materials`                                       | `canManageClass`           | `201 { material, uploadUrl }` or `200 { material, duplicate }`                         |
+| `POST /materials/:materialId/complete`                                   | `canManageClass`           | `Material` (verified)                                                                  |
+| `POST /materials/:materialId/process`                                    | `canManageClass`           | `Material` after one bounded step                                                      |
+| `GET /classes/:classId/materials`                                        | `canAccessClass`           | professor: all + status; student: ready only, public fields                            |
+| `GET /materials/:materialId`                                             | manage, or access if ready | `Material`                                                                             |
+| `PATCH /materials/:materialId`                                           | `canManageClass`           | title, topics                                                                          |
+| `DELETE /materials/:materialId`                                          | `canManageClass`           | `204`                                                                                  |
+| `GET /materials/:materialId/download`                                    | `canManageClass`           | signed URL (60 s)                                                                      |
+| `GET /classes/:classId/objectives`, `/milestones`                        | `canAccessClass`           | ordered lists                                                                          |
+| `PUT /classes/:classId/objectives/:id`, `/milestones/:id`; `DELETE` same | `canManageClass`           | upsert by client id, soft delete, `409` on stale `expectedUpdatedAt` or duplicate code |
+| `POST /classes/:classId/chat`                                            | `canAccessClass`           | §6                                                                                     |
+| `GET /classes/:classId/flags`, `POST /flags/:id/review`                  | `canManageClass`           | professor inbox                                                                        |
+| `POST /admin/content/reindex`                                            | admin                      | queues re-embedding (§4)                                                               |
+
+In mock storage only, `PUT /content/dev-uploads/:token` (authenticated, `application/octet-stream`) stands in for the Supabase signed upload URL so mock mode works end to end.
 
 Request/response zod schemas go in a new `shared/src/content.ts`, reusing `materialStatusSchema` and `citationSchema`.
 

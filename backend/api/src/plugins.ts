@@ -1,10 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { analyticsRoutes } from "@athena/analytics";
+import { contentRoutes } from "@athena/content";
 import { curriculumRoutes } from "@athena/curriculum";
 import { learningRoutes } from "@athena/learning";
 import { platformRoutes } from "@athena/platform";
 import { worldRoutes } from "@athena/world";
 import { analyticsOptionsFor } from "./analytics.js";
+import { contentOptionsFor } from "./content.js";
 
 /**
  * One line per subsystem module. Each module edits only its own entry, so the app composition
@@ -17,4 +19,5 @@ export const modulePlugins: { name: string; plugin: (app: FastifyInstance) => Pr
   { name: "learning", plugin: learningRoutes },
   { name: "analytics", plugin: (app) => analyticsRoutes(app, analyticsOptionsFor()) },
   { name: "world", plugin: worldRoutes },
+  { name: "content", plugin: (app) => contentRoutes(app, contentOptionsFor()) },
 ];
