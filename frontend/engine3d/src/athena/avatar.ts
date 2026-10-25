@@ -8,11 +8,12 @@
  * feel identical. Legacy weights (idle, run, sprint, air, afk1-3) pick the dominant clip,
  * crossfaded over 0.2 s; slow movement plays `walk`.
  */
+import { avatarOutfitSources } from "../assets/athena-keys.mjs";
 import { athenaAvatarClips, athenaAvatarOutfit, athenaClipFade } from "../config/characters";
 import { applyFit, fitToBounds } from "../placement/athena-placement";
 import type { LegacyContext } from "../runtime/legacy-context";
 import type { AthenaInstallContext } from "./install";
-import { ClipPlayer, graftByNodeName, loadAthenaModel, localBounds } from "./models";
+import { ClipPlayer, finishModel, graftByNodeName, loadAthenaModel, localBounds } from "./models";
 
 /** Below this horizontal speed (legacy units/frame) a running blend plays `walk`. */
 const WALK_SPEED = 0.03;
@@ -41,30 +42,21 @@ export function avatarClipFor(weights: readonly number[], horizontalSpeed: numbe
   return clip === "run" && horizontalSpeed < WALK_SPEED ? "walk" : clip;
 }
 
-export function outfitKeys(outfit = athenaAvatarOutfit) {
-  return [
-    `models/avatar/athena-avatar-hair-${outfit.hair}.glb`,
-    `models/avatar/athena-avatar-top-${outfit.top}.glb`,
-    `models/avatar/athena-avatar-bottom-${outfit.bottom}.glb`,
-    `models/avatar/athena-avatar-shoes-${outfit.shoes}.glb`,
-    ...outfit.accessories.map((name) => `models/avatar/athena-avatar-acc-${name}.glb`),
-  ];
-}
+export const outfitKeys = (outfit = athenaAvatarOutfit) => avatarOutfitSources(outfit);
 
 async function buildAvatar(ctx: AthenaInstallContext) {
   const [base, ...parts] = await Promise.all([
-    loadAthenaModel(ctx, AVATAR_SLOT, { toon: false }),
+    loadAthenaModel(ctx, AVATAR_SLOT, { toon: false, merge: false }),
     ...outfitKeys().map((key) =>
-      loadAthenaModel(ctx, key, { toon: false }).catch((error) => {
+      loadAthenaModel(ctx, key, { toon: false, merge: false }).catch((error) => {
         console.warn(`[Athena] avatar part missing, skipped: ${key}`, error);
         return undefined;
       }),
     ),
   ]);
   for (const part of parts) if (part) graftByNodeName(ctx.scope, base.root, part.root);
-  // Toon after grafting so every part gets its hull in the final hierarchy.
-  ctx.toon.apply(base.root);
-  return base;
+  // Merge + toon after grafting so parts join their bone's draw calls and get hulls.
+  return finishModel(ctx, base);
 }
 
 export function installAthenaAvatar(ctx: AthenaInstallContext) {

@@ -48,19 +48,23 @@ const FLAT_GEOMETRIES = new Set([
 ]);
 /** Below this thickness (m) a mesh is a card/decal; a hull would show as a black slab. */
 export const FLAT_EPSILON = 0.02;
+/** Parts smaller than this (bounding-box diagonal, kit metres) get no hull (kit viewer rule). */
+export const MIN_OUTLINE_SIZE = 0.12;
 /** Guides and FX that the kit viewer never outlines. */
 const NO_OUTLINE_NAME = /^(__ink|orbit_path|curve|dash|crater|cloud|prominence|flare|points)/;
 
 /**
  * Whether a mesh gets an ink hull. Skips Points/Lines, transparent and double-sided
- * materials, and flat cards: Plane/Circle/Shape/Ring geometries, or (for GLB geometry,
- * which loses its type) any mesh thinner than {@link FLAT_EPSILON} on some axis.
+ * materials, tiny parts ({@link MIN_OUTLINE_SIZE}), and flat cards: Plane/Circle/Shape/Ring
+ * geometries, or (for GLB geometry, which loses its type) any mesh thinner than
+ * {@link FLAT_EPSILON} on some axis.
  */
 export function shouldOutline(shape: MeshShape) {
   if (shape.isPoints || shape.isLine || shape.transparent || shape.doubleSided) return false;
   if (!shape.hasNormals) return false;
   if (shape.geometryType && FLAT_GEOMETRIES.has(shape.geometryType)) return false;
   if (shape.name && NO_OUTLINE_NAME.test(shape.name)) return false;
+  if (Math.hypot(...shape.size) < MIN_OUTLINE_SIZE) return false;
   return Math.min(...shape.size) >= FLAT_EPSILON;
 }
 
@@ -130,9 +134,15 @@ uniform float thickness;
 varying vec2 vHighPrecisionZW;
 varying float vDepth;
 #include <common>
+#include <skinning_pars_vertex>
 void main() {
   vec3 transformed = position;
   vec3 objectNormal = normal;
+  // Skinned hulls follow their mesh (merge.ts turns node-animated characters into one
+  // SkinnedMesh); the chunks are no-ops without USE_SKINNING.
+  #include <skinbase_vertex>
+  #include <skinnormal_vertex>
+  #include <skinning_vertex>
   #ifdef USE_INSTANCING
     transformed = (instanceMatrix * vec4(transformed, 1.0)).xyz;
     objectNormal = mat3(instanceMatrix) * objectNormal;
@@ -246,14 +256,18 @@ export function createAthenaToon(
       isLine: !!mesh.isLine,
       name: mesh.name,
     };
-    if (!options.outline.enabled || !shouldOutline(shape)) return undefined;
+    if (!options.outline.enabled || mesh.userData.athenaNoInk || !shouldOutline(shape))
+      return undefined;
     const { ink } = gpu();
     const hull = mesh.isInstancedMesh
       ? new scope.InstancedMesh(geometry, ink, mesh.count)
       : mesh.isSkinnedMesh
-        ? undefined // skinned hulls would need skinning chunks; Athena rigs are rigid parts
+        ? new scope.SkinnedMesh(geometry, ink)
         : new scope.Mesh(geometry, ink);
-    if (!hull) return undefined;
+    if (mesh.isSkinnedMesh) {
+      hull.bind(mesh.skeleton, mesh.bindMatrix);
+      hull.boundingSphere = mesh.boundingSphere;
+    }
     if (mesh.isInstancedMesh) {
       hull.instanceMatrix = mesh.instanceMatrix;
       hull.frustumCulled = mesh.frustumCulled;

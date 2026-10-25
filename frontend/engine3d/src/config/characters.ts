@@ -1,3 +1,4 @@
+import { ATHENA_AVATAR_OUTFIT } from "../assets/athena-keys.mjs";
 import type { CharacterDefinition } from "../types";
 
 const accessoryGroup = (prefix: string, count: number) =>
@@ -73,13 +74,7 @@ export const actionDefinitions = {
  * Athena avatar (task 5). Developer-owned outfit, not a student skin system: there is no
  * appearance UI. Each part is `models/avatar/athena-avatar-<group>-<variant>.glb`.
  */
-export const athenaAvatarOutfit = {
-  hair: "bob",
-  top: "poncho",
-  bottom: "shorts",
-  shoes: "boots",
-  accessories: ["scarf-satchel"],
-} as const;
+export const athenaAvatarOutfit = ATHENA_AVATAR_OUTFIT;
 /**
  * Legacy blend-weight index (`animationProps.weights`: DEFAULT_FILES.animationFiles order)
  * → clip embedded in `athena-avatar-base.glb`.

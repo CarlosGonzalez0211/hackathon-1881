@@ -2,7 +2,7 @@
 // Builds the Athena asset kit (`athena-assets/`, Git LFS) into web-servable files under
 // `frontend/web/public/athena/` plus `athena-manifest.runtime.json` and a budget report.
 //
-//   GLB  → dedup → prune → weld → meshopt (EXT_meshopt_compression + quantization)
+//   GLB  → dedup → prune → flatten/join → weld → simplify → meshopt (EXT_meshopt_compression + quantization)
 //   PNG  → KTX2 via `toktx` when on PATH (ETC1S colour, UASTC data maps), else copied
 //   WAV  → OGG Vorbis q4 via `ffmpeg` when on PATH, else copied
 //   SVG  → copied (icons/, brand/)
@@ -18,9 +18,27 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { expandLegacyMap, normalizeLegacyKey } from "../src/assets/athena-keys.mjs";
+import {
+  avatarOutfitSources,
+  expandLegacyMap,
+  normalizeLegacyKey,
+} from "../src/assets/athena-keys.mjs";
 
-const PIPELINE_VERSION = 1;
+const PIPELINE_VERSION = 5;
+/**
+ * Mesh simplification (meshoptimizer): the procedural kit tessellates every sphere/lathe
+ * densely, which breaks the surface budget (≤ 250k tris) once ink hulls double it. Error is
+ * relative to each mesh's extent. Collision tiles and point clouds are left exact.
+ */
+const SIMPLIFY = { ratio: 0.25, error: 0.01 };
+const NO_SIMPLIFY = /models\/terrain\/|athena-space-(starfield|galaxy)\.glb$/;
+/**
+ * Avatar part GLBs keep their node hierarchy: the runtime grafts each part's meshes onto the
+ * base rig by parent node name. Everything else is flattened and joined first (animated
+ * nodes and their descendants are preserved by gltf-transform), so simplification works on
+ * whole models instead of thousands of tiny parts.
+ */
+const KEEP_HIERARCHY = /models\/(avatar|terrain)\//;
 const ENGINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // ATHENA_KIT_DIR points at another checkout of the kit (e.g. one with LFS objects fetched).
 const KIT = process.env.ATHENA_KIT_DIR
@@ -100,28 +118,38 @@ const tools = {
 let gltf;
 async function gltfToolchain() {
   if (gltf) return gltf;
-  const [{ NodeIO }, { ALL_EXTENSIONS }, functions, { MeshoptEncoder, MeshoptDecoder }] =
-    await Promise.all([
-      import("@gltf-transform/core"),
-      import("@gltf-transform/extensions"),
-      import("@gltf-transform/functions"),
-      import("meshoptimizer"),
-    ]);
-  await Promise.all([MeshoptEncoder.ready, MeshoptDecoder.ready]);
+  const [
+    { NodeIO },
+    { ALL_EXTENSIONS },
+    functions,
+    { MeshoptEncoder, MeshoptDecoder, MeshoptSimplifier },
+  ] = await Promise.all([
+    import("@gltf-transform/core"),
+    import("@gltf-transform/extensions"),
+    import("@gltf-transform/functions"),
+    import("meshoptimizer"),
+  ]);
+  await Promise.all([MeshoptEncoder.ready, MeshoptDecoder.ready, MeshoptSimplifier.ready]);
   const { Logger } = await import("@gltf-transform/core");
   const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({
     "meshopt.encoder": MeshoptEncoder,
     "meshopt.decoder": MeshoptDecoder,
   });
-  gltf = { io, functions, MeshoptEncoder, logger: new Logger(Logger.Verbosity.ERROR) };
+  gltf = {
+    io,
+    functions,
+    MeshoptEncoder,
+    MeshoptSimplifier,
+    logger: new Logger(Logger.Verbosity.ERROR),
+  };
   return gltf;
 }
 
 // ------------------------------------------------------------------------ processors
 /** Each processor: (input buffer, absolute input path) → { buffer, extension, format }. */
 const processors = {
-  async glb(input) {
-    const { io, functions, MeshoptEncoder, logger } = await gltfToolchain();
+  async glb(input, absolute) {
+    const { io, functions, MeshoptEncoder, MeshoptSimplifier, logger } = await gltfToolchain();
     const document = await io.readBinary(new Uint8Array(input));
     document.setLogger(logger);
     await document.transform(
@@ -129,7 +157,11 @@ const processors = {
       // Keep empty leaf nodes (rig sockets/attachment points) and unused attributes (UV/colour
       // may be used by the toon material later).
       functions.prune({ keepLeaves: true, keepAttributes: true }),
+      ...(KEEP_HIERARCHY.test(absolute) ? [] : [functions.flatten(), functions.join()]),
       functions.weld(),
+      ...(NO_SIMPLIFY.test(absolute)
+        ? []
+        : [functions.simplify({ simplifier: MeshoptSimplifier, ...SIMPLIFY })]),
       functions.meshopt({ encoder: MeshoptEncoder, level: "medium" }),
     );
     return {
@@ -355,12 +387,11 @@ await fs.writeFile(path.join(OUT, MANIFEST_FILE), JSON.stringify(manifest, null,
 
 // ---------------------------------------------------------------------------- budget
 const bytesOf = (key) => entries[key]?.bytes ?? 0;
+// What the surface view fetches before it is playable (src/athena/*). Terrain tiles are not
+// loaded: the spherical legacy terrain and its collision stay (docs/MIGRATION.md).
 const firstLoadKeys = [
   "slot:avatar/base",
-  ...["hair", "top", "bottom", "shoes"].map((group) => {
-    const legacy = `geometries/avatar/accessories/${group}1`; // defaultAvatarAccessories
-    return entries[legacy]?.source ?? legacy;
-  }),
+  ...avatarOutfitSources(),
   // Worst case per topic-anchor slot: the largest of its status variants.
   ...Array.from(
     { length: 6 },
@@ -369,10 +400,6 @@ const firstLoadKeys = [
         .map((status) => `slot:house/${slot}/${status}`)
         .sort((a, b) => bytesOf(b) - bytesOf(a))[0],
   ),
-  ...Array.from({ length: 10 }, (_, chunk) => [
-    `slot:terrain/${chunk}/lod0`,
-    `slot:terrain/${chunk}/collision`,
-  ]).flat(),
   ...Object.keys(entries).filter((key) => /^models\/npcs\//.test(key)),
   "new:npc.cat",
   ...Object.keys(entries).filter((key) => /^textures\/(sky-gradient-|clouds-noise-)/.test(key)),

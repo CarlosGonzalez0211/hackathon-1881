@@ -39,6 +39,28 @@ const SEGMENT_FAMILY = {
   intro: "audio",
   music: "audio",
 };
+/**
+ * Developer-owned avatar outfit (task 5): one look, no student skin system. Shared by the
+ * runtime (config/characters.ts) and the build's first-load budget.
+ */
+export const ATHENA_AVATAR_OUTFIT = Object.freeze({
+  hair: "bob",
+  top: "poncho",
+  bottom: "shorts",
+  shoes: "boots",
+  accessories: Object.freeze(["scarf-satchel"]),
+});
+/** Kit source path of every GLB the default outfit loads (parts + accessories). */
+export function avatarOutfitSources(outfit = ATHENA_AVATAR_OUTFIT) {
+  return [
+    `models/avatar/athena-avatar-hair-${outfit.hair}.glb`,
+    `models/avatar/athena-avatar-top-${outfit.top}.glb`,
+    `models/avatar/athena-avatar-bottom-${outfit.bottom}.glb`,
+    `models/avatar/athena-avatar-shoes-${outfit.shoes}.glb`,
+    ...outfit.accessories.map((name) => `models/avatar/athena-avatar-acc-${name}.glb`),
+  ];
+}
+
 /** Folders of the Athena kit; keys under them are Athena source paths and kept verbatim. */
 export const ATHENA_SOURCE_ROOTS = ["models", "textures", "icons", "brand"];
 const STRIP_EXTENSIONS = new Set([...Object.keys(EXTENSION_FAMILY), "svg"]);

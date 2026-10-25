@@ -25,6 +25,21 @@ export interface ExpandedLegacyMap {
   readonly missing: readonly { readonly key: string; readonly source: string }[];
 }
 
+export interface AthenaAvatarOutfit {
+  readonly hair: string;
+  readonly top: string;
+  readonly bottom: string;
+  readonly shoes: string;
+  readonly accessories: readonly string[];
+}
+export declare const ATHENA_AVATAR_OUTFIT: {
+  readonly hair: "bob";
+  readonly top: "poncho";
+  readonly bottom: "shorts";
+  readonly shoes: "boots";
+  readonly accessories: readonly ["scarf-satchel"];
+};
+export declare function avatarOutfitSources(outfit?: AthenaAvatarOutfit): string[];
 export declare function normalizeLegacyKey(path: string, family?: LegacyFamily): string;
 export declare function expandLegacyMap(
   legacyToAthena: Readonly<Record<string, string>>,

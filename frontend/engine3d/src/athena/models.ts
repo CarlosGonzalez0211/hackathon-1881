@@ -4,6 +4,7 @@
  */
 import type { LegacyContext } from "../runtime/legacy-context";
 import type { AthenaInstallContext } from "./install";
+import { animatedNodeNames, mergeStaticMeshes } from "./merge";
 
 type Object3D = LegacyContext;
 type AnimationClip = LegacyContext;
@@ -20,11 +21,15 @@ export function athenaUrl(ctx: AthenaInstallContext, key: string) {
   return resolved?.kind === "glb" ? resolved.url : undefined;
 }
 
-/** Load a GLB by manifest key, toon-shade it and make every mesh cast/receive shadows. */
+/**
+ * Load a GLB by manifest key, merge its static meshes per material (merge.ts), toon-shade
+ * it and make every mesh cast/receive shadows. Pass `toon: false, merge: false` to graft
+ * parts first and finish with {@link finishModel}.
+ */
 export async function loadAthenaModel(
   ctx: AthenaInstallContext,
   key: string,
-  { toon = true }: { toon?: boolean } = {},
+  { toon = true, merge = true }: { toon?: boolean; merge?: boolean } = {},
 ): Promise<AthenaModel> {
   const url = athenaUrl(ctx, key);
   if (!url) throw new Error(`Athena model not built: ${key}`);
@@ -34,9 +39,17 @@ export async function loadAthenaModel(
     object.castShadow = true;
     object.receiveShadow = true;
   });
+  if (merge) mergeStaticMeshes(ctx.scope, scene, animatedNodeNames(animations));
   if (toon) ctx.toon.apply(scene);
   scene.userData.athenaUrl = url;
   return { root: scene, animations, url };
+}
+
+/** Merge + toon a model assembled from parts (see {@link graftByNodeName}). */
+export function finishModel(ctx: AthenaInstallContext, model: AthenaModel) {
+  mergeStaticMeshes(ctx.scope, model.root, animatedNodeNames(model.animations));
+  ctx.toon.apply(model.root);
+  return model;
 }
 
 /**
