@@ -1,6 +1,6 @@
 # Supabase platform
 
-Migrations, policies and seeds live here. Applied to the Athena project so far: 0001, 0001b, 0400, 0401 and (2026-10-25) 0500–0503.
+Migrations, policies and seeds live here. Applied to the Athena project so far: 0001, 0001b, 0400, 0401 and (2026-10-25) 0500–0504.
 
 ## Migration number ranges
 
