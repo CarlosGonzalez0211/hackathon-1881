@@ -32,6 +32,10 @@ const texts: Array<Array<{ section: string; text: string; locale?: "en" | "es" }
       section: "Descomposición visual",
       text: "Un rectángulo de base 8 cm y altura 3 cm tiene área 24 cm². Una diagonal lo divide en dos triángulos de igual área; cada triángulo ocupa la mitad: 12 cm². Esta descomposición explica el factor 1/2.",
     },
+    {
+      section: "Base y altura perpendicular",
+      text: "Puedes elegir cualquiera de los lados de un triángulo como base. Desde el vértice opuesto, traza un segmento perpendicular a la recta que contiene esa base: forma un ángulo de 90 grados. La longitud de ese segmento es la altura correspondiente a la base elegida. Si cambias la base, debes identificar de nuevo su altura correspondiente. Un lado inclinado no es la altura a menos que sea perpendicular a la base. La altura puede quedar dentro o fuera del triángulo; prolonga la recta de la base si es necesario. Por ejemplo, si eliges una base de 8 cm y el segmento perpendicular mide 3 cm, usa 3 cm como altura, aunque otro lado mida 5 cm. Para identificar base y altura no necesitas calcular el área.",
+    },
   ],
   [
     {

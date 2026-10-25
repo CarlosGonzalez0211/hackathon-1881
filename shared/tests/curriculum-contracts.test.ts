@@ -26,8 +26,9 @@ test("both demo subjects use the same validated contracts and stable provenance"
     demoCurriculum.chunks.some((c) => c.courseId === "course-history-1" && c.locale === "es"),
   );
   const geometry = demoCurriculum.chunks.filter((c) => c.topicId === "topic-geometry");
-  assert.equal(geometry.length, 2);
-  assert.ok(geometry.every((c) => c.text.includes("12 cm²")));
+  assert.equal(geometry.length, 3);
+  assert.ok(geometry.slice(0, 2).every((c) => c.text.includes("12 cm²")));
+  assert.equal(geometry[2]!.section, "Base y altura perpendicular");
 });
 
 const invalidDatasets: Array<[string, (data: typeof demoCurriculum) => void]> = [

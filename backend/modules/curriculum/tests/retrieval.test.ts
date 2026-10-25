@@ -42,7 +42,7 @@ test("Person 2 can consume both ports for both subjects without credentials", as
     assert.ok(topics.some((t) => t.id === input.topicId));
     assert.equal((await catalog.listSources(input, access)).length, 1);
     const result = await context.retrieve(input, access);
-    assert.equal(result.chunks.length, 2);
+    assert.equal(result.chunks.length, input.courseId === math.courseId ? 3 : 2);
     assert.deepEqual(validateRetrievedContext(result, demoCurriculum), result);
     assert.deepEqual(await context.retrieve(input, access), result);
   }
@@ -156,7 +156,7 @@ test("service defensively excludes provider data outside course/topic/version", 
   repository.listMaterials = async () => structuredClone(demoCurriculum.materials);
   const service = new CurriculumRetrievalService(repository, new MockCourseAccessPolicy());
   const result = await service.retrieve(math, access);
-  assert.equal(result.chunks.length, 2);
+  assert.equal(result.chunks.length, 3);
   assert.ok(result.chunks.every((c) => c.citation.materialId.includes("topic-geometry")));
 });
 

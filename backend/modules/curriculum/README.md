@@ -1,178 +1,295 @@
-# Person 1 curriculum foundation — Phase 1
+# Vianey → Daniela: curriculum content handoff
 
-Offline, deterministic curriculum data and read ports for Person 2. No registered
-HTTP endpoints, database writes, real uploads, embeddings, model calls, or student
-mastery calculations. Existing world fixtures and teammate modules are untouched.
+Vianey (Person 1) provides courses, topics, instructor materials, grounded content,
+and resource availability. Daniela (Person 2) owns assessments, teaching strategy,
+misconceptions, and student mastery. These are deterministic offline mocks;
+no credentials, database, or model provider is needed.
 
-## Current scope: plain text only
+Current data: **2 courses, 12 topics, 18 source chunks, 3 Geometry concepts,
+and 6 bilingual History resource fixtures** (three resources per language).
+The instructor identities and teaching materials are explicitly authored demos.
 
-Vianey (Person 1) provides the content foundation for Daniela (Person 2).
-Mock lesson files are `.txt` under `shared/src/mocks/curriculum/content/`.
-Typed fixtures mirror those files so frontend consumers need no filesystem access.
-A test verifies that the TXT lesson text and fixture chunks remain synchronized.
-Course/topic metadata stays in TypeScript. No file uploading or PDF processing is
-part of the current milestone; PDF support can be considered later.
+## Start here
 
-## Daniela's handoff
+| You need                                     | Use                                                       | Details                                                             |
+| -------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------- |
+| Ordered courses/topics and source metadata   | `CurriculumRetrievalService` and its catalog ports        | Topic-level catalog section below                                   |
+| Geometry concept definitions                 | `geometryConceptCatalog`                                  | [Concept guide](GEOMETRY_CONCEPTS.md)                               |
+| Cited concept-aware context                  | `LearningCurriculumContextAdapter.retrieve()`             | [Retrieval guide](CONCEPT_RETRIEVAL.md)                             |
+| Formats available for a Geometry concept     | `CurriculumCapabilityService.getCapabilities()`           | [Capability guide](CONTENT_CAPABILITIES.md)                         |
+| History formats available in English/Spanish | `CurriculumTopicCapabilityService.getTopicCapabilities()` | [Capability guide](CONTENT_CAPABILITIES.md#history-topic-discovery) |
+| Actual History scripts, lyrics, outlines     | `HistoryResourceService.listResources()`                  | [History guide](HISTORY_RESOURCES.md)                               |
+| String IDs and Learning UUID aliases         | Explicit identity mapping                                 | [ID agreement](INTEGRATION_IDS.md)                                  |
 
-Vianey added the Mathematics curriculum from the proposal plus the agreed History
-course: two courses, twelve topics, and seventeen cited text chunks. You can read
-the catalog through `CurriculumTopicPort` and retrieve text through
-`CurriculumContextPort`. These mocks work without API keys or database access.
-They do not calculate student mastery or implement assessments.
+The code examples below are sequential parts of **one server-side example**.
+Imports assume a future file in `backend/modules/learning/src/`. They do not
+require editing Learning now. Do not import these server modules into the browser.
 
-The changes are on `feat/vianey-workspace`. After Vianey pushes that branch,
-you can browse it on GitHub or inspect it in a separate local checkout:
+## 1. Set up the mock dependencies
+
+```ts
+import {
+  MockCurriculumRepository,
+  MockCourseAccessPolicy,
+} from "../../curriculum/src/mock-repository.js";
+import { geometryConceptCatalog } from "../../curriculum/src/geometry-concept-catalog.js";
+import { LearningCurriculumContextAdapter } from "../../curriculum/src/learning-context-adapter.js";
+import { CurriculumCapabilityService } from "../../curriculum/src/capability-service.js";
+import { CurriculumTopicCapabilityService } from "../../curriculum/src/topic-capability-service.js";
+import { HistoryResourceService } from "../../curriculum/src/history-resource-service.js";
+import { CurriculumRetrievalService } from "../../curriculum/src/retrieval-service.js";
+
+const repository = new MockCurriculumRepository();
+const policy = new MockCourseAccessPolicy();
+const access = {
+  userId: "demo-student",
+  courseIds: ["course-math-1", "course-history-1"],
+};
+```
+
+This allowlist is only for the offline demo. Production composition must supply
+trusted identity/enrollment data and Person 4's access policy. Never accept course
+grants or the user identity from a request body. Readers check access before
+revealing source content or availability.
+
+## 2. Geometry concepts and IDs
+
+All three concepts use `course-math-1`, `topic-geometry`, curriculum version `1`.
+
+| Immutable concept ID                 | Title                         | Prerequisite concepts                   | Required for mastery     |
+| ------------------------------------ | ----------------------------- | --------------------------------------- | ------------------------ |
+| `math.geometry.rectangle_area`       | Área de rectángulos           | None                                    | No: supporting knowledge |
+| `math.geometry.triangle_base_height` | Base y altura de un triángulo | None                                    | Yes                      |
+| `math.geometry.triangle_area`        | Área de triángulos            | Rectangle area and triangle base/height | Yes                      |
+
+The misconception reference is `math.geometry.triangle_area.missing_half`.
+It is not a fourth concept; Daniela owns its detection and resolution.
+The catalog supplies metadata, not student scores or a mastery calculation.
+
+```ts
+const concepts = geometryConceptCatalog;
+const mathScope = {
+  courseId: "course-math-1",
+  topicId: "topic-geometry",
+  curriculumVersion: 1,
+};
+```
+
+The adapter also accepts Daniela's existing Mathematics UUID aliases:
+
+- Course: `00000000-0000-4000-8000-000000000a01`.
+- Geometry: `00000000-0000-4000-8000-000000000b02`.
+
+Aliases do not rename source citations or change World house assignments.
+History remains `course-history-1`; it has no concept catalog or UUID aliases yet.
+
+## 3. Retrieve grounded Geometry content
+
+```ts
+const context = new LearningCurriculumContextAdapter(repository, policy, access);
+const triangle = await context.retrieve({
+  ...mathScope,
+  conceptId: "math.geometry.triangle_area",
+  query: "¿Cómo se relacionan las áreas de un rectángulo y un triángulo?",
+  locale: "es",
+  limit: 5,
+});
+if (!triangle.unsupported) {
+  const evidence = triangle.chunks.map(({ text, citation }) => ({ text, citation }));
+  // Pass this grounded evidence to your tutor provider.
+  console.log(evidence);
+} else {
+  console.log(triangle.unsupportedReason);
+}
+```
+
+Request: `courseId`, `topicId`, `conceptId`, `query`, `curriculumVersion`, optional
+`locale`, optional `limit` (1–10, default 5). Query is nonblank and at most 2,000
+characters. Authorization is bound in the constructor, not included in the request.
+
+Supported response: `{ unsupported: false, curriculumVersion, chunks }`, with
+nonempty chunks containing `text`, `conceptId`, `citation`, and `relevanceScore`.
+
+Each citation contains `materialId`, `materialTitle`, `chunkId`, `excerpt`, and
+`section`. These TXT mocks have no PDF page or download URL. Use the returned IDs;
+they differ from Daniela's earlier mock material/chunk IDs.
+
+Unsupported response: `{ unsupported: true, curriculumVersion, chunks: [],
+unsupportedReason }`. Reasons are `concept_not_found`, `no_approved_content`,
+`insufficient_evidence`, or `curriculum_version_mismatch`. The mismatch response
+reports the active version. Invalid input and access denial throw `CurriculumError`
+with `INVALID_INPUT` or `FORBIDDEN`; provider/citation corruption is not hidden.
+
+All three Geometry concepts now have cited Spanish content, including a dedicated
+base-and-perpendicular-height lesson. Explicit English Geometry requests return
+`no_approved_content`. There is no silent translation or general-knowledge fallback.
+Matching uses deterministic lexical coverage, not embeddings or factual confidence.
+A valid concept can still return `insufficient_evidence` for an unmatched query.
+
+The complete triangle request/response is in
+[`fixtures/triangle-area-context.json`](fixtures/triangle-area-context.json).
+The adapter was checked against Daniela's actual Zod contract from
+`origin/feat/learning-grounded-tutor` at `edaf75f`; this is a snapshot, not a
+promise that future contract changes are already integrated.
+
+## 4. Discover available Geometry formats
+
+```ts
+const conceptDiscovery = new CurriculumCapabilityService(repository, policy, access);
+const geometryFormats = await conceptDiscovery.getCapabilities({
+  ...mathScope,
+  conceptId: "math.geometry.triangle_area",
+  locale: "es",
+});
+const availableGeometryFormats = geometryFormats.formats.filter((f) => f.available);
+// text + worked_example, both as text_excerpt.
+```
+
+Every recognized format is listed. Read `available`, `availableRepresentations`,
+`sourceChunkIds`, and `unavailableReason`; do not assume a recognized format exists.
+The current formats are `text`, `worked_example`, `visual_summary`, `slides`,
+`audio`, `podcast`, `music`, `video`, and `reel`. No live generation is implemented.
+
+## 5. Discover History resources in either language
+
+History covers Atlantic revolutions, with topics on evidence, Atlantic context,
+American, French, and Haitian revolutions, and comparison of rights/citizenship.
+The rich resources currently target **`topic-comparing-rights`** only.
+
+```ts
+const topicDiscovery = new CurriculumTopicCapabilityService(repository, policy, access);
+const historyScope = {
+  courseId: "course-history-1",
+  topicId: "topic-comparing-rights",
+  curriculumVersion: 1,
+};
+const englishFormats = await topicDiscovery.getTopicCapabilities({
+  ...historyScope,
+  locale: "en",
+});
+const spanishFormats = await topicDiscovery.getTopicCapabilities({
+  ...historyScope,
+  locale: "es",
+});
+```
+
+This topic-level contract needs no `conceptId`. Both locales currently expose:
+
+| Format    | Available representation | How to read                                   |
+| --------- | ------------------------ | --------------------------------------------- |
+| `text`    | `text_excerpt`           | Source chunks identified by `sourceChunkIds`  |
+| `podcast` | `script`                 | Authored resource identified by `resourceIds` |
+| `music`   | `lyrics`                 | Authored resource identified by `resourceIds` |
+| `slides`  | `slide_outline`          | Authored resource identified by `resourceIds` |
+
+Topic responses include `contractVersion: 1`, scope, locale, and format entries.
+They add `resourceIds` to the availability fields. Text entries have no generated
+resource ID. Source text is discovered from sources cited by the eligible resources;
+this is not a complete listing of all raw materials in every History topic.
+
+Unready/missing sources hide the affected formats with `no_approved_content`.
+Unauthored formats use `not_authored`. The reader throws `INVALID_INPUT`,
+`FORBIDDEN`, `NOT_FOUND`, or `VERSION_MISMATCH` for invalid requests, access denial,
+unknown scopes, or stale versions. Geometry concept response behavior is unchanged.
+
+## 6. Read History scripts, lyrics, and slide outlines
+
+```ts
+const resourceReader = new HistoryResourceService(repository, policy, access);
+const englishResources = await resourceReader.listResources({ ...historyScope, locale: "en" });
+const spanishResources = await resourceReader.listResources({ ...historyScope, locale: "es" });
+const podcastIds = spanishFormats.formats.find((f) => f.format === "podcast")!.resourceIds;
+const spanishPodcast = spanishResources.find((r) => podcastIds.includes(r.id));
+```
+
+Each language has three resources. `structuredContent` contains a title,
+representation, `provenance: authored_demo`, `playable: false`, and blocks.
+Academic blocks contain exact source excerpts with citations; creative hosting
+questions and mnemonic refrains are labeled separately. Resource-level citations
+aggregate the factual block citations. Mock approval does not imply real professor
+review. Corrupted citations are rejected rather than served.
+
+These are **scripts, lyrics, and outlines**: no playable audio/video, rendered deck,
+or fabricated media URL exists. Both capability interfaces keep
+`generationAvailable` and `playableMediaAvailable` false.
+Readable copies: [`fixtures/history-resources/`](fixtures/history-resources/).
+
+## 7. Topic-level catalog and raw text
+
+The original `CurriculumRetrievalService` remains available for ordered topics,
+material metadata, and general topic-level retrieval:
+
+```ts
+const catalog = new CurriculumRetrievalService(repository, policy);
+const course = await catalog.getCourse(mathScope.courseId, access);
+const orderedTopics = await catalog.listTopics(mathScope, access);
+const materials = await catalog.listSources(mathScope, access);
+const historyText = await catalog.retrieve(
+  { ...historyScope, query: "1776 1789 1791", limit: 5 },
+  access,
+);
+```
+
+This older topic interface takes access per call, accepts limits 1–20, and returns
+`{ courseId, topicId, curriculumVersion, chunks }` with `similarity` scores. Unmatched
+queries produce an empty array. It is **not** the same wire contract as the
+Learning adapter above. Use the concept adapter when implementing Daniela's
+`CurriculumContextPort`.
+
+## Files, setup, and verification
+
+- Shared course/material/citation contracts: `shared/src/curriculum.ts`.
+- Source catalog: `shared/src/mocks/demo-curriculum.ts`.
+- TXT source lessons: `shared/src/mocks/curriculum/content/`.
+- Person 1 services and adapter: this module's `src/`.
+- Curriculum tests: this module's `tests/` and `shared/tests/curriculum-contracts.test.ts`.
+
+Use Node 22 and pnpm 9.15.9. After installing dependencies, run from repository root:
+
+```sh
+pnpm build:platform
+pnpm test
+pnpm --filter @athena/api exec tsx --test "$PWD"/backend/modules/curriculum/tests/*.test.ts
+pnpm exec tsc -p backend/modules/curriculum/tsconfig.json
+pnpm lint
+pnpm format:check
+```
+
+The last implementation check passed **63 curriculum module tests**. The existing
+root test command also covers shared contracts and API smoke tests. The explicit
+module command is necessary: existing CI has not been changed to include it.
+
+In this local branch, Curriculum is not yet a workspace package; imports above use
+relative paths. Shared schemas/fixtures already exported by `shared/src/index.ts`
+are available through `@athena/shared` after building. New backend interfaces have
+not been added to shared exports. Main now contains a curriculum package stub;
+reconcile that separately when synchronizing branches.
+
+## Git sharing and remaining integration
+
+Work is on `feat/vianey-workspace`. `495738f912f9c67ee15f823f8cea95ff2ed0de03`
+contains the initial foundation. Concepts, adapters, capability discovery, and
+History resources belong to the subsequent handoff commit; use `git log -1` for
+the current commit SHA. The most recent fetch found no remote branch of this
+name. Daniela cannot fetch the handoff until Vianey pushes the branch after approval.
+
+After the branch is pushed, Daniela can inspect it without switching her branch:
 
 ```sh
 git fetch origin
 git worktree add --detach ../athena-vianey-preview origin/feat/vianey-workspace
 ```
 
-Choose an unused destination folder. This leaves your current branch unchanged.
-Then open `backend/modules/curriculum/README.md` inside that checkout and follow
-the integration example below. To incorporate the code into your own branch,
-coordinate the commit with Vianey first. We still need to agree concept IDs and
-how curriculum topic IDs connect to the world demo.
+Use an unused destination folder. Coordinate incorporation into Daniela's branch;
+these commands only create a separate preview checkout.
 
-## Files and ownership
+Before final integration, reconcile main's overlapping curriculum files and shared
+exports, map the preserved World IDs, and resolve the prerequisite differences in
+`INTEGRATION_IDS.md`. The new interfaces are not wired into Learning, World, or
+HTTP routes. Do not treat the last mock tests as proof that the branches already
+compile together.
 
-- `shared/src/curriculum.ts`: Zod contracts, active-snapshot graph validation,
-  citation-to-source validation, and generated-resource metadata contract.
-- `shared/src/mocks/demo-curriculum.ts`: independent Mathematics and History catalog.
-- `shared/src/mocks/curriculum/`: authored source text and provenance.
-- `backend/modules/curriculum/src/ports.ts`: repository, topic catalog, retrieval,
-  access-policy interfaces, and stable error codes.
-- `src/mock-repository.ts`: private copied fixture state and a demo-only access policy.
-- `src/retrieval-service.ts`: authorized catalog reads and lexical mock retrieval.
-
-Public schemas and fixtures are available from `@athena/shared` after
-`pnpm build:platform`. This backend module is not a workspace package. It uses
-explicit relative shared-source imports so it can be tested without editing
-workspace configuration, package exports, or API composition. Import its service
-and ports by relative path from a future server consumer. Do not import this
-server module into a browser.
-
-## Minimal Person 2 integration
-
-From a future file in `backend/modules/learning/src/`, imports would be:
-
-```ts
-import { CurriculumRetrievalService } from "../../curriculum/src/retrieval-service.js";
-import {
-  MockCurriculumRepository,
-  MockCourseAccessPolicy,
-} from "../../curriculum/src/mock-repository.js";
-import type { CurriculumContextPort, CurriculumTopicPort } from "../../curriculum/src/ports.js";
-
-const service = new CurriculumRetrievalService(
-  new MockCurriculumRepository(),
-  new MockCourseAccessPolicy(),
-);
-const topics: CurriculumTopicPort = service;
-const context: CurriculumContextPort = service;
-
-// Explicit demo identity only. Production must derive access on the server.
-const access = { userId: "demo-student", courseIds: ["course-math-1"] };
-const scope = { courseId: "course-math-1", curriculumVersion: 1 };
-const course = await topics.getCourse(scope.courseId, access);
-const orderedTopics = await topics.listTopics(scope, access);
-const result = await context.retrieve(
-  { ...scope, topicId: "topic-geometry", query: "base altura", limit: 2 },
-  access,
-);
-```
-
-`result` carries `courseId`, `topicId`, `curriculumVersion` and cited `chunks`.
-`listSources({ ...scope, topicId }, access)` returns ready material metadata.
-Each citation resolves to an actual section and exact excerpt in the authored
-source chunks. Material storage keys are illustrative, not download URLs. There
-are no fabricated PDF page references.
-
-The mock access policy checks a caller-provided allowlist; it does not verify an
-identity or enrollment. It is suitable for isolated tests and offline demos only.
-The future composition layer must inject Person 4's trusted policy and identity
-context before exposing HTTP routes. Request schemas reject claimed authorization
-fields. This phase does not create auth or enrollment contracts for Person 4.
-
-## Retrieval behavior
-
-- Authorization precedes repository access.
-- Input requires course, topic, active version, and a nonblank query of at most
-  2,000 characters. Limit defaults to 5 and must be an integer from 1 to 20.
-- Scope is checked on topics, materials, and chunks. Only ready materials qualify.
-- Query tokens are case/accent normalized. Common English/Spanish stop words are
-  ignored. Scores are the fraction of query tokens found in a chunk's section/text.
-- Only positive matches are returned, highest score first; chunk ID breaks ties.
-  These are mock lexical coverage scores, not embedding similarity or confidence.
-- Unmatched queries return `chunks: []`. Person 2 must handle unsupported answers
-  rather than substituting general model knowledge. Cross-language translation and
-  semantic search are not implemented.
-- Stable domain errors: `INVALID_INPUT`, `FORBIDDEN`, `NOT_FOUND`, `VERSION_MISMATCH`.
-  Future routes own their HTTP mapping. Provider/contract corruption throws rather
-  than returning invented sources.
-- Repository constructor and reads copy fixture objects. Mutating returned data
-  does not affect subsequent reads.
-
-## Demo courses
-
-Mathematics uses `course-math-1`, fictional Prof. Elena Ruiz (`prof-ruiz`), six
-ordered topics and threshold 0.8. `topic-geometry` has two Spanish source chunks:
-triangle area with a worked calculation, and rectangle decomposition. Person 2
-owns diagnostics, checkpoints, strategies, mastery, and student availability.
-Functions depends on Fractions, not Geometry: recommending it after Geometry does
-not make Geometry a hard prerequisite. The existing `topic-1`…`topic-6` world IDs
-are preserved; no automatic mapping or world integration is supplied.
-
-History uses `course-history-1`, fictional Prof. Ana Rivera (`prof-rivera`), and six
-topics: evidence, Atlantic context, American Revolution, French Revolution,
-Haitian Revolution, and comparison of rights. Prerequisites express this demo's
-teaching sequence, not a historical causal claim. Notes, slide text, contextual
-readings, and a timeline are authored plain-text fixtures with section locators;
-selected sections are available in English and Spanish. The 1750–1850 survey title
-is an instructional frame; current snippets focus on the revolutionary period,
-not comprehensive coverage of that century.
-
-All materials are explicitly `authored_demo`: fictional instructor attribution is
-not a real professor's approval, upload, or archival document. External references
-record fact-checking provenance; tutor citations point to the teaching fixtures,
-not to fictitious primary sources. Facts were checked against:
-
-- [National Archives: Declaration transcription](https://www.archives.gov/founding-docs/declaration-transcript)
-- [Office of the Historian: French Revolution](https://history.state.gov/milestones/1784-1800/french-rev)
-- [Office of the Historian: Haitian Revolution](https://history.state.gov/milestones/1784-1800/haitian-rev)
-
-The two historical overviews are retired publications, as their pages disclose.
-Source text is paraphrased; external references are not fetched at runtime.
-
-## Coordination and deferred work
-
-- Agree concept IDs/catalog ownership with Person 2 before authoring assessment
-  questions. This phase intentionally adds no concepts table or mastery logic.
-- The dataset models one active curriculum snapshot per course. Historical version
-  storage, publishing, invalidation, and concurrent edits need a later agreement.
-- IDs are demo strings. Production UUID mapping belongs to the migration plan.
-- Generated-resource contracts cover supported formats, locale, theme, approval
-  status and required citations. They do not yet implement semantic claim checking,
-  scripts/lyrics, audio files, presentations, or generation providers. A nonempty
-  citation array alone is not proof of grounding.
-- Podcast/music scripts, summaries, slide outlines and study guides follow after
-  this foundation, with claim-level source checks and clearly identified demos.
-- CRUD, material-state transitions, ingestion, extraction, embeddings, production
-  repositories, RLS, API registration and professor UI are later phases.
-- Do not replace the generic prompt endpoint with a tutor without separate review.
-
-## Verification from repository root
-
-```sh
-pnpm test
-pnpm --filter @athena/api exec tsx --test ../modules/curriculum/tests/retrieval.test.ts
-pnpm exec tsc -p backend/modules/curriculum/tsconfig.json
-pnpm typecheck
-pnpm lint
-```
-
-The new shared tests are picked up by the existing root test command. Backend
-module tests run explicitly so no root script changes are needed. The local
-`tsconfig.json` also checks the module tests using the existing API Node types.
-Existing CI is not modified to invoke these module-specific commands.
+Deferred Person 1 work includes persistent storage, publishing workflows, production
+authorization integration, course-management UI, and live resource generation.
+File uploads, PDF processing, and embeddings are outside the current TXT milestone.
+No assessments, student mastery, World progression, or analytics are implemented here.
