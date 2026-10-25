@@ -325,7 +325,9 @@ export function createCloudBelt(ctx: AthenaInstallContext, root: LegacyContext) 
       void main(){
         vUv=uv;
         vec4 center=modelMatrix*instanceMatrix*vec4(0.0,0.0,0.0,1.0);
-        vSeed=dot(center.xyz,vec3(.131,.173,.117));
+        // Seed from the fixed instance offset, not the rotating world position, so each
+        // cloud keeps its shape while the belt drifts.
+        vSeed=dot(instanceMatrix[3].xyz,vec3(.131,.173,.117));
         vSunView=normalize((viewMatrix*vec4(uSun,0.0)).xyz);
         vec4 view=viewMatrix*center;
         float scale=length(instanceMatrix[0].xyz);
