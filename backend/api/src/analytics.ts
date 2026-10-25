@@ -1,6 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import type { ClassRoster, RosterProvider } from "@athena/analytics";
+import { interventionStatusSchema, type InterventionStatus } from "@athena/shared";
+import type {
+  AnalyticsRoutesOptions,
+  ClassRoster,
+  InterventionStatusStore,
+  RosterProvider,
+} from "@athena/analytics";
 import { env } from "./env.js";
 import { supabaseAdmin } from "./lib.js";
 
@@ -47,7 +53,44 @@ export function supabaseRosterProvider(
   };
 }
 
-/** Undefined keeps the analytics module's demo roster (mock mode). */
-export function rosterProviderFor(mode = env.ATHENA_DATA_MODE): RosterProvider | undefined {
-  return mode === "real" ? supabaseRosterProvider(supabaseAdmin()) : undefined;
+const statusRow = z.object({ intervention_id: z.string(), status: interventionStatusSchema });
+
+/** Acknowledge/resolve decisions in `intervention_status` (migration 0401), service role only. */
+export class SupabaseInterventionStatusStore implements InterventionStatusStore {
+  constructor(private readonly client: SupabaseClient) {}
+
+  async statuses(classId: string) {
+    const { data, error } = await this.client
+      .from("intervention_status")
+      .select("intervention_id, status")
+      .eq("class_id", classId);
+    if (error) throw new Error(`Supabase query failed: ${error.message}`);
+    return new Map(
+      z
+        .array(statusRow)
+        .parse(data ?? [])
+        .map((row): [string, InterventionStatus] => [row.intervention_id, row.status]),
+    );
+  }
+
+  async set(classId: string, interventionId: string, status: InterventionStatus, actorId: string) {
+    const { error } = await this.client.from("intervention_status").upsert({
+      class_id: classId,
+      intervention_id: interventionId,
+      status,
+      updated_by: actorId,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(`Supabase write failed: ${error.message}`);
+  }
+}
+
+/** Empty in mock mode, so the analytics module keeps its demo roster and in-memory statuses. */
+export function analyticsOptionsFor(mode = env.ATHENA_DATA_MODE): AnalyticsRoutesOptions {
+  if (mode !== "real") return {};
+  const client = supabaseAdmin();
+  return {
+    rosters: supabaseRosterProvider(client),
+    statusStore: new SupabaseInterventionStatusStore(client),
+  };
 }
