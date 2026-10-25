@@ -5,7 +5,11 @@ import {
 } from "@athena/platform";
 import { env } from "./env.js";
 import { supabaseAdmin } from "./lib.js";
-import { SupabaseIdentityDirectory, SupabaseTokenVerifier } from "./supabase-identity.js";
+import {
+  SupabaseClassCatalog,
+  SupabaseIdentityDirectory,
+  SupabaseTokenVerifier,
+} from "./supabase-identity.js";
 
 /**
  * Platform services for the configured mode. Mock mode keeps the allow-all stubs (fixtures
@@ -21,5 +25,6 @@ export function platformServicesFor(mode = env.ATHENA_DATA_MODE): Partial<Platfo
       new SupabaseIdentityDirectory(client),
     ),
     authorization: new RoleAuthorizationService(),
+    classes: new SupabaseClassCatalog(client),
   };
 }
