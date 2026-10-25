@@ -1,13 +1,83 @@
-# Vianey → Daniela: curriculum content handoff
+# Vianey → Daniela and World owner: curriculum content handoff
 
 Vianey (Person 1) provides courses, topics, instructor materials, grounded content,
 and resource availability. Daniela (Person 2) owns assessments, teaching strategy,
-misconceptions, and student mastery. These are deterministic offline mocks;
-no credentials, database, or model provider is needed.
+misconceptions, and student mastery. The content fixtures and service tests are deterministic offline mocks;
+they need no credentials, database, or model provider. The connected browser
+Material panel requires a valid Supabase session and a reachable API.
 
 Current data: **2 courses, 12 topics, 18 source chunks, 3 Geometry concepts,
 and 6 bilingual History resource fixtures** (three resources per language).
 The instructor identities and teaching materials are explicitly authored demos.
+
+## Team status — verified October 25, 2026
+
+**Ready:** concept-aware Geometry retrieval, approved source text and citations,
+question-ID hint retrieval, capability discovery, bilingual History resource
+fixtures, World topic/HouseContent adapters, and authenticated curriculum read
+routes. The API publishes all six History topics by default when materials are
+ready; readers still need course access. Published does not mean enrolled or
+visible in World's course navigation.
+
+**Latest validation:** 120 tests passed: six tests invoking Daniela's actual
+LearningService and 114 Person 1 regression tests. The integration runner fetched
+sources from `origin/feat/learning-policy-freeze` at
+`43062843460aefb3d10646f007f96607fa544e8c`, built them in a temporary directory,
+and connected our adapter without changing her files. Type checking, lint, and
+formatting checks passed for the integration work. Earlier Material-panel checks
+passed eight frontend tests, 14 API route tests, frontend type checking, lint,
+and the production frontend build; those counts overlap the checks above.
+
+### For Daniela
+
+- All three agreed Geometry concepts return correctly scoped evidence:
+  `math.geometry.rectangle_area`, `math.geometry.triangle_base_height`, and
+  `math.geometry.triangle_area`. Existing Mathematics UUID aliases still work.
+- Lesson text and citations reach Learning's tutor unchanged. Follow-up messages
+  retain the concept and cited evidence.
+- Actual assessment question IDs work through `Hint for question <id>` retrieval.
+  Learning rejects a question/concept mismatch before retrieval and rejects an
+  invented citation chunk ID. Reading lessons or hints does not grant mastery.
+- Unknown concepts, unavailable locales, unmatched queries, wrong versions, and
+  unready materials stay unsupported; access denial remains an error.
+- Geometry lessons currently exist in Spanish. Explicit English requests return
+  `no_approved_content`. History resources are available in English and Spanish.
+
+See [the actual service test guide](DANIELA_INTEGRATION.md) for reproduction.
+These tests use her in-memory repositories, assessment bank, and deterministic
+mock tutor. They do not verify live Gemini, deployed route wiring, persistence,
+or a signed-in browser. Learning's follow-ups and hints do not forward a locale,
+and its mock hints use generic wording; Daniela should validate language
+continuity, concept-specific wording, and live-model answer leakage.
+
+### For the World owner
+
+The locally connected Material slot re-exports Person 1's
+`CurriculumMaterialPanel`, preserving `topicId`, `studentId`, `cta`, `onStart`,
+and `showStart`. HousePage keeps its separate start controls. The panel reads
+`GET /api/topics/:topicId/sources`, renders TXT lessons and citations, and offers
+English/Spanish selection, loading, retry, and sign-in states. History resources
+are podcast scripts, mnemonic lyrics, and slide outlines, not playable media.
+
+The slot uses the authenticated API even when other World clients use mocks.
+It does not change World progression, house slots, Mathematics IDs, enrollment,
+or course selection. See [the Material integration guide](../../../frontend/web/src/features/curriculum/MATERIAL_TAB.md).
+
+### Remaining blockers and owners
+
+| Owner                     | Next step                                                                                                                                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Supabase / Platform owner | Enable Google or GitHub sign-in; both were disabled in the latest read-only check. Allow the localhost auth callback while preserving team settings. Verify the real account's profile and class enrollment. |
+| Person 1 + Platform       | Agree on the History course UUID and add its explicit mapping. `classes.course_id` is UUID; `course-history-1` is not yet mapped. Preserve existing Mathematics IDs.                                         |
+| World owner + Person 1    | Connect real enrollment and curriculum providers. World still constructs fixture providers; real profiles and History navigation are not wired by the Material-slot change.                                  |
+| Daniela                   | Confirm follow-up/hint locale handling and concept-specific hints; test live-model grounding and answer leakage separately.                                                                                  |
+| Vianey + owners           | Once sign-in and navigation work, test Mathematics TXT and History resources in the browser. Review pending changes before authorizing a commit or push.                                                     |
+
+Local configuration checks confirmed Supabase accepted the configured keys and
+that profile, class, and enrollment tables were reachable. The login page and
+backend health returned 200; unauthenticated identity/material requests returned 401. No real signed-in Material-tab flow has been verified. Credentials stay in
+Git-ignored local environment files and must not be copied into this handoff.
+The Supabase owner should rotate the service-role key previously shared in chat.
 
 ## Start here
 
@@ -309,42 +379,22 @@ README for the test scope and refresh instructions.
 
 ## Git sharing and remaining integration
 
-The Person 1 integration work includes Learning handoff tests, the hint retrieval
-fix, World adapters, authenticated read routes, and an API-backed Material panel.
-History's six topics are published by default for authorized readers. The latest
-main has been merged before validation and publication.
+Published on `main` through `e76cc04`: the Person 1 retrieval/hint fixes,
+World adapters, authenticated read routes, History default publication, and the
+prepared Material panel. Teammates can fetch that committed work.
 
-After publication, inspect main without switching an existing checkout:
+**Still local and uncommitted:** the World Material-slot connection, its guide
+updates, this README update, and the actual Daniela service integration runner,
+tests, and guide. Teammates cannot pull those additions yet. Nothing in this
+handoff authorizes committing or pushing.
 
-```sh
-git fetch origin
-git worktree add --detach ../athena-vianey-preview origin/main
-```
+The source prerequisite differences in `INTEGRATION_IDS.md` remain. The World
+adapter preserves the shipped Mathematics graph through a compatibility view.
+The local World edit is limited to the Material slot re-export; it does not wire
+World's enrollment/topic providers or Daniela's production Learning routes.
+The latest tests exercise an explicit test connection to her service.
 
-Use an unused destination folder. The Material panel still needs to be connected
-by the World owner; publishing these backend topics does not change World course
-selection or enrollment.
-
-The prerequisite differences in `INTEGRATION_IDS.md` still exist in the source
-fixtures. The new World adapter preserves the shipped Mathematics demo graph
-through an explicit compatibility projection. No World mock, student progress,
-house assignment, or authoritative source fixture was rewritten.
-
-Person 1 now provides the two read routes, but the running World mock and
-Daniela's Learning implementation have not been switched to the new adapters.
-The API-backed frontend panel is ready under
-`frontend/web/src/features/curriculum/`; see
-[its integration guide](../../../frontend/web/src/features/curriculum/MATERIAL_TAB.md).
-The user requested that World files stay unchanged, so the Material slot re-export
-has not been applied. A real authenticated browser session has not been verified.
-History is now published by default through the curriculum API; authorized
-course access and ready materials are still required.
-
-The latest main update `9f53ff1` has been merged, preserving its World and UI
-changes. The Person 1 additions do not edit World-owned files.
-
-Deferred Person 1 work includes persistent storage, publishing workflows,
-production authorization integration, course-management UI, and live resource
-generation. File uploads, PDF processing, and embeddings remain outside the
-current TXT milestone. No assessment, mastery, World progression, or analytics
-implementation is added here.
+Deferred work includes persistent content storage, instructor publishing,
+course-management UI, and live resource generation. File uploads, PDF processing,
+and embeddings remain outside the current TXT milestone. Person 1 does not own
+assessment policy, mastery calculations, or World progression.
