@@ -49,6 +49,7 @@ const ALLOWED = new Set([
   "banner",
   "smoke",
   "mote",
+  "halo",
 ]);
 /** Palette swatches (ART_DIRECTION section 3) used as flat material colours. */
 const PALETTE = new Set(
@@ -68,9 +69,10 @@ const PALETTE = new Set(
 );
 const EMISSIVE_STRENGTH: Record<string, number> = {
   window_glow: 0.8,
-  lantern_glow: 0.8,
-  beacon_gold: 0.8,
-  gilt: 0.25,
+  lantern_glow: 0.9,
+  beacon_gold: 1.0,
+  gilt: 0.6,
+  halo: 0.6,
   rune_cold: 0.5,
   vine_bloom: 0.4,
   mote: 0.8,
@@ -100,6 +102,7 @@ const FORBID: Record<(typeof STATUSES)[number], string[]> = {
     "banner",
     "mote",
     "smoke",
+    "halo",
     "wall_plaster",
   ],
   available: ["vine_bloom", "beacon_gold", "mote", "smoke", "rune_cold", "vine_dry"],
@@ -156,7 +159,8 @@ for (const status of STATUSES)
         assert.equal(material.getBaseColorTexture(), null, `${name} is untextured`);
         assert.equal(material.getEmissiveTexture(), null, `${name} has no emissive texture`);
         const mode = material.getAlphaMode();
-        if (name === "smoke" || name === "mote") assert.equal(mode, "BLEND", `${name} blends`);
+        if (name === "smoke" || name === "mote" || name === "halo")
+          assert.equal(mode, "BLEND", `${name} blends`);
         else assert.equal(mode, "OPAQUE", `${name} is opaque`);
         // Flat colours stay on the palette.
         assert.ok(

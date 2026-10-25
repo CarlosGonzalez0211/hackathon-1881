@@ -56,6 +56,7 @@ const C = {
   gilt: "#E9BC5C",
   giltGlow: "#C99232",
   white: "#FFFFFF",
+  paneSlate: "#5B6470", // unlit glass: lighter than the slate swatches so a window never reads as a hole
 };
 
 /** Every material the houses may use: name -> { colour, options }. Contract: docs briefs/houses.md. */
@@ -90,15 +91,24 @@ const MATERIALS = {
     color: C.lantern,
     roughness: 0.5,
     emissive: C.lanternGlow,
-    emissiveIntensity: 0.8,
+    emissiveIntensity: 0.9,
   },
-  beacon_gold: { color: C.gold, roughness: 0.4, emissive: C.lanternGlow, emissiveIntensity: 0.8 },
+  // Warm halo around a lit paper lantern: a faint translucent shell.
+  halo: {
+    color: C.lantern,
+    roughness: 1,
+    emissive: C.lanternGlow,
+    emissiveIntensity: 0.6,
+    transparent: true,
+    opacity: 0.16,
+  },
+  beacon_gold: { color: C.gold, roughness: 0.4, emissive: C.lanternGlow, emissiveIntensity: 1.0 },
   gilt: {
     color: C.gilt,
     roughness: 0.45,
     metalness: 0.2,
     emissive: C.giltGlow,
-    emissiveIntensity: 0.25,
+    emissiveIntensity: 0.6,
   },
   rune_cold: {
     color: C.stoneCoolLight,
@@ -162,9 +172,9 @@ const VARIANTS = [
     chimney: { theta: 2.5, r: 0.8 },
     loom: { theta: 0.95, r: 1.0 },
     garden: [
-      { theta: -2.1, r: 1.04, s: 1 },
-      { theta: 2.3, r: 1.04, s: 0.8 },
-      { theta: 0.55, r: 1.08, s: 0.65 },
+      { theta: -0.85, r: 0.86, s: 1 },
+      { theta: 0.95, r: 0.88, s: 0.85 },
+      { theta: 2.9, r: 0.8, s: 0.7 },
     ],
   },
   {
@@ -185,9 +195,9 @@ const VARIANTS = [
     chimney: { theta: -2.3, r: 1.0 },
     loom: { theta: -0.95, r: 1.02 },
     garden: [
-      { theta: 2.4, r: 0.74, s: 0.9 },
-      { theta: -0.4, r: 0.78, s: 0.75 },
-      { theta: 1.1, r: 0.76, s: 0.6 },
+      { theta: -0.75, r: 0.84, s: 0.95 },
+      { theta: 0.85, r: 0.86, s: 0.8 },
+      { theta: 2.6, r: 0.8, s: 0.6 },
     ],
   },
   {
@@ -209,9 +219,9 @@ const VARIANTS = [
     chimney: { theta: -2.65, r: 0.95 },
     loom: { theta: 0.9, r: 0.98 },
     garden: [
-      { theta: -1.9, r: 0.97, s: 0.8 },
-      { theta: 2.2, r: 0.96, s: 0.7 },
-      { theta: 0.5, r: 0.98, s: 0.55 },
+      { theta: -0.8, r: 0.93, s: 0.8 },
+      { theta: 0.9, r: 0.94, s: 0.7 },
+      { theta: 2.7, r: 0.9, s: 0.55 },
     ],
   },
   {
@@ -233,9 +243,9 @@ const VARIANTS = [
     chimney: { x: 0.55, z: -0.3 },
     loom: { x: -0.7, z: 0.98 },
     garden: [
-      { x: -0.4, s: 0.9 },
-      { x: 0.3, s: 1 },
-      { x: 0.85, s: 0.7 },
+      { x: -0.55, s: 0.85 },
+      { x: 0.1, s: 1 },
+      { x: 0.7, s: 0.7 },
     ],
   },
   {
@@ -243,17 +253,17 @@ const VARIANTS = [
     folds: 8,
     square: false,
     radius: 0.85,
-    wallHeight: 1.45,
+    wallHeight: 1.25,
     plinth: [1.28, 1.28],
-    tone: "teal",
+    tone: "terra",
     lanternSide: 1,
     ocularFace: 0,
     arches: [
       { face: 1, y: 0.4 },
       { face: -1, y: 0.42 },
     ],
-    chimney: { theta: -2.3, r: 0.88 },
-    loom: { theta: -0.9, r: 0.95 },
+    chimney: { theta: -2.3, r: 0.64 },
+    loom: { theta: -0.9, r: 0.76 },
     garden: [],
   },
   {
@@ -264,7 +274,7 @@ const VARIANTS = [
     half: [1.0, 0.9],
     wallHeight: 1.5,
     plinth: [1.6, 1.28],
-    tone: "terra",
+    tone: "teal",
     lanternSide: -1,
     ocularFace: 0,
     arches: [
@@ -292,7 +302,10 @@ export const ASYMMETRY = [
   "middle step shifted 3 cm off the door axis, uneven half-ring of flagstones",
   "moss on the back-left of the plinth only",
   "flag flies towards -X; loom frame and garden clumps on one side of the roof",
-  "v3: ridge sags and rises towards the gable ends, chimney off centre",
+  "v3: ridge sags 6 percent towards the middle, chimney off centre, crossed beams on the front gable only",
+  "each chimney leans 4 degrees in its own direction and has its own girth",
+  "flagstones: six of different size and turn, clustered towards the door, none on the back half",
+  "v4: the chimney stands on the balcony beside the turret, the lantern hangs on the front-right of the rail",
   "v5: dome sits on the back half of the terrace, planter bed left of the door axis",
 ];
 
@@ -618,7 +631,7 @@ async function buildHouse(THREE, T, v, status) {
   // ---- colours ----------------------------------------------------------------------------
   const tone = locked ? TONES.slate : TONES[cfg.tone];
   const wallColor = locked ? C.stoneCoolLight : C.plaster;
-  const underColor = locked ? C.stoneCoolLight : C.warmWhite;
+  const underColor = tone.dark; // roof undersides stay in the tile colour, never grey-white
   const plinthDark = locked ? C.stoneCoolDark : C.sandDark;
   const plinthLight = locked ? "#A3B1B7" : C.sandLight;
   const timberColor = locked ? C.timberDark : C.timber;
@@ -762,36 +775,32 @@ async function buildHouse(THREE, T, v, status) {
       put(`step${i}`, g, "stone_step");
     });
 
-    // Half-ring of flagstones hugging the plinth edge beside the lowest step (uneven on purpose:
-    // three on the left, two on the right, different sizes and turns).
-    const stones = [
-      [-0.66, 0.2, 0.14, 0.5],
-      [-0.98, 0.17, 0.12, 1.1],
-      [-1.3, 0.15, 0.1, 0.2],
-      [0.74, 0.19, 0.13, 2.0],
-      [1.08, 0.16, 0.11, 1.5],
-    ];
-    stones.forEach(([theta0, rx, rz, rot], i) => {
-      const theta = cfg.square ? theta0 * 0.75 : theta0;
-      const rho = cfg.square ? K.rho(theta) : 1;
-      const px = plinthX * rho * Math.sin(theta);
-      const pz = plinthZ * rho * Math.cos(theta);
-      const len = Math.hypot(px, pz) || 1;
+    // Six flagstones of different size and turn, clustered round the foot of the steps (none on
+    // the back half), sunk a centimetre into the ground. [x, z, rx, rz, rot, segments]
+    const stoneX = cfg.square ? plinthX / 1.28 : 1;
+    [
+      [-0.98, 1.12, 0.21, 0.13, 0.4, 7],
+      [-1.2, 0.86, 0.12, 0.1, 1.2, 6],
+      [-0.72, 1.4, 0.1, 0.075, 2.0, 6],
+      [0.92, 1.17, 0.17, 0.12, 2.6, 7],
+      [1.18, 0.9, 0.1, 0.09, 0.9, 5],
+      [0.98, 1.42, 0.08, 0.065, 0.2, 6],
+    ].forEach(([x, z, rx, rz, rot, n], i) => {
       const g = T.lathe(
         [
-          [0.9, 0],
-          [1.0, 0.03],
-          [0.92, 0.055],
-          [0.5, 0.062],
-          [0, 0.064],
+          [0.9, -0.012],
+          [1.0, 0.02],
+          [0.93, 0.045],
+          [0.5, 0.052],
+          [0, 0.054],
         ],
-        { segments: 7, divisions: 1 },
+        { segments: n, divisions: 1 },
       );
       g.scale(rx, 1, rz);
       T.smoothNormals(g, 60);
-      place(g, { x: px + (px / len) * 0.17, z: zc + pz + (pz / len) * 0.17, ry: rot });
+      place(g, { x: x * stoneX, z, ry: rot });
       T.bake.fill(g, C.white);
-      T.bake.gradient(g, { bottom: plinthDark, top: plinthLight, from: 0, to: 0.07 });
+      T.bake.gradient(g, { bottom: plinthDark, top: plinthLight, from: -0.01, to: 0.06 });
       put(`flag${i}`, g, "stone_step");
     });
 
@@ -892,10 +901,15 @@ async function buildHouse(THREE, T, v, status) {
     if (kind === "arch") {
       const glass = new THREE.ShapeGeometry(K.archShape(w, h), 6);
       mk(glass, glassOff);
-      put(lit ? "glow" : "glass", glass, lit ? "window_glow" : "window_unlit", C.slateDark);
+      put(lit ? "glow" : "glass", glass, lit ? "window_glow" : "window_unlit", C.paneSlate);
       const frame = K.archFrame(w, h, 0.03);
       mk(frame, glassOff + 0.004);
       put("frame", frame, "timber", timberColor);
+      // small stone sill under the frame
+      const sill = K.blob(w / 2 + 0.07, 0.022, 0.055, 8);
+      sill.translate(0, -0.05, 0.034);
+      mk(sill, 0.0);
+      put("window_sill", sill, "stone_step", plinthLight);
       // Shutters: open leaves folded flat beside the window, or closed leaves meeting in the middle.
       const leafW = 0.085;
       if (openShutters) {
@@ -927,7 +941,7 @@ async function buildHouse(THREE, T, v, status) {
       // Oculus: lit or dark glass in a gilt ring.
       const glass = K.disc(w / 2 - 0.005, 14);
       mk(glass, glassOff);
-      put(lit ? "glow" : "glass", glass, lit ? "window_glow" : "window_unlit", C.slateDark);
+      put(lit ? "glow" : "glass", glass, lit ? "window_glow" : "window_unlit", C.paneSlate);
       const ring = T.lathe(
         [
           [w / 2 - 0.012, -0.008],
@@ -976,7 +990,7 @@ async function buildHouse(THREE, T, v, status) {
     const panel = new THREE.ShapeGeometry(K.archShape(doorW, doorH), 8);
     panel.translate(0, dy, dz);
     if (open) put("doorway", panel, "window_glow");
-    else put("doorway", panel, "window_unlit", C.slateDark);
+    else put("doorway", panel, "window_unlit", C.paneSlate);
     const frame = new THREE.ExtrudeGeometry(K.archU(doorW, doorH, 0.06, 8), {
       depth: 0.05,
       bevelEnabled: false,
@@ -1016,6 +1030,9 @@ async function buildHouse(THREE, T, v, status) {
   }
 
   // ============================================================================= ROOF
+  const mixHex = (a, b, t) => "#" + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
+  const roofEdge = mixHex(tone.dark, C.ink, 0.4); // the visible thickness of an eave, and the course lines
+  const LIP = 0.026;
   let scallopParams = { folds: lobeFolds, depth: 0.14, lift: 0.075, r0: 0.9, r1: 1.2 };
   const roof = buildRoof();
   function ridgeBand(prof, r, hw, lift) {
@@ -1027,12 +1044,6 @@ async function buildHouse(THREE, T, v, status) {
       [r - hw, prof.yAt(r - hw) - 0.05],
     ];
     return T.lathe(pts, { segments: 2 * folds * Math.ceil(36 / (2 * folds)), divisions: 1 });
-  }
-
-  function roofLathe(profile, scalloped = true) {
-    const g = T.lathe(profile, { segments: segs(2), divisions: 2 });
-    if (scalloped) K.scallop(g, scallopParams);
-    return g;
   }
 
   /** Bake a roof: tone gradient dark at the eave, pale top; warm underside; return geometry. */
@@ -1047,6 +1058,162 @@ async function buildHouse(THREE, T, v, status) {
       strength: 1,
     });
     return g;
+  }
+
+  // ---- tiled roofs ------------------------------------------------------------------------
+  /**
+   * Tiled roof: a lathe whose top surface steps up by `lip` at every course line (the lower edge of
+   * a row of tiles). The rows are real geometry, so they survive the build's simplification, and
+   * the shadow under each step is the thin darker line. Profile, from the centre outwards:
+   * `under` (underside), the eave tip (crease, a visible thickness edge), the upturned `flare`
+   * going inwards, then `courses` down to the apex. `base` is the monotone curve (descending r)
+   * the courses follow. Vertex colours: one tile colour, darker lines at the course edges, the
+   * eave thickness and the underside in the dark tile colour.
+   */
+  function tileRoof({ under, tip, flare = [], base, courses, cap = [], lip = LIP, yLow, yHigh }) {
+    const prof = K.profile(base);
+    const yb = (r) => prof.yAt(r);
+    // the step is pushed out along the surface normal, so it stays chunky on a steep cone too
+    const off = (r, k) => {
+      const m = (yb(r + 0.01) - yb(Math.max(0, r - 0.01))) / (r + 0.01 - Math.max(0, r - 0.01));
+      const l = Math.hypot(m, 1);
+      return [r + (k * -m) / l, yb(r) + k / l];
+    };
+    const pts = [...under, [tip.r, tip.under, 1], [tip.r, tip.top, 1], ...flare];
+    for (let k = 0; k < courses.length - 1; k++) {
+      const ro = courses[k];
+      const ri = courses[k + 1];
+      const rs = Math.max(ri, ro - 0.012);
+      pts.push([ro, yb(ro), 1]); // bottom of the riser
+      pts.push([...off(rs, lip), 1]); // top of the riser
+      const rm = lerp(rs, ri, 0.5);
+      pts.push(off(rm, lip * 0.5));
+    }
+    const last = courses[courses.length - 1];
+    pts.push([last, yb(last)]);
+    pts.push(...cap);
+    const g = T.lathe(pts, { segments: segs(), divisions: 1 });
+    const pos = g.attributes.position;
+    const nor = g.attributes.normal;
+    const col = new Float32Array(pos.count * 3);
+    const body = new THREE.Color(tone.light);
+    const shade = new THREE.Color(tone.dark);
+    const edge = new THREE.Color(roofEdge);
+    const out = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const r = Math.hypot(pos.getX(i), pos.getZ(i));
+      const y = pos.getY(i);
+      if (r >= tip.r - 0.004) out.copy(edge);
+      else if (nor.getY(i) < -0.25) out.copy(shade);
+      else {
+        const t = Math.min(1, Math.max(0, (y - yLow) / (yHigh - yLow)));
+        out.copy(shade).lerp(body, 0.55 + 0.45 * smoothstep(0, 0.6, t));
+        let w = 0;
+        for (let k = 0; k < courses.length - 1; k++) {
+          const d = r - courses[k];
+          if (d > -0.003 && d < 0.006 && y - yb(courses[k]) < 0.015) w = 1;
+        }
+        if (w) out.lerp(edge, 0.85);
+      }
+      col[i * 3] = out.r;
+      col[i * 3 + 1] = out.g;
+      col[i * 3 + 2] = out.b;
+    }
+    g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+    return { geometry: g, prof, tip, courses, lip };
+  }
+
+  /** Scallop the eave of a tiled roof, move it into the plan and add it to the scene. */
+  function finishRoof(t, name, params, at = zc) {
+    scallopParams = params;
+    K.scallop(t.geometry, scallopParams);
+    place(t.geometry, { z: at });
+    put(name, t.geometry, "roof_tile");
+  }
+
+  /** Thin gilt trim ring along the scalloped eave tip (done houses). */
+  function eaveRing(tipR, tipTop, at = zc, radius = 0.024) {
+    const n = folds * 8;
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const theta = (i / n) * TAU;
+      const lobe = Math.abs(Math.cos((folds * theta) / 2));
+      const r = tipR * (1 - scallopParams.depth * (1 - lobe)) - 0.006;
+      pts.push(
+        new THREE.Vector3(
+          Math.sin(theta) * r,
+          tipTop + scallopParams.lift * lobe + 0.004,
+          at + Math.cos(theta) * r,
+        ),
+      );
+    }
+    const curve = new THREE.CatmullRomCurve3(pts, true);
+    put("eave_trim", T.sweep(curve, { radius, tubular: n * 2, radial: 4 }), "gilt");
+  }
+
+  /** Thin gilt meridians up a tiled roof (done houses), like the onion dome's. */
+  function meridians(t, rStart, rEnd, count = 4, at = zc) {
+    for (let i = 0; i < count; i++) {
+      const theta = 0.39 + (i * TAU) / count;
+      const pts = [];
+      for (let k = 0; k <= 8; k++) {
+        const r = lerp(rStart, rEnd, k / 8);
+        const y = t.prof.yAt(r) + t.lip * 0.5 + 0.012;
+        pts.push([Math.sin(theta) * r, y, at + Math.cos(theta) * r]);
+      }
+      put(`meridian${i}`, K.tube(pts, 0.016, { tubular: 14, radial: 4, caps: "round" }), "gilt");
+    }
+  }
+
+  /** Paper lantern, 0.22 m tall: thin iron caps, a paper body that is itself the light. Hangs from y = yTop. */
+  function paperLantern(x, yTop, z, lit, tag = "lantern") {
+    const y0 = yTop - 0.03 - 0.22;
+    const bodyGeo = T.lathe(
+      [
+        [0, 0.02],
+        [0.026, 0.022],
+        [0.047, 0.07],
+        [0.052, 0.11],
+        [0.045, 0.15],
+        [0.025, 0.188],
+        [0, 0.19],
+      ],
+      { segments: 10, divisions: 1 },
+    );
+    place(bodyGeo, { x, y: y0, z });
+    put(
+      tag,
+      bodyGeo,
+      lit ? "lantern_glow" : "lantern_paper",
+      lit ? undefined : locked ? C.stoneCoolLight : C.warmWhite,
+    );
+    const baseCap = T.lathe(
+      [
+        [0, 0],
+        [0.034, 0.002],
+        [0.038, 0.016],
+        [0.0, 0.022],
+      ],
+      { segments: 8, divisions: 1 },
+    );
+    place(baseCap, { x, y: y0, z });
+    put(`${tag}_foot`, baseCap, "iron", C.slateDark);
+    const topCap = T.lathe(
+      [
+        [0.058, 0.186],
+        [0.04, 0.2],
+        [0.014, 0.218],
+        [0.006, 0.23],
+      ],
+      { segments: 8, divisions: 1 },
+    );
+    place(topCap, { x, y: y0, z });
+    put(`${tag}_cap`, topCap, "iron", C.slateDark);
+    if (lit) {
+      const halo = K.blob(0.105, 0.13, 0.105, 10);
+      place(halo, { x, y: y0 + 0.105, z });
+      put(`${tag}_halo`, halo, "halo");
+    }
   }
 
   /** Finial: a post carrying a lantern cage, with the flag on its stem. Returns the top y. */
@@ -1113,22 +1280,39 @@ async function buildHouse(THREE, T, v, status) {
     return top;
   }
 
-  function chimney(x, y0, z, height) {
+  function chimney(x, y0, z, height, { tilt = 0.07, girth = 1 } = {}) {
+    // 40 percent shorter than the first pass, a capped stack that leans 4 degrees
+    const h = height * 0.6;
+    const q = girth;
     const stack = T.lathe(
       [
-        [0.13, 0],
-        [0.14, height * 0.35],
-        [0.115, height * 0.8],
-        [0.14, height * 0.9, 1],
-        [0.15, height],
-        [0.05, height + 0.01],
+        [0.13 * q, 0],
+        [0.14 * q, h * 0.4],
+        [0.125 * q, h * 0.85],
+        [0.13 * q, h],
+        [0, h],
       ],
       { segments: 8, divisions: 1 },
     );
-    place(stack, { x, y: y0, z, ry: 0.4 });
+    const cap = T.lathe(
+      [
+        [0.0, 0],
+        [0.18 * q, 0],
+        [0.19 * q, 0.035],
+        [0.15 * q, 0.06],
+        [0.07 * q, 0.065],
+        [0.0, 0.058],
+      ],
+      { segments: 8, divisions: 1 },
+    );
+    cap.translate(0, h, 0);
+    for (const g of [stack, cap]) place(g, { x, y: y0, z, ry: 0.4, rz: tilt });
     T.bake.fill(stack, C.white);
-    T.bake.gradient(stack, { bottom: plinthDark, top: plinthLight, from: y0, to: y0 + height });
+    T.bake.gradient(stack, { bottom: plinthDark, top: plinthLight, from: y0, to: y0 + h });
     put("chimney", stack, "stone_step");
+    T.bake.fill(cap, C.white);
+    T.bake.gradient(cap, { bottom: plinthDark, top: plinthDark, from: y0 + h, to: y0 + h + 0.07 });
+    put("chimney_cap", cap, "stone_step");
     if (progress) {
       [
         [0.04, 0.2, 0.065],
@@ -1136,17 +1320,17 @@ async function buildHouse(THREE, T, v, status) {
         [0.17, 0.7, 0.115],
       ].forEach(([dx, dy, r], i) => {
         const puff = K.blob(r, r * 0.8, r, 7);
-        place(puff, { x: x + dx, y: y0 + height + dy, z: z - dx * 0.4 });
+        place(puff, { x: x + dx - tilt * h, y: y0 + h + dy * 0.8, z: z - dx * 0.4 });
         put(`smoke${i}`, puff, "smoke");
       });
     }
-    return y0 + height;
+    return y0 + h;
   }
 
-  /** Door lantern on a curved iron arm; lit in every state but locked. Returns nothing. */
+  /** Door lantern: a small paper lantern on a thin curved iron arm beside the door. */
   function doorLantern() {
     const side = cfg.lanternSide;
-    const f = wallFrame(side * 0.52, P + 1.0, 0);
+    const f = wallFrame(side * 0.52, P + Math.min(0.85, H * 0.72), 0);
     const base = [f.x, f.y, f.z - 0.015];
     const out = [Math.sin(f.ry), Math.cos(f.ry)];
     const along = [Math.cos(f.ry), -Math.sin(f.ry)];
@@ -1156,58 +1340,26 @@ async function buildHouse(THREE, T, v, status) {
       base[2] + out[1] * o + along[1] * a * side,
     ];
     const arm = K.tube(
-      [p(0, 0, -0.02), p(0.07, 0, 0.07), p(0.18, 0.03, 0.095), p(0.27, 0.07, 0.03)],
-      0.014,
-      {
-        tubular: 10,
-        radial: 5,
-      },
+      [p(0, 0, -0.02), p(0.06, 0, 0.06), p(0.15, 0.02, 0.09), p(0.22, 0.04, 0.05)],
+      0.011,
+      { tubular: 10, radial: 4 },
     );
-    put("lantern_arm", arm, "iron", locked ? C.slateDark : C.slateDark);
-    const hang = p(0.27, 0.07, 0.03);
-    const body = K.lanternBody(0.2, 0.085, 10);
-    place(body, { x: hang[0], y: hang[1] - 0.25, z: hang[2] });
-    const lit = open; // available, progress, done
+    put("lantern_arm", arm, "iron", C.slateDark);
+    const hang = p(0.22, 0.04, 0.05);
     put(
-      "lantern",
-      body,
-      lit ? "lantern_glow" : "lantern_paper",
-      lit ? undefined : C.stoneCoolLight,
+      "lantern_chain",
+      K.tube(
+        [
+          [hang[0], hang[1], hang[2]],
+          [hang[0], hang[1] - 0.03, hang[2]],
+        ],
+        0.006,
+        { tubular: 1, radial: 3, caps: false },
+      ),
+      "iron",
+      C.slateDark,
     );
-    const capGeo = T.lathe(
-      [
-        [0.09, 0],
-        [0.06, 0.03],
-        [0.015, 0.06],
-      ],
-      { segments: 10, divisions: 1 },
-    );
-    place(capGeo, { x: hang[0], y: hang[1] - 0.05, z: hang[2] });
-    put("lantern_cap", capGeo, "iron", C.slateDark);
-    const chain = K.tube(
-      [
-        [hang[0], hang[1], hang[2]],
-        [hang[0], hang[1] - 0.05, hang[2]],
-      ],
-      0.006,
-      {
-        tubular: 1,
-        radial: 3,
-        caps: false,
-      },
-    );
-    put("lantern_chain", chain, "iron", C.slateDark);
-    const bottom = T.lathe(
-      [
-        [0.0, 0],
-        [0.035, 0.004],
-        [0.03, 0.025],
-        [0, 0.03],
-      ],
-      { segments: 8, divisions: 1 },
-    );
-    place(bottom, { x: hang[0], y: hang[1] - 0.28, z: hang[2] });
-    put("lantern_foot", bottom, "iron", C.slateDark);
+    paperLantern(hang[0], hang[1], hang[2], open);
   }
 
   // ---- roof builders ----------------------------------------------------------------------
@@ -1227,67 +1379,82 @@ async function buildHouse(THREE, T, v, status) {
     };
 
     if (v === 0) {
-      // swoop cone, 8 folds, flared skirt overhanging 0.26 m
-      const rim = 1.23;
-      const top = [
-        [rim, yT - 0.025],
-        [1.14, yT + 0.0],
-        [0.98, yT + 0.07],
-        [0.8, yT + 0.2],
-        [0.58, yT + 0.5],
-        [0.34, yT + 1.0],
-        [0.14, yT + 1.5],
-        [0.0, yT + 1.82],
-      ];
-      const profile = [
-        [0, yT - 0.01],
-        [0.6, yT - 0.012],
-        [1.0, yT - 0.045],
-        [1.2, yT - 0.075],
-        [rim, yT - 0.08, 1],
-        [rim, yT - 0.025, 1],
-        ...top.slice(1),
-      ];
-      scallopParams = { folds, depth: 0.15, lift: 0.08, r0: 0.95, r1: rim };
-      const g = roofLathe(profile);
-      toPlan(g);
-      paintRoof(g, { yLow: yT - 0.05, yHigh: yT + 1.82 });
-      put("roof", g, "roof_tile");
-      const prof = K.profile(top);
-      addRidges(prof, [1.02, 0.8, 0.58, 0.36], 0.062, 0.07);
-      result.prof = prof;
-      result.apex = [0, yT + 1.82, 0];
-      result.surface = (r) => prof.yAt(r);
-      result.skirtY = (r) => prof.yAt(r);
+      // swoop cone, 8 folds: concave profile, a skirt that flares out and up (0.3 m overhang)
+      const rim = 1.22;
+      const apexY = yT + 1.78;
+      const t = tileRoof({
+        under: [
+          [0, yT - 0.01],
+          [0.5, yT - 0.02],
+          [0.9, yT - 0.035],
+          [1.05, yT - 0.012],
+          [1.15, yT + 0.03],
+        ],
+        tip: { r: rim, top: yT + 0.14, under: yT + 0.078 },
+        flare: [
+          [1.14, yT + 0.1],
+          [1.06, yT + 0.068],
+        ],
+        base: [
+          [0.98, yT + 0.045],
+          [0.85, yT + 0.1],
+          [0.7, yT + 0.24],
+          [0.5, yT + 0.52],
+          [0.3, yT + 0.95],
+          [0.12, yT + 1.42],
+          [0, apexY],
+        ],
+        courses: [0.98, 0.78, 0.58, 0.38, 0.2, 0],
+        yLow: yT,
+        yHigh: apexY,
+      });
+      finishRoof(t, "roof", { folds, depth: 0.03, lift: 0.045, r0: 1.0, r1: rim });
+      if (done) {
+        eaveRing(rim, yT + 0.14);
+        meridians(t, 0.96, 0.16);
+      }
+      result.prof = t.prof;
+      result.apex = [0, apexY, 0];
+      result.surface = (r) => t.prof.yAt(Math.min(r, 0.98)) + 0.02;
+      result.skirtY = result.surface;
     } else if (v === 1) {
       // two-tier pagoda: lower roof, timber drum with glowing slits, upper roof at 61 %
       const rim = 1.24;
       const y1 = yT + 0.58; // top of the lower roof (drum base)
-      const lowerTop = [
-        [rim, yT - 0.025],
-        [1.14, yT + 0.01],
-        [0.94, yT + 0.12],
-        [0.74, yT + 0.34],
-        [0.56, y1 - 0.02],
-      ];
-      const lower = [
-        [0, yT - 0.01],
-        [0.6, yT - 0.012],
-        [1.0, yT - 0.045],
-        [1.2, yT - 0.07],
-        [rim, yT - 0.075, 1],
-        [rim, yT - 0.025, 1],
-        ...lowerTop.slice(1),
-        [0.5, y1 + 0.01, 1],
-        [0.0, y1 + 0.012],
-      ];
-      scallopParams = { folds, depth: 0.15, lift: 0.08, r0: 0.95, r1: rim };
-      const g = roofLathe(lower);
-      toPlan(g);
-      paintRoof(g, { yLow: yT - 0.05, yHigh: y1 });
-      put("roof_low", g, "roof_tile");
-      const lowerProf = K.profile(lowerTop);
-      addRidges(lowerProf, [1.04, 0.82, 0.64], 0.062, 0.07);
+      const lower = tileRoof({
+        under: [
+          [0, yT - 0.01],
+          [0.6, yT - 0.02],
+          [0.95, yT - 0.03],
+          [1.1, yT + 0.0],
+          [1.18, yT + 0.04],
+        ],
+        tip: { r: rim, top: yT + 0.16, under: yT + 0.092 },
+        flare: [
+          [1.16, yT + 0.125],
+          [1.06, yT + 0.095],
+        ],
+        base: [
+          [0.98, yT + 0.09],
+          [0.86, yT + 0.17],
+          [0.74, yT + 0.3],
+          [0.64, yT + 0.43],
+          [0.56, y1 - 0.02],
+        ],
+        courses: [0.98, 0.8, 0.66, 0.56],
+        cap: [
+          [0.5, y1 + 0.01, 1],
+          [0, y1 + 0.012],
+        ],
+        yLow: yT,
+        yHigh: y1,
+      });
+      finishRoof(lower, "roof_low", { folds, depth: 0.03, lift: 0.045, r0: 1.0, r1: rim });
+      if (done) {
+        eaveRing(rim, yT + 0.16);
+        meridians(lower, 0.96, 0.6);
+      }
+      const lowerProf = lower.prof;
 
       const drumH = 0.66;
       const y2 = y1 + drumH;
@@ -1317,7 +1484,7 @@ async function buildHouse(THREE, T, v, status) {
         });
         slit.translate(Math.sin(theta) * 0.01, 0, Math.cos(theta) * 0.01);
         if (litArches) put("slit", slit, "window_glow");
-        else put("slit", slit, "window_unlit", C.slateDark);
+        else put("slit", slit, "window_unlit", C.paneSlate);
         const fr = K.archFrame(0.1, 0.34, 0.022, 5);
         place(fr, { x: Math.sin(theta) * r, y: y1 + 0.11, z: zc + Math.cos(theta) * r, ry: theta });
         fr.translate(Math.sin(theta) * 0.016, 0, Math.cos(theta) * 0.016);
@@ -1325,37 +1492,42 @@ async function buildHouse(THREE, T, v, status) {
       }
 
       const rim2 = 0.76;
-      const upperTop = [
-        [rim2, y2 - 0.025],
-        [0.7, y2 + 0.01],
-        [0.58, y2 + 0.1],
-        [0.42, y2 + 0.38],
-        [0.24, y2 + 0.82],
-        [0.08, y2 + 1.2],
-        [0.0, y2 + 1.34],
-      ];
-      const upper = [
-        [0, y2 - 0.01],
-        [0.4, y2 - 0.012],
-        [0.62, y2 - 0.045],
-        [0.74, y2 - 0.07],
-        [rim2, y2 - 0.075, 1],
-        [rim2, y2 - 0.025, 1],
-        ...upperTop.slice(1),
-      ];
-      scallopParams = { folds, depth: 0.15, lift: 0.07, r0: 0.55, r1: rim2 };
-      const g2 = roofLathe(upper);
-      toPlan(g2);
-      paintRoof(g2, { yLow: y2 - 0.05, yHigh: y2 + 1.34 });
-      put("roof_high", g2, "roof_tile");
-      const upperProf = K.profile(upperTop);
-      scallopParams = { folds, depth: 0.15, lift: 0.07, r0: 0.55, r1: rim2 };
-      addRidges(upperProf, [0.62, 0.46, 0.3], 0.062, 0.07);
+      const upper = tileRoof({
+        under: [
+          [0, y2 - 0.01],
+          [0.4, y2 - 0.02],
+          [0.62, y2 - 0.025],
+          [0.7, y2 + 0.0],
+        ],
+        tip: { r: rim2, top: y2 + 0.12, under: y2 + 0.06 },
+        flare: [
+          [0.72, y2 + 0.09],
+          [0.68, y2 + 0.075],
+        ],
+        base: [
+          [0.64, y2 + 0.06],
+          [0.55, y2 + 0.14],
+          [0.44, y2 + 0.3],
+          [0.32, y2 + 0.55],
+          [0.2, y2 + 0.9],
+          [0.08, y2 + 1.22],
+          [0, y2 + 1.34],
+        ],
+        courses: [0.64, 0.46, 0.3, 0.14, 0],
+        lip: 0.02,
+        yLow: y2,
+        yHigh: y2 + 1.34,
+      });
+      finishRoof(upper, "roof_high", { folds, depth: 0.03, lift: 0.04, r0: 0.66, r1: rim2 });
+      if (done) {
+        eaveRing(rim2, y2 + 0.12, zc, 0.02);
+        meridians(upper, 0.62, 0.12);
+      }
       result.prof = lowerProf;
       result.apex = [0, y2 + 1.34, 0];
-      result.surface = (r) => lowerProf.yAt(Math.max(r, 0.57));
-      result.skirtY = (r) => lowerProf.yAt(r);
-      result.gardenY = (r) => lowerProf.yAt(r);
+      result.surface = (r) => lowerProf.yAt(Math.min(0.98, Math.max(r, 0.57))) + 0.02;
+      result.skirtY = (r) => lowerProf.yAt(Math.min(0.98, r)) + 0.02;
+      result.gardenY = result.skirtY;
     } else if (v === 2) {
       // onion dome, 12 folds, four gilt meridians
       const rim = 1.04;
@@ -1418,39 +1590,64 @@ async function buildHouse(THREE, T, v, status) {
       result.surface = (r) => prof.yAt(r);
       result.gardenY = (r) => yT + 0.06 + (r > 0.99 ? 0 : 0.0);
     } else if (v === 3) {
-      // saddle gable: grid surface with a sagging ridge, flared gable eaves, crossed ridge beams.
-      // Built with the ridge along local X, then turned so the gable end faces the door (+Z).
+      // saddle gable: a 9 cm slab with tile courses, a ridge that sags 6 percent in the middle and
+      // eaves that lift about 10 percent. Built with the ridge along local X, then turned so the
+      // gable end faces the door (+Z).
       const hx = 1.22; // gable overhang at the ridge ends
       const zEave = 1.14;
       const rise = 1.0;
+      const THICK = 0.09;
+      const LIPV = 0.03;
       const W = (lx, y, lz) => [-lz, y, zc + lx]; // local roof coordinates -> house coordinates
       const nu = 17;
-      const nv = 11;
-      const ridgeAt = (u) => rise * (0.74 + 0.62 * u * u); // u in -1..1: a saddle, ends swept up
-      const eaveAt = (u) => zEave + 0.14 * u * u; // eaves flare towards the gable ends
-      const sl = (x, z) => {
+      const ridgeAt = (u) => rise * (0.94 + 0.06 * u * u); // the middle sits 6 % below the ends
+      const eaveAt = (u) => zEave + 0.06 * u * u;
+      // height across the slope: t = 0 at the eave, 1 on the ridge; the tip lifts about 10 %
+      const across = (t) => 0.96 * Math.pow(t, 1.6) + 0.14 * Math.pow(Math.max(0, 1 - t / 0.25), 2);
+      const slBase = (x, z) => {
         const u = Math.max(-1, Math.min(1, x / hx));
-        const e = eaveAt(u);
-        const t = 1 - Math.min(1, Math.abs(z) / e); // 0 at the eave, 1 on the ridge
-        const upturn = 0.1 * Math.pow(Math.abs(u), 3) * Math.pow(1 - t, 3);
-        return yT - 0.03 + ridgeAt(u) * Math.pow(t, 1.55) + upturn;
+        const t = 1 - Math.min(1, Math.abs(z) / eaveAt(u));
+        return yT - 0.03 + ridgeAt(u) * across(t);
       };
-      const grid = (thickness) => {
-        const positions = [];
+      // rows across the roof, eave -> ridge -> eave: course lines at 0.2, 0.4, 0.6, 0.8
+      const half = [{ t: 0, off: LIPV, line: false }];
+      [0.2, 0.4, 0.6, 0.8].forEach((c) => {
+        half.push({ t: c - 0.005, off: 0, line: true });
+        half.push({ t: c + 0.005, off: LIPV, line: false });
+      });
+      half.push({ t: 1, off: 0, line: false });
+      const rows = [
+        ...half.map((r) => ({ ...r, s: -(1 - r.t) })),
+        ...half
+          .slice(0, -1)
+          .reverse()
+          .map((r) => ({ ...r, s: 1 - r.t })),
+      ];
+      const nv = rows.length;
+      const sl = (x, z) => slBase(x, z); // plain slope height, used by the gable plates and trims
+      const body = new THREE.Color(tone.light);
+      const shade = new THREE.Color(tone.dark);
+      const edge = new THREE.Color(roofEdge);
+      const verts = [];
+      const colors = [];
+      const out = new THREE.Color();
+      for (const under of [false, true])
         for (let i = 0; i < nu; i++) {
           const u = (i / (nu - 1)) * 2 - 1;
           const x = u * hx;
-          for (let j = 0; j < nv; j++) {
-            const vv = (j / (nv - 1)) * 2 - 1;
-            const z = vv * eaveAt(u);
-            positions.push(x, sl(x, z) - thickness * (1 - Math.abs(vv) * 0.4), z);
-          }
+          rows.forEach((row) => {
+            const z = row.s * eaveAt(u);
+            const y = slBase(x, z) + row.off - (under ? THICK : 0);
+            verts.push(x, y, z);
+            if (under) out.copy(shade);
+            else {
+              out.copy(shade).lerp(body, 0.55 + 0.45 * smoothstep(0, 0.6, row.t));
+              if (row.line) out.lerp(edge, 0.85);
+              if (row.t === 0 || i === 0 || i === nu - 1) out.copy(edge);
+            }
+            colors.push(out.r, out.g, out.b);
+          });
         }
-        return positions;
-      };
-      const top = grid(0);
-      const under = grid(0.05);
-      const verts = [...top, ...under];
       const idx = [];
       const N = nu * nv;
       const q = (a, b, c, d, flip) => {
@@ -1464,16 +1661,16 @@ async function buildHouse(THREE, T, v, status) {
           q(N + a, N + a + nv, N + a + 1, N + a + nv + 1, false); // under (faces down)
         }
       // rim strips joining top and under along the boundary
-      const edge = (a, b) => {
+      const edgeStrip = (a, b) => {
         idx.push(a, b, N + a, b, N + b, N + a);
       };
       for (let j = 0; j < nv - 1; j++) {
-        edge(j + 1, j); // x = -hx side
-        edge((nu - 1) * nv + j, (nu - 1) * nv + j + 1);
+        edgeStrip(j + 1, j); // x = -hx side
+        edgeStrip((nu - 1) * nv + j, (nu - 1) * nv + j + 1);
       }
       for (let i = 0; i < nu - 1; i++) {
-        edge(i * nv, (i + 1) * nv);
-        edge((i + 1) * nv + nv - 1, i * nv + nv - 1);
+        edgeStrip(i * nv, (i + 1) * nv);
+        edgeStrip((i + 1) * nv + nv - 1, i * nv + nv - 1);
       }
       // Rim strips: make sure every triangle faces away from the roof's centre.
       const first = 12 * (nu - 1) * (nv - 1);
@@ -1499,14 +1696,14 @@ async function buildHouse(THREE, T, v, status) {
       }
       const g = new THREE.BufferGeometry();
       g.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+      g.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
       g.setIndex(idx);
       g.computeVertexNormals();
       T.smoothNormals(g, 58);
       place(g, { z: zc, ry: -PI / 2 });
-      paintRoof(g, { yLow: yT - 0.05, yHigh: yT + rise * 1.4 });
       put("roof", g, "roof_tile");
 
-      // gable infill (plaster) closing the tent at both ends, oculus in the +X one
+      // gable infill (plaster) closing the slab at both ends, oculus in the front one
       for (const side of [-1, 1]) {
         const xg = side * (cfg.half[1] * 0.93);
         const shape = new THREE.Shape();
@@ -1516,10 +1713,10 @@ async function buildHouse(THREE, T, v, status) {
         const steps = 10;
         for (let i = 0; i <= steps; i++) {
           const z = zr - (2 * zr * i) / steps;
-          shape.lineTo(z, sl(xg, z) - 0.06 - yT);
+          shape.lineTo(z, sl(xg, z) - THICK + 0.035 - yT);
         }
         const plate = new THREE.ShapeGeometry(shape, 4);
-        // shape plane is (z, y); rotate so it faces +/- X
+        // shape plane is (z, y); rotate so it faces +/- Z
         plate.rotateY(side > 0 ? 0 : PI);
         place(plate, { x: 0, y: yT - 0.01, z: zc + xg });
         T.bake.fill(plate, locked ? C.white : wallColor);
@@ -1536,14 +1733,14 @@ async function buildHouse(THREE, T, v, status) {
       if (cfg.ocularGable) {
         const w = 0.3;
         const xg = cfg.half[1] * 0.93 + 0.012;
-        const y = yT + 0.4;
+        const y = yT + 0.3;
         const glass = K.disc(w / 2 - 0.005, 14);
         place(glass, { x: 0, y, z: zc + xg });
         put(
           litOculus ? "glow" : "glass",
           glass,
           litOculus ? "window_glow" : "window_unlit",
-          C.slateDark,
+          C.paneSlate,
         );
         const ring = T.lathe(
           [
@@ -1565,26 +1762,7 @@ async function buildHouse(THREE, T, v, status) {
         }
       }
 
-      // ridge lines: three bands running along the slope on each side (front and back)
-      const bands = [0.38, 0.72];
-      for (const side of doneRidges ? [-1, 1] : [])
-        bands.forEach((tb, i) => {
-          const pts = [];
-          for (let k = 0; k <= 12; k++) {
-            const u = (k / 12) * 2 - 1;
-            const x = u * hx * 0.97;
-            const e = eaveAt(u);
-            const z = side * e * (1 - tb);
-            pts.push(W(x, sl(x, z) + 0.035, z));
-          }
-          put(
-            `ridge${i}_${side}`,
-            K.tube(pts, 0.04, { tubular: 16, radial: 5, caps: "round" }),
-            ridgeMat,
-            doneRidges ? undefined : ridgeColor,
-          );
-        });
-      // ridge cap along the top
+      // ridge cap along the top (gilt when done) and, when done, a thin gilt trim on both eaves
       {
         const pts = [];
         for (let k = 0; k <= 12; k++) {
@@ -1594,10 +1772,25 @@ async function buildHouse(THREE, T, v, status) {
         }
         put(
           "ridge_cap",
-          K.tube(pts, 0.03, { tubular: 16, radial: 5, caps: "round" }),
-          "timber",
-          timberColor,
+          K.tube(pts, 0.034, { tubular: 16, radial: 5, caps: "round" }),
+          done ? "gilt" : "timber",
+          done ? undefined : timberColor,
         );
+        if (done)
+          for (const side of [-1, 1]) {
+            const trim = [];
+            for (let k = 0; k <= 12; k++) {
+              const u = (k / 12) * 2 - 1;
+              const x = u * hx * 0.98;
+              const z = side * eaveAt(u);
+              trim.push(W(x, sl(x, z) + LIPV + 0.005, z * 0.98));
+            }
+            put(
+              `eave_trim${side}`,
+              K.tube(trim, 0.022, { tubular: 16, radial: 4, caps: "round" }),
+              "gilt",
+            );
+          }
       }
       // crossed ridge beams, front gable only (a named asymmetry)
       for (const side of [1]) {
@@ -1615,42 +1808,42 @@ async function buildHouse(THREE, T, v, status) {
           );
         });
       }
-      const surface = (x, z) => sl(z, x); // world frame: x across the roof, z (from the plan centre) along the ridge
-      result.apex = [0, surface(0, 0), 0];
+      const surface = (x, z) => sl(z, x) + LIPV * 0.5; // world frame: x across the roof, z (from the plan centre) along the ridge
+      result.apex = [0, sl(0, 0), 0];
       result.surface = surface;
       result.hx = hx;
       result.ridgeEndY = sl(hx - 0.02, 0);
       result.noScallop = true;
     } else if (v === 4) {
-      // balcony ring + turret + tall spire
+      // tall slim spire over a small ring balcony
       const yB = yT; // balcony floor level
-      const rimB = 1.12;
+      const rimB = 0.98;
+      const railR = 0.9;
       const floorProfile = [
         [0, yB - 0.1],
-        [0.7, yB - 0.1],
-        [1.0, yB - 0.085],
+        [0.6, yB - 0.1],
+        [0.85, yB - 0.085],
         [rimB, yB - 0.075, 1],
         [rimB, yB + 0.0, 1],
-        [1.04, yB + 0.012],
-        [0.6, yB + 0.012],
+        [0.92, yB + 0.012],
+        [0.5, yB + 0.012],
         [0, yB + 0.012],
       ];
-      scallopParams = { folds, depth: 0.1, lift: 0.04, r0: 0.9, r1: rimB };
-      const fl = T.lathe(floorProfile, { segments: segs(2), divisions: 1 });
+      scallopParams = { folds, depth: 0.04, lift: 0.02, r0: 0.8, r1: rimB };
+      const fl = T.lathe(floorProfile, { segments: segs(), divisions: 1 });
       K.scallop(fl, scallopParams);
       toPlan(fl);
       T.bake.fill(fl, C.white);
       T.bake.gradient(fl, { bottom: C.timberDark, top: C.timber, from: yB - 0.1, to: yB + 0.02 });
       T.bake.direction(fl, {
-        color: underColor,
+        color: C.timberDark,
         direction: [0, -1, 0],
         threshold: 0.4,
         strength: 0.9,
       });
       put("balcony_floor", fl, "timber");
       // railing: posts + a rail ring
-      const railY = yB + 0.46;
-      const railR = 1.02;
+      const railY = yB + 0.44;
       const posts = 16;
       for (let k = 0; k < posts; k++) {
         const t = (k + 0.5) * (TAU / posts);
@@ -1681,22 +1874,22 @@ async function buildHouse(THREE, T, v, status) {
       );
       put(
         "rail",
-        T.sweep(railCurve, { radius: 0.024, tubular: 40, radial: 5 }),
+        T.sweep(railCurve, { radius: 0.026, tubular: 40, radial: 5 }),
         "timber",
         timberColor,
       );
       // turret
-      const yU = yB + 0.65;
+      const yU = yB + 0.55;
       const turret = T.lathe(
         [
           [0.0, yB],
-          [0.62, yB],
-          [0.65, yB + 0.3],
-          [0.6, yU - 0.1],
-          [0.54, yU],
+          [0.5, yB],
+          [0.53, yB + 0.25],
+          [0.5, yU - 0.08],
+          [0.46, yU],
           [0.0, yU],
         ],
-        { segments: segs(2), divisions: 2 },
+        { segments: segs(), divisions: 2 },
       );
       toPlan(turret);
       T.bake.fill(turret, locked ? C.white : wallColor);
@@ -1707,22 +1900,22 @@ async function buildHouse(THREE, T, v, status) {
       // turret windows: three arched windows on the front faces
       [-1, 0, 1].forEach((face) => {
         const theta = face * (TAU / folds);
-        const r = 0.65;
+        const r = 0.535;
         const lit = litArches;
-        const glass = new THREE.ShapeGeometry(K.archShape(0.17, 0.32, 6), 5);
+        const glass = new THREE.ShapeGeometry(K.archShape(0.15, 0.3, 6), 5);
         const px = Math.sin(theta) * r;
         const pz = zc + Math.cos(theta) * r;
         place(glass, {
           x: px + Math.sin(theta) * 0.012,
-          y: yB + 0.2,
+          y: yB + 0.12,
           z: pz + Math.cos(theta) * 0.012,
           ry: theta,
         });
-        put(lit ? "tglow" : "tglass", glass, lit ? "window_glow" : "window_unlit", C.slateDark);
-        const fr = K.archFrame(0.17, 0.32, 0.026, 6);
+        put(lit ? "tglow" : "tglass", glass, lit ? "window_glow" : "window_unlit", C.paneSlate);
+        const fr = K.archFrame(0.15, 0.3, 0.026, 6);
         place(fr, {
           x: px + Math.sin(theta) * 0.016,
-          y: yB + 0.2,
+          y: yB + 0.12,
           z: pz + Math.cos(theta) * 0.016,
           ry: theta,
         });
@@ -1730,18 +1923,18 @@ async function buildHouse(THREE, T, v, status) {
         if (locked) {
           for (const side of [-1, 1]) {
             const half = new THREE.Shape();
-            const rr = 0.085 + 0.012;
+            const rr = 0.075 + 0.012;
             half.moveTo(side * 0.008, 0);
             half.lineTo(side * rr, 0);
-            half.lineTo(side * rr, 0.235);
+            half.lineTo(side * rr, 0.225);
             for (let k = 1; k <= 4; k++) {
               const a = (k / 4) * (PI / 2);
-              half.lineTo(side * rr * Math.cos(a), 0.235 + rr * Math.sin(a));
+              half.lineTo(side * rr * Math.cos(a), 0.225 + rr * Math.sin(a));
             }
             const g = new THREE.ShapeGeometry(half, 3);
             place(g, {
               x: px + Math.sin(theta) * 0.024,
-              y: yB + 0.2,
+              y: yB + 0.12,
               z: pz + Math.cos(theta) * 0.024,
               ry: theta,
             });
@@ -1752,61 +1945,64 @@ async function buildHouse(THREE, T, v, status) {
       // balcony lantern hung on the rail (front-right), lit when the house is lived in
       {
         const theta = 0.5;
-        const x = Math.sin(theta) * railR;
-        const z = zc + Math.cos(theta) * railR;
-        const body = K.lanternBody(0.16, 0.065, 10);
-        place(body, { x: x + 0.0, y: railY - 0.22, z: z + 0.0 });
+        const x = Math.sin(theta) * (railR + 0.05);
+        const z = zc + Math.cos(theta) * (railR + 0.05);
         const lit = progress || done;
-        put(
-          "balcony_lantern",
-          body,
-          lit ? "lantern_glow" : "lantern_paper",
-          lit ? undefined : locked ? C.stoneCoolLight : C.sandLight,
-        );
+        const yHook = railY + 0.1;
         put(
           "balcony_hook",
           K.tube(
             [
-              [x, railY, z],
-              [x, railY - 0.07, z],
+              [Math.sin(theta) * railR, railY, zc + Math.cos(theta) * railR],
+              [Math.sin(theta) * railR, yHook, zc + Math.cos(theta) * railR],
+              [x, yHook, z],
             ],
-            0.007,
-            { tubular: 1, radial: 3, caps: false },
+            0.009,
+            { tubular: 6, radial: 4, caps: "round" },
           ),
           "iron",
           C.slateDark,
         );
+        paperLantern(x, yHook, z, lit, "balcony_lantern");
       }
-      // spire roof
-      const rim = 0.84;
-      const top = [
-        [rim, yU - 0.025],
-        [0.77, yU + 0.02],
-        [0.62, yU + 0.2],
-        [0.42, yU + 0.6],
-        [0.22, yU + 1.08],
-        [0.08, yU + 1.4],
-        [0.0, yU + 1.55],
-      ];
-      const profile = [
-        [0, yU - 0.01],
-        [0.4, yU - 0.012],
-        [0.64, yU - 0.045],
-        [0.8, yU - 0.07],
-        [rim, yU - 0.075, 1],
-        [rim, yU - 0.025, 1],
-        ...top.slice(1),
-      ];
-      scallopParams = { folds, depth: 0.14, lift: 0.07, r0: 0.55, r1: rim };
-      const g = roofLathe(profile);
-      toPlan(g);
-      paintRoof(g, { yLow: yU - 0.05, yHigh: yU + 1.55 });
-      put("roof", g, "roof_tile");
-      const prof = K.profile(top);
-      addRidges(prof, [0.7, 0.54, 0.38, 0.24], 0.062, 0.07);
-      result.apex = [0, yU + 1.55, 0];
-      result.prof = prof;
-      result.surface = (r) => prof.yAt(r);
+      // the slim spire: base radius 60 % of the swoop cone's, terracotta tiles
+      const rim = 0.73;
+      const apexY = yU + 1.9;
+      const t = tileRoof({
+        under: [
+          [0, yU - 0.01],
+          [0.3, yU - 0.015],
+          [0.5, yU - 0.03],
+          [0.62, yU - 0.01],
+          [0.69, yU + 0.02],
+        ],
+        tip: { r: rim, top: yU + 0.13, under: yU + 0.07 },
+        flare: [
+          [0.69, yU + 0.1],
+          [0.65, yU + 0.085],
+        ],
+        base: [
+          [0.62, yU + 0.07],
+          [0.52, yU + 0.17],
+          [0.4, yU + 0.38],
+          [0.28, yU + 0.7],
+          [0.17, yU + 1.1],
+          [0.08, yU + 1.5],
+          [0, apexY],
+        ],
+        courses: [0.62, 0.5, 0.38, 0.26, 0.14, 0],
+        lip: 0.02,
+        yLow: yU,
+        yHigh: apexY,
+      });
+      finishRoof(t, "roof", { folds, depth: 0.035, lift: 0.04, r0: 0.64, r1: rim });
+      if (done) {
+        eaveRing(rim, yU + 0.13, zc, 0.02);
+        meridians(t, 0.6, 0.1);
+      }
+      result.apex = [0, apexY, 0];
+      result.prof = t.prof;
+      result.surface = (r) => t.prof.yAt(Math.min(r, 0.62)) + 0.015;
       result.balcony = { y: yB + 0.012, r: railR };
     } else {
       // garden dome with a terrace in front, low stone parapet
@@ -1852,43 +2048,38 @@ async function buildHouse(THREE, T, v, status) {
         strength: 0.35,
       });
       put("parapet", parapet, "stone_step");
-      // dome on the back half
+      // dome on the back half, tile courses as stepped rows
       const dz = -0.3;
       const rimD = 0.8;
-      const top = [
-        [rimD, yF - 0.0],
-        [0.77, yF + 0.14],
-        [0.67, yF + 0.42],
-        [0.48, yF + 0.71],
-        [0.26, yF + 0.94],
-        [0.1, yF + 1.09],
-        [0.0, yF + 1.15],
-      ];
-      const profile = [
-        [0, yF - 0.0],
-        [0.4, yF],
-        [0.7, yF - 0.012],
-        [0.78, yF - 0.03],
-        [rimD, yF - 0.035, 1],
-        [rimD, yF + 0.0, 1],
-        ...top.slice(1),
-      ];
-      scallopParams = { folds, depth: 0.1, lift: 0.04, r0: 0.55, r1: rimD };
-      const g = roofLathe(profile);
-      place(g, { z: zc + dz });
-      paintRoof(g, { yLow: yF - 0.02, yHigh: yF + 1.15 });
-      put("roof", g, "roof_tile");
-      const prof = K.profile(top);
-      const rb = (r, i) => {
-        const b = ridgeBand(prof, r, 0.06, 0.07);
-        if (r > 0.55) K.scallop(b, scallopParams);
-        else T.smoothNormals(b, 60);
-        place(b, { z: zc + dz });
-        put(`ridge${i}`, b, ridgeMat, doneRidges ? undefined : ridgeColor);
-      };
-      [0.72, 0.52, 0.3].forEach(rb);
+      const t = tileRoof({
+        under: [
+          [0, yF],
+          [0.4, yF],
+          [0.7, yF - 0.012],
+          [0.78, yF - 0.03],
+        ],
+        tip: { r: rimD, top: yF + 0.0, under: yF - 0.035 },
+        flare: [],
+        base: [
+          [0.77, yF + 0.14],
+          [0.67, yF + 0.42],
+          [0.48, yF + 0.71],
+          [0.26, yF + 0.94],
+          [0.1, yF + 1.09],
+          [0, yF + 1.15],
+        ],
+        courses: [0.77, 0.62, 0.46, 0.3, 0.14, 0],
+        lip: 0.024,
+        yLow: yF,
+        yHigh: yF + 1.15,
+      });
+      finishRoof(t, "roof", { folds, depth: 0.03, lift: 0.03, r0: 0.7, r1: rimD }, zc + dz);
+      if (done) {
+        eaveRing(rimD, yF, zc + dz, 0.02);
+        meridians(t, 0.74, 0.14, 4, zc + dz);
+      }
       result.apex = [0, yF + 1.15, dz];
-      result.prof = prof;
+      result.prof = t.prof;
       result.terrace = { y: yF, dz };
     }
     return result;
@@ -1904,25 +2095,29 @@ async function buildHouse(THREE, T, v, status) {
   }
   doorLantern();
 
-  // chimney: on the roof surface, off axis
+  // chimney: on the roof surface, off axis; capped, leaning 4 degrees, its own girth
   let chimneyTop = 0;
   {
     const c = cfg.chimney;
+    const lean = [0.07, -0.07, 0.07, -0.07, 0.07, -0.07][v];
+    const girth = [1, 0.9, 1.1, 1.2, 0.85, 1][v];
+    const o = { tilt: lean, girth };
     if (v === 3) {
       const y0 = roof.surface(c.x, c.z) - 0.1;
-      chimneyTop = chimney(c.x, y0, zc + c.z, 0.78);
+      chimneyTop = chimney(c.x, y0, zc + c.z, 0.78, o);
     } else if (v === 5) {
       const y0 = yT + 0.05;
-      chimneyTop = chimney(c.x, y0, zc + c.z, 0.62);
+      chimneyTop = chimney(c.x, y0, zc + c.z, 0.62, o);
     } else if (v === 4) {
+      // on the balcony floor, leaning against the turret
       const x = Math.sin(c.theta) * c.r;
       const z = zc + Math.cos(c.theta) * c.r;
-      chimneyTop = chimney(x, P + 0.5, z, yT + 1.15 - (P + 0.5));
+      chimneyTop = chimney(x, roof.balcony.y, z, 0.8, o);
     } else {
       const x = Math.sin(c.theta) * c.r;
       const z = zc + Math.cos(c.theta) * c.r;
       const ySurface = v === 2 ? yT + 0.25 : roof.surface(c.r);
-      chimneyTop = chimney(x, ySurface - 0.12, z, 0.7);
+      chimneyTop = chimney(x, ySurface - 0.12, z, 0.7, o);
     }
   }
 
@@ -2144,23 +2339,21 @@ async function buildHouse(THREE, T, v, status) {
         spots.push([0, roof.surface(0, g.x) + 0.0, zc + g.x, g.s]);
       }
     } else if (v === 4) {
-      // balcony planters
+      // balcony planters, on the ring between the turret and the rail
       [
         [0.9, 0.5, 0.9],
         [-1.1, 0.4, 0.8],
         [2.1, 0.5, 0.85],
-        [-2.6, 0.45, 0.7],
       ].forEach(([theta, , s]) => {
-        const rr = 0.86;
-        spots.push([Math.sin(theta) * rr, roof.balcony.y, zc + Math.cos(theta) * rr, s * 0.9]);
+        const rr = 0.72;
+        spots.push([Math.sin(theta) * rr, roof.balcony.y, zc + Math.cos(theta) * rr, s * 0.55]);
       });
     } else if (v === 5) {
       // the terrace: three beds in front of the dome, on the left of the door axis
       [
         [-0.55, 0.72, 1.0],
-        [0.1, 0.8, 0.85],
-        [0.62, 0.7, 0.9],
-        [-0.2, 0.62, 0.55],
+        [0.15, 0.8, 0.9],
+        [0.68, 0.7, 0.8],
       ].forEach(([x, z, s]) => spots.push([x, roof.terrace.y, zc + z, s]));
     } else {
       for (const g of cfg.garden) {
@@ -2170,14 +2363,15 @@ async function buildHouse(THREE, T, v, status) {
     }
     let i = 0;
     for (const [x, y, z, s] of spots) {
-      await makeBush(`garden${i}`, x, y, z, s * 1.2, i * 1.7, C.foliageLight, C.foliageDeep);
+      const big = v === 4 ? 1.5 : 1.9; // a few large clumps that show above the eave from the path
+      await makeBush(`garden${i}`, x, y, z, s * big, i * 1.7, C.foliageLight, C.foliageDeep);
       makeBlooms(
         `bloom${i}`,
         x,
         y,
         z,
-        s * 1.2,
-        5,
+        s * big,
+        6,
         i % 2 ? [C.blossom, C.warmWhite, C.gold] : [C.blossom, C.gold, C.blossom],
       );
       i++;
