@@ -1,0 +1,89 @@
+.region {
+  position: fixed;
+  top: 22px;
+  left: 22px;
+  z-index: 50;
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: min(340px, calc(100vw - 2rem));
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 8px 15px 16px;
+  background: radial-gradient(ellipse at 20% 5%, #fffbee, transparent 70%), #f4f0e3;
+  color: #514b40;
+  border: 1.5px solid #847d6b;
+  border-radius: 14px 18px 13px 16px;
+  box-shadow:
+    0 3px 0 #655c4430,
+    0 7px 18px #3443311c,
+    inset 0 0 0 3px #fff9e680;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.5;
+  animation: drop 0.25s ease-out;
+}
+.toast span:first-child {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border: 1.3px solid #92856b;
+  border-radius: 50% 45% 48% 44%;
+  background: #e5d8b7;
+  color: #675b43;
+  font-size: 21px;
+}
+.toast span:nth-child(2) {
+  flex: 1;
+}
+.toast button {
+  min-width: 38px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: #7b715d;
+  font-size: 24px;
+  cursor: pointer;
+}
+.toast button:focus-visible {
+  outline: 3px solid #567ba7;
+  outline-offset: 1px;
+  border-radius: 8px;
+}
+.done span:first-child {
+  background: #ccdab8;
+}
+.unlock span:first-child {
+  background: #d6e0d4;
+}
+.achievement span:first-child {
+  background: #ead49c;
+}
+.info span:first-child {
+  background: #ddd7c7;
+}
+@keyframes drop {
+  from {
+    transform: translateY(-8px) rotate(-1deg);
+    opacity: 0;
+  }
+}
+@media (max-width: 750px) {
+  .region {
+    top: 90px;
+    left: 14px;
+    width: min(320px, calc(100vw - 28px));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

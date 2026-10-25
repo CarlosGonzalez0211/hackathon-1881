@@ -1,4 +1,4 @@
-import { learningFormatSchema } from "../../../../shared/src/curriculum.js";
+import { learningFormatSchema } from "@athena/shared";
 import type { UnsupportedContextReason } from "./learning-context-adapter.js";
 
 export type LearningFormat = ReturnType<typeof learningFormatSchema.parse>;

@@ -46,7 +46,7 @@ Person 2.
 For a future consumer in `backend/modules/learning/src/`:
 
 ```ts
-import { geometryConceptCatalog } from "../../curriculum/src/geometry-concept-catalog.js";
+import { geometryConceptCatalog } from "@athena/curriculum";
 ```
 
 The catalog and its nested prerequisite arrays are frozen. Persist the identifiers;
@@ -77,5 +77,5 @@ shared contracts, or teammate implementation files are changed.
 
 ```sh
 pnpm --filter @athena/api exec tsx --test ../modules/curriculum/tests/geometry-concept-catalog.test.ts
-pnpm exec tsc -p backend/modules/curriculum/tsconfig.json
+pnpm exec tsc -p backend/modules/curriculum/tsconfig.tests.json
 ```

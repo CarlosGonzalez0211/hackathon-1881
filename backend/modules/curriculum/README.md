@@ -22,22 +22,19 @@ The instructor identities and teaching materials are explicitly authored demos.
 | String IDs and Learning UUID aliases         | Explicit identity mapping                                 | [ID agreement](INTEGRATION_IDS.md)                                  |
 
 The code examples below are sequential parts of **one server-side example**.
-Imports assume a future file in `backend/modules/learning/src/`. They do not
+Imports use the built `@athena/curriculum` workspace package. They do not
 require editing Learning now. Do not import these server modules into the browser.
 
 ## 1. Set up the mock dependencies
 
 ```ts
-import {
-  MockCurriculumRepository,
-  MockCourseAccessPolicy,
-} from "../../curriculum/src/mock-repository.js";
-import { geometryConceptCatalog } from "../../curriculum/src/geometry-concept-catalog.js";
-import { LearningCurriculumContextAdapter } from "../../curriculum/src/learning-context-adapter.js";
-import { CurriculumCapabilityService } from "../../curriculum/src/capability-service.js";
-import { CurriculumTopicCapabilityService } from "../../curriculum/src/topic-capability-service.js";
-import { HistoryResourceService } from "../../curriculum/src/history-resource-service.js";
-import { CurriculumRetrievalService } from "../../curriculum/src/retrieval-service.js";
+import { MockCurriculumRepository, MockCourseAccessPolicy } from "@athena/curriculum";
+import { geometryConceptCatalog } from "@athena/curriculum";
+import { LearningCurriculumContextAdapter } from "@athena/curriculum";
+import { CurriculumCapabilityService } from "@athena/curriculum";
+import { CurriculumTopicCapabilityService } from "@athena/curriculum";
+import { HistoryResourceService } from "@athena/curriculum";
+import { CurriculumRetrievalService } from "@athena/curriculum";
 
 const repository = new MockCurriculumRepository();
 const policy = new MockCourseAccessPolicy();
@@ -250,7 +247,7 @@ Use Node 22 and pnpm 9.15.9. After installing dependencies, run from repository 
 pnpm build:platform
 pnpm test
 pnpm --filter @athena/api exec tsx --test "$PWD"/backend/modules/curriculum/tests/*.test.ts
-pnpm exec tsc -p backend/modules/curriculum/tsconfig.json
+pnpm exec tsc -p backend/modules/curriculum/tsconfig.tests.json
 pnpm lint
 pnpm format:check
 ```
@@ -259,19 +256,21 @@ The last implementation check passed **63 curriculum module tests**. The existin
 root test command also covers shared contracts and API smoke tests. The explicit
 module command is necessary: existing CI has not been changed to include it.
 
-In this local branch, Curriculum is not yet a workspace package; imports above use
-relative paths. Shared schemas/fixtures already exported by `shared/src/index.ts`
-are available through `@athena/shared` after building. New backend interfaces have
-not been added to shared exports. Main now contains a curriculum package stub;
-reconcile that separately when synchronizing branches.
+Curriculum now builds as the `@athena/curriculum` workspace package introduced
+by main. Shared contracts and fixtures are imported through `@athena/shared`;
+the module no longer compiles shared source files outside its package root.
+`tsconfig.json` builds `src/` into `dist/`, and `tsconfig.tests.json` checks both
+source and tests without emitting. The existing `curriculumRoutes` stub is
+preserved; these exports do not register new HTTP routes.
 
 ## Git sharing and remaining integration
 
 Work is on `feat/vianey-workspace`. `495738f912f9c67ee15f823f8cea95ff2ed0de03`
 contains the initial foundation. Concepts, adapters, capability discovery, and
 History resources belong to the subsequent handoff commit; use `git log -1` for
-the current commit SHA. The most recent fetch found no remote branch of this
-name. Daniela cannot fetch the handoff until Vianey pushes the branch after approval.
+the current commit SHA. The handoff is published on this branch through
+`a89110c`. The subsequent merge of main and build compatibility changes remain
+local and uncommitted until Vianey approves a merge commit and push.
 
 After the branch is pushed, Daniela can inspect it without switching her branch:
 
@@ -281,13 +280,14 @@ git worktree add --detach ../athena-vianey-preview origin/feat/vianey-workspace
 ```
 
 Use an unused destination folder. Coordinate incorporation into Daniela's branch;
-these commands only create a separate preview checkout.
+these commands only create a separate preview checkout of the published work;
+they do not include the uncommitted local merge.
 
-Before final integration, reconcile main's overlapping curriculum files and shared
-exports, map the preserved World IDs, and resolve the prerequisite differences in
-`INTEGRATION_IDS.md`. The new interfaces are not wired into Learning, World, or
-HTTP routes. Do not treat the last mock tests as proof that the branches already
-compile together.
+Main's overlapping files and package-build configuration are reconciled in the
+uncommitted merge. Before wiring consumers, map the preserved World IDs and
+resolve the prerequisite differences in `INTEGRATION_IDS.md`. The new interfaces are not wired into Learning, World, or
+HTTP routes. Run the current workspace and Person 1 checks before finalizing this merge;
+consumer wiring remains a separate milestone.
 
 Deferred Person 1 work includes persistent storage, publishing workflows, production
 authorization integration, course-management UI, and live resource generation.

@@ -56,11 +56,8 @@ not require or invent a concept ID. Geometry's `getCapabilities()` is unchanged.
 From a future server consumer in `backend/modules/learning/src/`:
 
 ```ts
-import { CurriculumTopicCapabilityService } from "../../curriculum/src/topic-capability-service.js";
-import {
-  MockCurriculumRepository,
-  MockCourseAccessPolicy,
-} from "../../curriculum/src/mock-repository.js";
+import { CurriculumTopicCapabilityService } from "@athena/curriculum";
+import { MockCurriculumRepository, MockCourseAccessPolicy } from "@athena/curriculum";
 
 const discovery = new CurriculumTopicCapabilityService(
   new MockCurriculumRepository(),
@@ -145,11 +142,8 @@ resources have been authored.
 For a future file in `backend/modules/learning/src/`:
 
 ```ts
-import { CurriculumCapabilityService } from "../../curriculum/src/capability-service.js";
-import {
-  MockCurriculumRepository,
-  MockCourseAccessPolicy,
-} from "../../curriculum/src/mock-repository.js";
+import { CurriculumCapabilityService } from "@athena/curriculum";
+import { MockCurriculumRepository, MockCourseAccessPolicy } from "@athena/curriculum";
 
 const capabilities = new CurriculumCapabilityService(
   new MockCurriculumRepository(),
@@ -203,7 +197,7 @@ unavailable. Production authorization and publishing workflows remain separate.
 ```sh
 pnpm --filter @athena/api exec tsx --test ../modules/curriculum/tests/capability-service.test.ts
 pnpm --filter @athena/api exec tsx --test ../modules/curriculum/tests/topic-capability-service.test.ts
-pnpm exec tsc -p backend/modules/curriculum/tsconfig.json
+pnpm exec tsc -p backend/modules/curriculum/tsconfig.tests.json
 ```
 
 Tests cover vocabulary consistency, truthful availability, discovery-to-retrieval

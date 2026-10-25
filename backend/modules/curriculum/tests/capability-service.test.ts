@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { demoCurriculum } from "../../../../shared/src/mocks/demo-curriculum.js";
-import { learningFormatSchema } from "../../../../shared/src/curriculum.js";
+import { demoCurriculum } from "@athena/shared";
+import { learningFormatSchema } from "@athena/shared";
 import { CurriculumCapabilityService } from "../src/capability-service.js";
 import {
   learningFormatDefinitions,

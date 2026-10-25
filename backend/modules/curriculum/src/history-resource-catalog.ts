@@ -1,9 +1,5 @@
-import {
-  generatedResourceSchema,
-  type Citation,
-  type GeneratedResource,
-} from "../../../../shared/src/curriculum.js";
-import { demoCurriculum } from "../../../../shared/src/mocks/demo-curriculum.js";
+import { generatedResourceSchema, type Citation, type GeneratedResource } from "@athena/shared";
+import { demoCurriculum } from "@athena/shared";
 
 export interface HistoryResourceBlock {
   kind: "academic" | "framing";

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { demoCurriculum } from "../../../../shared/src/mocks/demo-curriculum.js";
+import { demoCurriculum } from "@athena/shared";
 import { CurriculumTopicCapabilityService } from "../src/topic-capability-service.js";
 import { HistoryResourceService } from "../src/history-resource-service.js";
 import { MockCurriculumRepository, MockCourseAccessPolicy } from "../src/mock-repository.js";

@@ -1,4 +1,4 @@
-import { topicSchema, validateRetrievedContext } from "../../../../shared/src/curriculum.js";
+import { topicSchema, validateRetrievedContext } from "@athena/shared";
 import { historyMockResources, type HistoryMockResource } from "./history-resource-catalog.js";
 import { curriculumCourseId, curriculumTopicId } from "./learning-context-adapter.js";
 import { CurriculumRetrievalService } from "./retrieval-service.js";

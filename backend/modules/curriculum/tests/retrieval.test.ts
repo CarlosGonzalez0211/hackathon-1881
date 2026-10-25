@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { demoCurriculum } from "../../../../shared/src/mocks/demo-curriculum.js";
-import { validateRetrievedContext } from "../../../../shared/src/curriculum.js";
+import { demoCurriculum } from "@athena/shared";
+import { validateRetrievedContext } from "@athena/shared";
 import { MockCourseAccessPolicy, MockCurriculumRepository } from "../src/mock-repository.js";
 import { CurriculumRetrievalService } from "../src/retrieval-service.js";
 import {

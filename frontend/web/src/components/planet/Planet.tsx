@@ -1,7 +1,20 @@
 "use client";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import type { HouseState, PlanetState } from "@athena/shared";
-import type { EngineStats, ProjectedHouse, ProjectedPlanet, SurfaceHandle } from "@athena/engine3d";
+import {
+  achievementCatalogue,
+  type HouseState,
+  type PlanetState,
+  type WorldState,
+} from "@athena/shared";
+import type {
+  EngineStats,
+  EngineEventListener,
+  ProjectedHouse,
+  ProjectedPlanet,
+  SurfaceHandle,
+} from "@athena/engine3d";
+import { StateIcon, stateLabel } from "@/features/world/components/StateIcon";
+import type { Volumes } from "@/features/world/components/SoundControls";
 export interface PlanetProps {
   state: PlanetState;
   mode: "surface" | "orbit";
@@ -9,16 +22,15 @@ export interface PlanetProps {
   onPlanetClick?: (planet: PlanetState) => void;
   paused?: boolean;
   muted?: boolean;
+  /** Music and effects volumes (0-1), applied live. */
+  volumes?: Volumes;
   onStats?: (stats: EngineStats) => void;
+  onEvent?: EngineEventListener;
+  world?: WorldState;
+  overview?: boolean;
+  onOverviewChange?: (overview: boolean) => void;
 }
 const OrbitContext = createContext<{ positions: ProjectedPlanet[] } | null>(null);
-const symbols = { locked: "◇", available: "⌂", in_progress: "◐", done: "✓" };
-const names = {
-  locked: "Bloqueado",
-  available: "Disponible",
-  in_progress: "En progreso",
-  done: "Completado",
-};
 export function Planet(props: PlanetProps) {
   return props.mode === "orbit" ? <OrbitPlanet {...props} /> : <SurfacePlanet {...props} />;
 }
@@ -47,15 +59,45 @@ function SurfacePlanet({
   onHouseClick,
   paused = false,
   muted = true,
+  volumes,
   onStats,
+  onEvent,
+  world,
+  overview = false,
+  onOverviewChange,
 }: PlanetProps) {
   const host = useRef<HTMLDivElement>(null);
   const handle = useRef<SurfaceHandle | null>(null);
-  const callbacks = useRef({ onHouseClick, onStats });
-  callbacks.current = { onHouseClick, onStats };
+  const callbacks = useRef({ onHouseClick, onStats, onEvent, onOverviewChange });
+  callbacks.current = { onHouseClick, onStats, onEvent, onOverviewChange };
+  const celebrated = useRef(new Set<string>());
   const [phase, setPhase] = useState("loading");
   const [error, setError] = useState("");
-  const [markers, setMarkers] = useState<ProjectedHouse[]>([]);
+  const markerNodes = useRef(new Map<number, HTMLButtonElement>());
+  const latestProjection = useRef<ProjectedHouse[]>([]);
+  const markerRefs = useRef(new Map<number, (node: HTMLButtonElement | null) => void>());
+  const positionMarker = (node: HTMLButtonElement, point: ProjectedHouse) => {
+    const visible = point.visible && point.distance < 24;
+    node.style.visibility = visible ? "visible" : "hidden";
+    node.style.transform = `translate3d(${point.x}px,${point.y}px,0) translate(-50%,-100%)`;
+    node.dataset.inReach = String(point.inReach);
+    node.disabled = !point.inReach;
+    node.tabIndex = visible && point.inReach ? 0 : -1;
+    node.setAttribute("aria-hidden", String(!visible));
+  };
+  const markerRef = (slot: number) => {
+    if (!markerRefs.current.has(slot))
+      markerRefs.current.set(slot, (node) => {
+        if (!node) {
+          markerNodes.current.delete(slot);
+          return;
+        }
+        markerNodes.current.set(slot, node);
+        const point = latestProjection.current.find((point) => point.slot === slot);
+        if (point) positionMarker(node, point);
+      });
+    return markerRefs.current.get(slot)!;
+  };
   useEffect(() => {
     const abort = new AbortController();
     queueMicrotask(async () => {
@@ -66,10 +108,18 @@ function SurfacePlanet({
         const instance = await createSurfaceEngine(host.current, {
           state,
           signal: abort.signal,
+          athenaAssets: process.env.NEXT_PUBLIC_ATHENA_ASSETS !== "false",
           onHouseClick: (house) => callbacks.current.onHouseClick?.(house),
           onStats: (stats) => callbacks.current.onStats?.(stats),
+          onEvent: (event) => callbacks.current.onEvent?.(event),
+          onOverviewChange: (value) => callbacks.current.onOverviewChange?.(value),
           onProjection: (points) => {
-            if (!abort.signal.aborted) setMarkers(points);
+            if (abort.signal.aborted) return;
+            latestProjection.current = points;
+            for (const point of points) {
+              const node = markerNodes.current.get(point.slot);
+              if (node) positionMarker(node, point);
+            }
           },
         });
         if (abort.signal.aborted) {
@@ -91,11 +141,35 @@ function SurfacePlanet({
       handle.current = null;
     };
   }, []);
-  useEffect(() => handle.current?.update(state), [state]);
-  useEffect(() => handle.current?.setPaused(paused), [paused]);
+  useEffect(() => handle.current?.update(state), [state, phase]);
+  useEffect(() => handle.current?.setPaused(paused), [paused, phase]);
+  useEffect(() => handle.current?.setOverview(overview), [overview, phase]);
+  useEffect(() => {
+    if (!world || !handle.current) return;
+    handle.current.updateQuests(world.quests);
+    handle.current.setAccessibility({
+      ...world.accessibility,
+      reducedMotion:
+        world.accessibility.reducedMotion ||
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    });
+    if (paused) return;
+    for (const id of world.activeCelebrationIds) {
+      if (celebrated.current.has(id)) continue;
+      const definition = achievementCatalogue.find((item) => item.celebrationId === id);
+      const achievement = world.achievements.find((item) => item.code === definition?.code);
+      if (achievement) {
+        celebrated.current.add(id);
+        handle.current.showAchievement(achievement);
+      }
+    }
+  }, [world, paused, phase]);
   useEffect(() => handle.current?.setMuted(muted), [muted, phase]);
+  useEffect(() => {
+    if (volumes) handle.current?.setVolumes(volumes);
+  }, [volumes, phase]);
   return (
-    <div className="scene" data-engine-status={phase} data-renderer="extracted-three">
+    <div className="scene village-scene" data-engine-status={phase} data-renderer="athena-village">
       <div ref={host} className="engine-host" aria-label="Mundo 3D de Athena" />
       {phase === "loading" && (
         <div className="scene-status" role="status">
@@ -111,24 +185,23 @@ function SurfacePlanet({
         </div>
       )}
       <div className="house-markers" aria-label="Casas de temas en el mundo">
-        {markers
-          .filter((marker) => marker.visible && marker.distance < 24)
-          .map((marker) => {
-            const house = state.houses.find((item) => item.slot === marker.slot);
-            if (!house) return null;
-            return (
-              <button
-                key={house.topicId}
-                className={`house-marker ${house.status}`}
-                style={{ left: marker.x, top: marker.y }}
-                onClick={() => onHouseClick?.(house)}
-                aria-label={`${house.title}: ${names[house.status]}`}
-              >
-                <span aria-hidden="true">{symbols[house.status]}</span>
-                <span>{house.title}</span>
-              </button>
-            );
-          })}
+        {state.houses.map((house) => (
+          <button
+            key={house.topicId}
+            ref={markerRef(house.slot)}
+            className={`house-marker ${house.status}`}
+            disabled
+            tabIndex={-1}
+            aria-hidden="true"
+            style={{ left: 0, top: 0 }}
+            onClick={() => onHouseClick?.(house)}
+            aria-label={`Entrar a ${house.title}: ${stateLabel(house.status)}`}
+          >
+            <StateIcon status={house.status} />
+            <span>{house.title}</span>
+            <kbd aria-hidden="true">E</kbd>
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -160,6 +233,7 @@ export function OrbitCanvas({
         if (abort.signal.aborted) return;
         const instance = await createOrbitEngine(host.current, states, {
           signal: abort.signal,
+          athenaAssets: process.env.NEXT_PUBLIC_ATHENA_ASSETS !== "false",
           onPlanetClick: (planet) => callbacks.current.onPlanetClick?.(planet),
           onStats: (stats) => callbacks.current.onStats?.(stats),
           onProjection: (next) => {

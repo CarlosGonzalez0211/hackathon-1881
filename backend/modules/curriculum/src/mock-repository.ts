@@ -1,8 +1,5 @@
-import {
-  curriculumDatasetSchema,
-  type CurriculumDataset,
-} from "../../../../shared/src/curriculum.js";
-import { demoCurriculum } from "../../../../shared/src/mocks/demo-curriculum.js";
+import { curriculumDatasetSchema, type CurriculumDataset } from "@athena/shared";
+import { demoCurriculum } from "@athena/shared";
 import {
   CurriculumError,
   type CourseAccessPolicy,

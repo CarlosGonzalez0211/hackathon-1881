@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { generatedResourceSchema } from "../../../../shared/src/curriculum.js";
-import { demoCurriculum } from "../../../../shared/src/mocks/demo-curriculum.js";
+import { generatedResourceSchema } from "@athena/shared";
+import { demoCurriculum } from "@athena/shared";
 import { historyMockResources } from "../src/history-resource-catalog.js";
 import { HistoryResourceService } from "../src/history-resource-service.js";
 import { MockCurriculumRepository, MockCourseAccessPolicy } from "../src/mock-repository.js";

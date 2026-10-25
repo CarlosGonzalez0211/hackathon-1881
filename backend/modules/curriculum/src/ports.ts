@@ -5,7 +5,7 @@ import type {
   RetrieveContextInput,
   SourceChunk,
   Topic,
-} from "../../../../shared/src/curriculum.js";
+} from "@athena/shared";
 
 /** Server-derived context. Never construct this from a request's claimed course IDs. */
 export interface CurriculumAccessContext {

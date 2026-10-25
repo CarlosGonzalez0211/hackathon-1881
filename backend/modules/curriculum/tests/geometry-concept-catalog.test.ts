@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { demoCurriculum } from "../../../../shared/src/mocks/demo-curriculum.js";
+import { demoCurriculum } from "@athena/shared";
 import {
   GEOMETRY_CONCEPT_IDS,
   GEOMETRY_MISCONCEPTION_ID,

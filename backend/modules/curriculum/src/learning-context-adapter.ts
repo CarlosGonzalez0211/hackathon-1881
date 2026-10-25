@@ -1,4 +1,4 @@
-import type { Citation } from "../../../../shared/src/curriculum.js";
+import type { Citation } from "@athena/shared";
 import { geometryConceptCatalog } from "./geometry-concept-catalog.js";
 import { geometrySourceBindings } from "./geometry-source-map.js";
 import {

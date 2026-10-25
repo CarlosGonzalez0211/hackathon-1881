@@ -9,11 +9,8 @@ it does not replace or modify Daniela's implementation.
 From a future server consumer in `backend/modules/learning/src/`:
 
 ```ts
-import { LearningCurriculumContextAdapter } from "../../curriculum/src/learning-context-adapter.js";
-import {
-  MockCurriculumRepository,
-  MockCourseAccessPolicy,
-} from "../../curriculum/src/mock-repository.js";
+import { LearningCurriculumContextAdapter } from "@athena/curriculum";
+import { MockCurriculumRepository, MockCourseAccessPolicy } from "@athena/curriculum";
 
 const context = new LearningCurriculumContextAdapter(
   new MockCurriculumRepository(),
@@ -116,7 +113,7 @@ playable media.
 
 ```sh
 pnpm --filter @athena/api exec tsx --test ../modules/curriculum/tests/learning-context-adapter.test.ts
-pnpm exec tsc -p backend/modules/curriculum/tsconfig.json
+pnpm exec tsc -p backend/modules/curriculum/tsconfig.tests.json
 ```
 
 No routes, World publishing, shared exports, file uploads, or PDF processing are

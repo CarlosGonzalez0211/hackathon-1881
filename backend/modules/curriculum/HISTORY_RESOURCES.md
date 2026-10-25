@@ -48,11 +48,8 @@ providers. Generation and media rendering remain unavailable.
 A future server consumer in `backend/modules/learning/src/` can use:
 
 ```ts
-import { HistoryResourceService } from "../../curriculum/src/history-resource-service.js";
-import {
-  MockCurriculumRepository,
-  MockCourseAccessPolicy,
-} from "../../curriculum/src/mock-repository.js";
+import { HistoryResourceService } from "@athena/curriculum";
+import { MockCurriculumRepository, MockCourseAccessPolicy } from "@athena/curriculum";
 
 const resources = new HistoryResourceService(
   new MockCurriculumRepository(),
@@ -84,7 +81,7 @@ World UI wiring remain separate integration tasks.
 
 ```sh
 pnpm --filter @athena/api exec tsx --test ../modules/curriculum/tests/history-resources.test.ts
-pnpm exec tsc -p backend/modules/curriculum/tsconfig.json
+pnpm exec tsc -p backend/modules/curriculum/tsconfig.tests.json
 ```
 
 Tests verify all six resources, block-level source evidence, TXT synchronization,

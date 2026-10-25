@@ -1,9 +1,10 @@
 import { z } from "zod";
+import { idSchema, isoDateSchema, localeSchema } from "./common.js";
 
 /** Additive Person 1 contracts; existing world/learning contracts remain unchanged. */
-const id = z.string().trim().min(1);
+const id = idSchema.trim().min(1);
 const version = z.number().int().positive();
-export const curriculumLocaleSchema = z.enum(["en", "es"]);
+export const curriculumLocaleSchema = localeSchema;
 export const courseSchema = z.object({
   id,
   ownerId: id,
@@ -11,8 +12,8 @@ export const courseSchema = z.object({
   description: z.string(),
   locale: curriculumLocaleSchema,
   activeVersion: version,
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: isoDateSchema,
+  updatedAt: isoDateSchema,
 });
 export const topicSchema = z.object({
   id,
@@ -44,7 +45,7 @@ export const materialSchema = z.object({
   status: materialStatusSchema,
   curriculumVersion: version,
   uploadedBy: id,
-  uploadedAt: z.string().datetime(),
+  uploadedAt: isoDateSchema,
   error: id.optional(),
   provenance: z.object({
     kind: z.enum(["authored_demo", "professor_upload"]),

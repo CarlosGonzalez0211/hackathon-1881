@@ -6,7 +6,7 @@ import {
   topicSchema,
   validateRetrievedContext,
   type RetrieveContextInput,
-} from "../../../../shared/src/curriculum.js";
+} from "@athena/shared";
 import {
   CurriculumError,
   type CourseAccessPolicy,
